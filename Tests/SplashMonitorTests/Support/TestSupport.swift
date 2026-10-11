@@ -96,6 +96,18 @@ enum Fixtures {
           "ready": \(ready),
           "maximum_context_tokens": 262144,
           "memory_pressure": "nominal",
+          "thermal_state": "nominal",
+          "ane_ffn": {
+            "state": "active",
+            "share": 0.6667,
+            "min_prompt_chunk": 128,
+            "evaluations": 142
+          },
+          "weights": {
+            "released": false,
+            "idle_release_seconds": 300.0,
+            "restores": 0
+          },
           "instance": {
             "id": "832f0b6e-1c1f-4d3f-9f0a-2a1b3c4d5e6f",
             "pid": \(pid),

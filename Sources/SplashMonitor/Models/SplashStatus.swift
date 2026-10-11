@@ -16,6 +16,9 @@ public struct SplashStatus: Codable {
     public let metrics: PerformanceMetrics?
     public let vision: Bool?
     public let inputModalities: [String]?
+    public let thermalState: String?
+    public let aneFfn: AneFfnMetrics?
+    public let weights: WeightsStatus?
     
     enum CodingKeys: String, CodingKey {
         case ready
@@ -31,6 +34,9 @@ public struct SplashStatus: Codable {
         case metrics
         case vision
         case inputModalities = "input_modalities"
+        case thermalState = "thermal_state"
+        case aneFfn = "ane_ffn"
+        case weights
     }
 }
 
@@ -196,6 +202,31 @@ public struct PercentileMetric: Codable {
     public let samples: Int?
 }
 
+public struct AneFfnMetrics: Codable {
+    public let state: String?
+    public let share: Double?
+    public let minPromptChunk: Int?
+    public let evaluations: Int?
+    public let timing: Double?
+    public let reruns: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case state, share, evaluations, timing, reruns
+        case minPromptChunk = "min_prompt_chunk"
+    }
+}
+
+public struct WeightsStatus: Codable {
+    public let idleReleaseSeconds: Double?
+    public let released: Bool?
+    public let restores: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case idleReleaseSeconds = "idle_release_seconds"
+        case released, restores
+    }
+}
+
 // MARK: - Lock file model
 
 public struct ServeLock: Codable {
@@ -221,7 +252,7 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
     }
     
     public var isOfficial: Bool {
-        return id.hasPrefix("incoai/")
+        return id.hasPrefix("incoai/") || id.hasPrefix("mlx-community/Qwen3.8-27B") || id.hasPrefix("mlx-community/Qwen3.6-35B")
     }
     
     public var displayName: String {

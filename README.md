@@ -17,8 +17,8 @@
 [![macOS 13.0+](https://img.shields.io/badge/macOS-13.0%2B%20%7C%20Apple%20Silicon-black?style=for-the-badge&logo=apple)](https://developer.apple.com/macos/)
 [![Swift 6](https://img.shields.io/badge/Swift-6.0-F05138?style=for-the-badge&logo=swift&logoColor=white)](https://www.swift.org/)
 [![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M3%20%7C%20M4%20%7C%20M5-0071e3?style=for-the-badge)](https://www.apple.com/silicon/)
-[![Version](https://img.shields.io/badge/Version-1.0.6--beta-orange?style=for-the-badge)](https://github.com/hometrix/SplashMonitor/releases/tag/v1.0.6-beta)
-[![Download DMG](https://img.shields.io/badge/Download-DMG%20Installer-success?style=for-the-badge&logo=apple)](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.6-beta/SplashMonitor-1.0.6-beta.dmg)
+[![Version](https://img.shields.io/badge/Version-1.0.7--beta-orange?style=for-the-badge)](https://github.com/hometrix/SplashMonitor/releases/tag/v1.0.7-beta)
+[![Download DMG](https://img.shields.io/badge/Download-DMG%20Installer-success?style=for-the-badge&logo=apple)](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.7-beta/SplashMonitor-1.0.7-beta.dmg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-JMGREP%20Developers%20%7C%20Joan%20Gregorio%20P%C3%A9rez-00205B?style=for-the-badge)](#-autor--author)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-yellow?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/hometrix9)
@@ -48,6 +48,16 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 
 ---
 
+### 🚀 Novedades de la Versión 1.0.7-beta (Compatibilidad con Splash 1.3.1)
+
+- 🔄 **Compatibilidad Total con Splash 1.3.1**: Transición a los modelos oficiales (`mlx-community/Qwen3.8-27B-4bit`, `mlx-community/Qwen3.6-35B-A3B-4bit`) y eliminación de dependencias de los paquetes discontinuados (`-Splash`).
+- 🔔 **Validador de Actualizaciones del Motor Splash**: Comprobación periódica y manual de nuevas versiones de `incoai/splash` en GitHub, con aviso automático y actualización en un solo clic mediante Homebrew (`brew upgrade incoai/splash/splash`).
+- 🥧 **Soporte para Pi Agent**: Botón de lanzamiento e integración nativa para el agente `pi` ([pi.dev](https://pi.dev/)) con inyección automática de `--port`.
+- 🌡️ **Telemetría Térmica y Neural Engine**: Indicador del estado térmico del hardware (`thermal_state`), ratio de capas aceleradas por Apple Neural Engine (`ane_ffn`), y retención/liberación de pesos en reposo (`weights.released`).
+- 🚩 **Inyección Segura de Parámetros CLI**: Posibilidad de ingresar banderas personalizadas como `--no-webui` o `--max-cache-disk` con saneamiento de inyección de comandos.
+
+---
+
 ### ✨ Características Principales
 
 <table>
@@ -59,6 +69,7 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 - Monitoreo de la tasa de acierto del **KV Cache** y ahorro de tokens
 - Tasa de aceptación especulativa de **DFlash 2**
 - Métricas de latencia **TTFT** e **ITL** (percentil p50)
+- Estado térmico y aceleración por **Apple Neural Engine (ANE)**
 
 </td>
 <td width="50%" valign="top">
@@ -66,7 +77,7 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 #### 💾 Monitor de Memoria Unified Metal
 - Barra de uso de memoria en tiempo real (ej. `23.7 GB / 55.6 GB`)
 - Detección automática del procesador Apple Silicon y cores GPU
-- Indicador de presión de memoria del sistema
+- Indicador de presión de memoria del sistema y estado de pesos en reposo
 
 </td>
 </tr>
@@ -75,7 +86,7 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 
 #### 📦 Gestor de Modelos
 - Catálogo de modelos locales instalados con espacio en disco
-- Explorador del catálogo en vivo de [Hugging Face](https://huggingface.co/incoai)
+- Explorador del catálogo en vivo de [Hugging Face](https://huggingface.co/incoai) y `mlx-community`
 - Instalación de modelos con un clic y salida de terminal en vivo
 
 </td>
@@ -84,8 +95,8 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 #### 🕹️ Control del Servidor
 - Selector de modelo interactivo con cambio en caliente
 - Iniciar / detener el servidor en un clic
-- Lanzadores de agentes: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**
-- Selección de puerto, enlace de red LAN (0.0.0.0 / 127.0.0.1), dominios o hosts permitidos (`--allowed-host`) y límite de contexto (`--max-context`)
+- Lanzadores de agentes: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**, **Pi Agent** (`pi.dev`)
+- Selección de puerto, enlace de red LAN (0.0.0.0 / 127.0.0.1), dominios o hosts permitidos (`--allowed-host`), límite de contexto (`--max-context`) y banderas CLI personalizadas
 - Copia de endpoint compatible con OpenAI
 
 </td>
@@ -163,8 +174,7 @@ Cada módulo de **Splash Monitor** está optimizado para la experiencia nativa d
 
 #### 8. ℹ️ Acerca de Splash Monitor
 <img src="screenshots/module-about.png" width="850" alt="Acerca de Splash Monitor" />
-<p><b>Módulo Informativo:</b> Información de versión (v1.0.6-beta), arquitectura nativa en Swift 6 y Metal, licencia abierta MIT y créditos de autoría de Joan Gregorio Pérez (JMGREP Developers).</p>
-
+<p><b>Módulo Informativo:</b> Información de versión (v1.0.7-beta), arquitectura nativa en Swift 6 y Metal, licencia abierta MIT y créditos de autoría de Joan Gregorio Pérez (JMGREP Developers).</p>
 </div>
 
 ---
@@ -218,16 +228,16 @@ curl -fsSL https://raw.githubusercontent.com/hometrix/SplashMonitor/main/scripts
 > ⚡️ Este comando consulta la última publicación en GitHub, descarga el DMG oficial,
 > **verifica su suma SHA-256** contra el fichero `SHA256SUMS` publicado y aborta si no
 > coincide, lo monta, copia la app a `/Applications` y la abre automáticamente.
-> Fija una versión concreta con `SPLASH_MONITOR_TAG=v1.0.6-beta`.
+> Fija una versión concreta con `SPLASH_MONITOR_TAG=v1.0.7-beta`.
 
 ---
 
 #### Opción C — Descarga Manual del DMG
 
 1. **Descarga** el instalador oficial:
-   👉 [**SplashMonitor-1.0.6-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.6-beta/SplashMonitor-1.0.6-beta.dmg)
+   👉 [**SplashMonitor-1.0.7-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.7-beta/SplashMonitor-1.0.7-beta.dmg)
 
-   Y su suma de verificación: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.6-beta/SHA256SUMS)
+   Y su suma de verificación: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.7-beta/SHA256SUMS)
 
    ```bash
    shasum -a 256 -c SHA256SUMS   # debe imprimir "OK"
@@ -444,6 +454,16 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 
 ---
 
+### 🚀 What's New in Version 1.0.7-beta (Splash 1.3.1 Compatibility)
+
+- 🔄 **Full Splash 1.3.1 Compatibility**: Seamless migration to official models (`mlx-community/Qwen3.8-27B-4bit`, `mlx-community/Qwen3.6-35B-A3B-4bit`) while deprecating retired `-Splash` packages.
+- 🔔 **Splash Engine Update Validator**: Automatically detects when Inco AI publishes a new release of `incoai/splash` on GitHub. Displays an update notification and allows 1-click upgrade via Homebrew (`brew upgrade incoai/splash/splash`).
+- 🥧 **Pi Agent Support**: Native launch button and integration for `pi` ([pi.dev](https://pi.dev/)) with automatic `--port` injection and installation checking.
+- 🌡️ **Thermal & Apple Neural Engine (ANE) Telemetry**: Real-time hardware thermal state (`thermal_state`), ANE accelerated layer ratio (`ane_ffn`), and weights retention/idle release status (`weights.released`).
+- 🚩 **Safe CLI Flag Injection**: Support for arbitrary server parameters (`--no-webui`, `--max-cache-disk`) with shell injection prevention and sanitization.
+
+---
+
 ### ✨ Key Features
 
 <table>
@@ -455,6 +475,7 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 - **KV Cache** hit rate monitoring and token savings tracking
 - **DFlash 2** speculative acceptance rate
 - **TTFT** and **ITL** latency metrics (p50 percentile)
+- Thermal monitoring and **Apple Neural Engine (ANE)** acceleration ratio
 
 </td>
 <td width="50%" valign="top">
@@ -462,7 +483,7 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 #### 💾 Metal Unified Memory Gauge
 - Real-time memory usage bar (e.g. `23.7 GB / 55.6 GB`)
 - Automatic Apple Silicon GPU core detection
-- System memory pressure indicator
+- System memory pressure and weights idle status indicator
 
 </td>
 </tr>
@@ -471,7 +492,7 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 
 #### 📦 Model Manager
 - Local installed models catalog with disk usage
-- Live [Hugging Face](https://huggingface.co/incoai) catalog explorer
+- Live [Hugging Face](https://huggingface.co/incoai) and `mlx-community` catalog explorer
 - One-click model installation with live terminal output
 
 </td>
@@ -480,8 +501,8 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 #### 🕹️ Server Controls
 - Interactive model selector with hot-swapping
 - Start / stop the server with one click
-- Code agent launchers: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**
-- Port selection, LAN network bind (0.0.0.0 / 127.0.0.1), allowed domains or hosts (`--allowed-host`), and context limit (`--max-context`)
+- Code agent launchers: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**, **Pi Agent** (`pi.dev`)
+- Port selection, LAN network bind (0.0.0.0 / 127.0.0.1), allowed domains or hosts (`--allowed-host`), context limit (`--max-context`), and custom CLI flags
 - One-click OpenAI-compatible API endpoint copying
 
 </td>
@@ -559,7 +580,7 @@ Every module of **Splash Monitor** is designed and optimized for a native Apple 
 
 #### 8. ℹ️ About Splash Monitor
 <img src="screenshots/module-about.png" width="850" alt="About Splash Monitor" />
-<p><b>About Module:</b> Version information (v1.0.6-beta), native Swift 6 and Metal architecture details, MIT open-source license, and author credits for Joan Gregorio Pérez (JMGREP Developers).</p>
+<p><b>About Module:</b> Version information (v1.0.7-beta), native Swift 6 and Metal architecture details, MIT open-source license, and author credits for Joan Gregorio Pérez (JMGREP Developers).</p>
 
 </div>
 
@@ -614,16 +635,16 @@ curl -fsSL https://raw.githubusercontent.com/hometrix/SplashMonitor/main/scripts
 > ⚡️ This script resolves the latest release, downloads the official DMG, **verifies its
 > SHA-256 checksum** against the published `SHA256SUMS` file (aborting on mismatch),
 > mounts it, installs to `/Applications`, and opens the app automatically.
-> Pin a specific version with `SPLASH_MONITOR_TAG=v1.0.6-beta`.
+> Pin a specific version with `SPLASH_MONITOR_TAG=v1.0.7-beta`.
 
 ---
 
 #### Option C — Manual DMG Download
 
 1. **Download** the official installer:
-   👉 [**SplashMonitor-1.0.6-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.6-beta/SplashMonitor-1.0.6-beta.dmg)
+   👉 [**SplashMonitor-1.0.7-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.7-beta/SplashMonitor-1.0.7-beta.dmg)
 
-   And its checksum file: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.6-beta/SHA256SUMS)
+   And its checksum file: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.7-beta/SHA256SUMS)
 
    ```bash
    shasum -a 256 -c SHA256SUMS   # must print "OK"
@@ -824,8 +845,8 @@ Splash Monitor is an independent application that interfaces with third-party co
 |:----------|:--------|:-----------|
 | **Splash Monitor** | MIT | [hometrix/SplashMonitor](https://github.com/hometrix/SplashMonitor) |
 | **Splash Engine** | Apache-2.0 | [incoai/splash](https://github.com/incoai/splash) |
-| **Qwen3.8-27B-Splash Model** | Apache-2.0 | [incoai/Qwen3.8-27B-Splash](https://huggingface.co/incoai/Qwen3.8-27B-Splash) |
-| **Qwen3.6-35B-A3B-Splash Model** | Apache-2.0 | [incoai/Qwen3.6-35B-A3B-Splash](https://huggingface.co/incoai/Qwen3.6-35B-A3B-Splash) |
+| **Qwen3.8-27B (MLX / Splash)** | Apache-2.0 | [mlx-community/Qwen3.8-27B-4bit](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) |
+| **Qwen3.6-35B-A3B (MLX / Splash)** | Apache-2.0 | [mlx-community/Qwen3.6-35B-A3B-4bit](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-4bit) |
 | **Qwen3.8-27B** (base model) | Apache-2.0 | [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) |
 | **Qwen3.6-35B-A3B** (base model) | Apache-2.0 | [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B) |
 

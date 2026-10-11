@@ -136,10 +136,41 @@ public struct TokenMetricsView: View {
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                         Spacer()
+                        if let thermal = service.status?.thermalState {
+                            Text("\(tr(es: "Térmico", en: "Thermal")): \(thermal.capitalized)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(thermal == "nominal" ? .green : (thermal == "fair" ? .yellow : .orange))
+                            Text("·")
+                                .foregroundColor(.secondary)
+                        }
                         Text("\(tr(es: "Presión", en: "Pressure")): \(service.status?.memoryPressure?.capitalized ?? "Normal")")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(service.status?.memoryPressure == "normal" ? .green : .orange)
                     }
+                }
+                
+                if let ane = service.status?.aneFfn, let state = ane.state {
+                    HStack {
+                        Label {
+                            Text(tr(es: "Apple Neural Engine (ANE)", en: "Apple Neural Engine (ANE)"))
+                                .font(.system(size: 10, weight: .medium))
+                        } icon: {
+                            Image(systemName: "cpu")
+                                .font(.system(size: 10))
+                                .foregroundColor(.indigo)
+                        }
+                        Spacer()
+                        if let share = ane.share {
+                            Text("\(state.capitalized) · \(Int(share * 100))% share")
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text(state.capitalized)
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.top, 2)
                 }
             }
             .padding(10)

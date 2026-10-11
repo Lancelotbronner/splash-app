@@ -341,7 +341,7 @@ public struct ConnectedAppsView: View {
                         tr(es: "1. En ChatGPT for Mac o scripts Codex, apunta a tu endpoint:", en: "1. In ChatGPT for Mac or Codex scripts, point to your endpoint:"),
                         "http://\(host):\(service.activePort)/v1",
                         tr(es: "2. Modelo activo en Splash:", en: "2. Active model in Splash:"),
-                        service.activeModel.isEmpty ? "incoai/Qwen3.8-27B-Splash" : service.activeModel,
+                        service.activeModel.isEmpty ? "mlx-community/Qwen3.8-27B-4bit" : service.activeModel,
                         tr(es: "3. API Key: 'splash' (token de bypass)", en: "3. API Key: 'splash' (bypass token)")
                     ],
                     copyText: "http://\(host):\(service.activePort)/v1"

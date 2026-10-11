@@ -321,7 +321,7 @@ public struct ServerControlView: View {
                     Text(tr(es: "Identificador de Hugging Face (owner/repo):", en: "Hugging Face Identifier (owner/repo):"))
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
-                    TextField(tr(es: "ej. incoai/Qwen3.8-27B-Splash", en: "e.g. incoai/Qwen3.8-27B-Splash"), text: $customModelText)
+                    TextField(tr(es: "ej. mlx-community/Qwen3.8-27B-4bit", en: "e.g. mlx-community/Qwen3.8-27B-4bit"), text: $customModelText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11, design: .monospaced))
                     
@@ -797,6 +797,17 @@ public struct ServerControlView: View {
                     isServerRunning: service.isRunning
                 ) {
                     handleAgentLaunch(name: "Hermes", command: "hermes")
+                }
+                
+                AgentButton(
+                    name: "Pi Agent",
+                    icon: "character.cursor.ibeam",
+                    command: "pi",
+                    subtitle: "pi.dev (Splash 1.3+)",
+                    isInstalled: service.isAgentInstalled(agent: "pi"),
+                    isServerRunning: service.isRunning
+                ) {
+                    handleAgentLaunch(name: "Pi Agent", command: "pi")
                 }
             }
         }

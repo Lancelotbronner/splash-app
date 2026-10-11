@@ -10,6 +10,7 @@ final class AgentLaunchTests: XCTestCase {
         XCTAssertTrue(SplashService.supportedAgents.contains("codex"))
         XCTAssertTrue(SplashService.supportedAgents.contains("hermes"))
         XCTAssertTrue(SplashService.supportedAgents.contains("chatgpt"), "supportedAgents debe incluir 'chatgpt'")
+        XCTAssertTrue(SplashService.supportedAgents.contains("pi"), "supportedAgents debe incluir 'pi' (Splash 1.3.1)")
     }
     
     @MainActor
@@ -17,6 +18,13 @@ final class AgentLaunchTests: XCTestCase {
         let service = SplashService()
         let url = service.agentInstallURL(agent: "claude-cowork")
         XCTAssertEqual(url.absoluteString, "https://claude.ai/download")
+    }
+    
+    @MainActor
+    func testAgentInstallURLForPi() {
+        let service = SplashService()
+        let url = service.agentInstallURL(agent: "pi")
+        XCTAssertEqual(url.absoluteString, "https://pi.dev/")
     }
     
     @MainActor

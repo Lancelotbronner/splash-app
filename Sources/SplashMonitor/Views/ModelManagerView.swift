@@ -323,14 +323,14 @@ public struct ModelManagerView: View {
                 .font(.system(size: 12, weight: .semibold))
             
             Text(tr(
-                es: "Introduce el identificador de repositorio en Hugging Face o fine-tune GGUF con variante (ej. incoai/Qwen3.8-27B-Splash o peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL).",
-                en: "Enter the Hugging Face repository or GGUF fine-tune with variant (e.g. incoai/Qwen3.8-27B-Splash or peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL)."
+                es: "Introduce el identificador de repositorio en Hugging Face (ej. mlx-community/Qwen3.8-27B-4bit) o fine-tune GGUF con variante (ej. peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL).",
+                en: "Enter the Hugging Face repository (e.g. mlx-community/Qwen3.8-27B-4bit) or GGUF fine-tune with variant (e.g. peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL)."
             ))
             .font(.system(size: 10))
             .foregroundColor(.secondary)
             
             HStack {
-                TextField(tr(es: "propietario/modelo[:variante] (ej. incoai/Qwen3.8-27B-Splash)", en: "owner/repo[:variant] (e.g. incoai/Qwen3.8-27B-Splash)"), text: $customRepoId)
+                TextField(tr(es: "propietario/modelo[:variante] (ej. mlx-community/Qwen3.8-27B-4bit)", en: "owner/repo[:variant] (e.g. mlx-community/Qwen3.8-27B-4bit)"), text: $customRepoId)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 11, design: .monospaced))
                     .onChange(of: customRepoId) { newVal in

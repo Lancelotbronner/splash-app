@@ -42,6 +42,14 @@ final class VersionTests: XCTestCase {
         XCTAssertNil(SemanticVersion("-1.0.0"))
     }
     
+    func testSplashCliEngineVersionComparison() {
+        // Validación del motor incoai/splash (Splash 1.3.1 frente a versiones previas)
+        XCTAssertTrue(SemanticVersion.isNewer("1.3.1", than: "1.2.1"))
+        XCTAssertTrue(SemanticVersion.isNewer("v1.3.1", than: "1.3.0"))
+        XCTAssertFalse(SemanticVersion.isNewer("1.3.1", than: "1.3.1"))
+        XCTAssertFalse(SemanticVersion.isNewer("1.2.1", than: "1.3.1"))
+    }
+    
     /// P-15: la versión vive en un solo sitio y los scripts la extraen de ahí.
     func testVersionExistsOnceAndScriptsAgreeWithIt() throws {
         let root = URL(fileURLWithPath: #filePath)

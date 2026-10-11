@@ -188,6 +188,11 @@ public struct MainWindowView: View {
                         .padding(16)
                 }
                 
+                // Splash CLI engine update banner
+                if service.hasSplashCliUpdate {
+                    splashCliUpdateBanner
+                }
+                
                 // Update available banner
                 if service.hasUpdate {
                     updateBanner
@@ -227,6 +232,57 @@ public struct MainWindowView: View {
                 selectedSidebarItem = .about
             }
         }
+    }
+    
+    // MARK: - Splash CLI Engine Update Available Banner
+    private var splashCliUpdateBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "flame.circle.fill")
+                .font(.system(size: 22))
+                .foregroundColor(.orange)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(loc.isSpanish ? "Nueva versión del motor Splash disponible" : "New Splash engine version available")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(loc.isSpanish 
+                    ? "Splash CLI \(service.latestSplashCliVersion.isEmpty ? "nueva versión" : service.latestSplashCliVersion) está disponible (instalada: \(service.installedSplashCliVersion.isEmpty ? "desconocida" : service.installedSplashCliVersion))."
+                    : "Splash CLI \(service.latestSplashCliVersion.isEmpty ? "new version" : service.latestSplashCliVersion) is available (installed: \(service.installedSplashCliVersion.isEmpty ? "unknown" : service.installedSplashCliVersion)).")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Button(loc.isSpanish ? "Actualizar Splash" : "Upgrade Splash") {
+                service.upgradeSplashInTerminal()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .controlSize(.small)
+            
+            if !service.latestSplashCliReleaseURL.isEmpty, let url = URL(string: service.latestSplashCliReleaseURL) {
+                Button(loc.isSpanish ? "Ver notas" : "View notes") {
+                    NSWorkspace.shared.open(url)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            
+            Button(loc.isSpanish ? "Omitir" : "Skip") {
+                service.hasSplashCliUpdate = false
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.orange.opacity(0.12))
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.orange.opacity(0.2)),
+            alignment: .bottom
+        )
     }
     
     // MARK: - Update Available Banner
@@ -613,11 +669,18 @@ public struct MainWindowView: View {
                     Text(loc.isSpanish ? "Motor de Inferencia Splash CLI" : "Splash CLI Inference Engine")
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
+                    if service.hasSplashCliUpdate {
+                        Text(loc.isSpanish ? "¡Nueva versión \(service.latestSplashCliVersion)!" : "New version \(service.latestSplashCliVersion)!")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.orange)
+                    }
                     HStack(spacing: 4) {
                         Circle()
                             .fill(service.isSplashInstalled ? Color.green : Color.orange)
                             .frame(width: 7, height: 7)
-                        Text(service.isSplashInstalled ? (service.splashVersion ?? (loc.isSpanish ? "Instalado" : "Installed")) : (loc.isSpanish ? "No instalado" : "Not installed"))
+                        Text(service.isSplashInstalled 
+                            ? (!service.installedSplashCliVersion.isEmpty ? "v\(service.installedSplashCliVersion)" : (service.splashVersion ?? (loc.isSpanish ? "Instalado" : "Installed"))) 
+                            : (loc.isSpanish ? "No instalado" : "Not installed"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(service.isSplashInstalled ? .green : .orange)
                     }
@@ -641,14 +704,26 @@ public struct MainWindowView: View {
                 
                 HStack(spacing: 8) {
                     if service.isSplashInstalled {
-                        Button {
-                            service.upgradeSplashInTerminal()
-                        } label: {
-                            Label(loc.isSpanish ? "Actualizar Splash (brew upgrade)" : "Upgrade Splash (brew upgrade)", systemImage: "arrow.up.circle")
-                                .font(.system(size: 11))
+                        if service.hasSplashCliUpdate {
+                            Button {
+                                service.upgradeSplashInTerminal()
+                            } label: {
+                                Label(loc.isSpanish ? "Actualizar Splash (brew upgrade)" : "Upgrade Splash (brew upgrade)", systemImage: "arrow.up.circle")
+                                    .font(.system(size: 11))
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .controlSize(.small)
+                        } else {
+                            Button {
+                                service.upgradeSplashInTerminal()
+                            } label: {
+                                Label(loc.isSpanish ? "Actualizar Splash (brew upgrade)" : "Upgrade Splash (brew upgrade)", systemImage: "arrow.up.circle")
+                                    .font(.system(size: 11))
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     } else {
                         Button {
                             service.installSplashDependency()
@@ -661,11 +736,19 @@ public struct MainWindowView: View {
                     }
                     
                     Button {
-                        service.checkDependencies()
-                        service.refreshInstalledModels()
+                        Task {
+                            service.checkDependencies()
+                            service.refreshInstalledModels()
+                            await service.checkSplashCliUpdate()
+                        }
                     } label: {
-                        Label(loc.isSpanish ? "Verificar" : "Verify", systemImage: "arrow.clockwise")
-                            .font(.system(size: 11))
+                        if service.isCheckingSplashCliUpdate {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Label(loc.isSpanish ? "Buscar actualización" : "Check update", systemImage: "arrow.clockwise")
+                                .font(.system(size: 11))
+                        }
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)

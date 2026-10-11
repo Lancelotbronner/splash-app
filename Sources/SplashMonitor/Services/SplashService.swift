@@ -117,12 +117,19 @@ public class SplashService: ObservableObject {
         return "127.0.0.1"
     }
     
-    // Update check
+    // Update check (Splash Monitor App)
     @Published public var hasUpdate: Bool = false
     @Published public var latestVersion: String? = nil
     @Published public var latestReleaseURL: String? = nil
     public let currentVersion = SplashVersion.current
     private let githubRepo = "hometrix/SplashMonitor"
+    
+    // Splash CLI Engine Version & Updates (incoai/splash)
+    @Published public var installedSplashCliVersion: String = ""
+    @Published public var latestSplashCliVersion: String = ""
+    @Published public var latestSplashCliReleaseURL: String = "https://github.com/incoai/splash/releases/latest"
+    @Published public var hasSplashCliUpdate: Bool = false
+    @Published public var isCheckingSplashCliUpdate: Bool = false
     
     // Agent installation cache (checked async, not on main thread)
     @Published public var installedAgents: Set<String> = []
@@ -290,9 +297,13 @@ public class SplashService: ObservableObject {
         let result = CommandRunner.run(directPath, ["--version"])
         let version = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
         if result.succeeded, !version.isEmpty {
-            self.splashVersion = version.replacingOccurrences(of: "Splash ", with: "v")
-                .replacingOccurrences(of: "splash ", with: "v")
+            let clean = version.replacingOccurrences(of: "Splash ", with: "")
+                .replacingOccurrences(of: "splash ", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            self.installedSplashCliVersion = clean
+            self.splashVersion = "v\(clean)"
         } else {
+            self.installedSplashCliVersion = "1.0"
             self.splashVersion = "v1.0"
         }
     }
@@ -757,33 +768,96 @@ public class SplashService: ObservableObject {
         }
     }
     
-    // MARK: - Online Models Catalog (Hugging Face)
+    // MARK: - Update Checks (Splash Monitor App & Splash CLI Engine)
     
     public func checkForUpdate() async {
-        guard let url = URL(string: "https://api.github.com/repos/\(githubRepo)/releases/latest") else { return }
+        // 1. Splash Monitor App Update
+        if let url = URL(string: "https://api.github.com/repos/\(githubRepo)/releases/latest") {
+            var request = URLRequest(url: url)
+            request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+            request.timeoutInterval = 5.0
+            
+            if let (data, _) = try? await URLSession.shared.data(for: request),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let tagName = json["tag_name"] as? String {
+                let latest = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+                if SemanticVersion.isNewer(latest, than: currentVersion) {
+                    self.hasUpdate = true
+                    self.latestVersion = tagName
+                    self.latestReleaseURL = json["html_url"] as? String ?? "https://github.com/\(githubRepo)/releases/latest"
+                } else {
+                    self.hasUpdate = false
+                    self.latestVersion = tagName
+                }
+            }
+        }
+        
+        // 2. Splash CLI Engine Update (incoai/splash)
+        await checkSplashCliUpdate()
+    }
+    
+    /// Detecta la versión actualmente instalada del motor Splash CLI en el sistema (ej. "1.3.1").
+    @discardableResult
+    public func detectInstalledSplashVersion() -> String {
+        guard isSplashInstalled else { return "" }
+        let path = splashExecutablePath
+        guard !path.isEmpty, FileManager.default.isExecutableFile(atPath: path) else { return "" }
+        
+        let res = CommandRunner.run(path, ["--version"])
+        let trimmed = res.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        var detected = trimmed
+        if trimmed.lowercased().hasPrefix("splash ") {
+            detected = String(trimmed.dropFirst(7)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if !detected.isEmpty {
+            self.installedSplashCliVersion = detected
+        }
+        return detected
+    }
+    
+    /// Comprueba si existe una versión más reciente del motor oficial Splash CLI en GitHub (incoai/splash).
+    public func checkSplashCliUpdate() async {
+        guard isSplashInstalled else { return }
+        self.isCheckingSplashCliUpdate = true
+        
+        // 1. Detectar versión local
+        let localVersion = detectInstalledSplashVersion()
+        if !localVersion.isEmpty {
+            self.installedSplashCliVersion = localVersion
+        }
+        
+        // 2. Consultar releases de incoai/splash
+        guard let url = URL(string: "https://api.github.com/repos/incoai/splash/releases/latest") else {
+            self.isCheckingSplashCliUpdate = false
+            return
+        }
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 5.0
         
         guard let (data, _) = try? await URLSession.shared.data(for: request),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tagName = json["tag_name"] as? String else { return }
-        
-        // Extract version number: "v1.0.2-beta" → "1.0.2-beta"
-        let latest = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
-        
-        // Comparación semántica (P-07). El código anterior usaba `String >`
-        // (lexicográfico), que consideraba `1.0.10-beta` anterior a `1.0.2-beta` y
-        // dejaba de anunciar actualizaciones a partir de la décima revisión.
-        if SemanticVersion.isNewer(latest, than: currentVersion) {
-            self.hasUpdate = true
-            self.latestVersion = tagName
-            self.latestReleaseURL = json["html_url"] as? String ?? "https://github.com/\(githubRepo)/releases/latest"
-        } else {
-            self.hasUpdate = false
-            self.latestVersion = tagName
+              let tagName = json["tag_name"] as? String else {
+            self.isCheckingSplashCliUpdate = false
+            return
         }
+        
+        let latestClean = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+        self.latestSplashCliVersion = latestClean
+        if let htmlUrl = json["html_url"] as? String {
+            self.latestSplashCliReleaseURL = htmlUrl
+        }
+        
+        // 3. Comparar semánticamente
+        if !self.installedSplashCliVersion.isEmpty && SemanticVersion.isNewer(latestClean, than: self.installedSplashCliVersion) {
+            self.hasSplashCliUpdate = true
+        } else {
+            self.hasSplashCliUpdate = false
+        }
+        self.isCheckingSplashCliUpdate = false
     }
+    
+    // MARK: - Online Models Catalog (Hugging Face)
     
     public func fetchOnlineModels() async {
         self.isLoadingOnlineModels = true
@@ -811,7 +885,20 @@ public class SplashService: ObservableObject {
             }
         }
         
-        // Sort: Inco AI official first, then likes/name
+        // 3. Fetch official MLX community models (Splash 1.3.1+)
+        if let mlxUrl = URL(string: "https://huggingface.co/api/models?author=mlx-community&search=Qwen3") {
+            if let (data, _) = try? await URLSession.shared.data(from: mlxUrl),
+               let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
+                for item in items {
+                    let lower = item.id.lowercased()
+                    if (lower.contains("27b") || lower.contains("35b")) && (lower.contains("4bit") || lower.contains("8bit") || lower.contains("optiq")) {
+                        allItems[item.id] = item
+                    }
+                }
+            }
+        }
+        
+        // Sort: Official first, then likes/name
         let sorted = allItems.values.sorted { m1, m2 in
             if m1.isOfficial != m2.isOfficial {
                 return m1.isOfficial && !m2.isOfficial
@@ -1212,7 +1299,13 @@ public class SplashService: ObservableObject {
             
             // Aliases de modelos Anthropic, OpenAI y de la familia Splash/IncoAI
             let baseModelAliases = [
-                // Familia IncoAI / Splash (resuelve clientes configurados con modelos nativos de Splash)
+                // Familia Oficial Splash 1.3.1 (MLX Community y modelos base)
+                "mlx-community/Qwen3.8-27B-4bit",
+                "mlx-community/Qwen3.6-35B-A3B-4bit",
+                "mlx-community/Qwen3.8-27B-8bit",
+                "Qwen3.8-27B-4bit",
+                "Qwen3.6-35B-A3B-4bit",
+                // Familia IncoAI / Splash (resuelve clientes configurados con modelos nativos de Splash heredados)
                 "incoai/Qwen3.6-35B-A3B-Splash",
                 "incoai/Qwen3.8-27B-Splash",
                 "incoai/Qwen3.5-35B-A3B-Splash",
@@ -1571,8 +1664,9 @@ public class SplashService: ObservableObject {
     }
     
     /// Background check — safe to call from any thread
+    /// Background check — safe to call from any thread
     public func refreshAgentAvailability() {
-        let agents = ["claude", "opencode", "codex", "hermes"]
+        let agents = ["claude", "opencode", "codex", "hermes", "pi"]
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         
         Task.detached(priority: .utility) {
@@ -1621,13 +1715,15 @@ public class SplashService: ObservableObject {
             return URL(string: "https://developers.openai.com/codex/cli/")!
         case "hermes":
             return URL(string: "https://hermes-agent.nousresearch.com/docs/getting-started/installation/")!
+        case "pi":
+            return URL(string: "https://pi.dev/")!
         default:
             return URL(string: "https://github.com/incoai/splash")!
         }
     }
     
     /// Agentes que el motor sabe lanzar (`splash <agente>` o app nativa para cowork/chatgpt).
-    public static let supportedAgents = ["claude", "claude-cowork", "opencode", "codex", "hermes", "chatgpt"]
+    public static let supportedAgents = ["claude", "claude-cowork", "opencode", "codex", "hermes", "pi", "chatgpt"]
     
     public func launchAgent(agent: String) {
         guard isSplashInstalled else {
@@ -1693,13 +1789,13 @@ public class SplashService: ObservableObject {
         
         let splashPath = splashExecutablePath
         let port = self.activePort
-        // SIEMPRE configurar env vars con el puerto activo
+        // SIEMPRE configurar env vars con el puerto activo y pasar --port nativo si el motor lo soporta (Splash 1.3.0+)
         let agentRunCommand = """
         export SPLASH_PORT="\(port)"
         export ANTHROPIC_BASE_URL="http://127.0.0.1:\(port)"
         export OPENAI_BASE_URL="http://127.0.0.1:\(port)/v1"
         export CUSTOM_BASE_URL="http://127.0.0.1:\(port)/v1"
-        exec "\(splashPath)" "\(agent)"
+        exec "\(splashPath)" "\(agent)" --port "\(port)"
         """
         
         let cmd = """
