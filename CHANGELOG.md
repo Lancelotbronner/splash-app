@@ -5,6 +5,27 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.7-beta] - 2026-10-11
+
+Versión de compatibilidad total con **Splash 1.3.1**, telemetría en tiempo real de descargas, soporte de decodificación especulativa DFlash2 y optimizaciones del Gestor de Modelos.
+
+### 🚀 Novedades y Características
+
+- **Telemetría en Vivo de Descarga en el Gestor de Modelos:**
+  - **Velocidad de Descarga en Tiempo Real:** Badge en vivo (`⚡️ MB/s`) con suavizado exponencial para seguir la transferencia de datos.
+  - **Progreso y Contador de Bytes:** Visualización precisa de bytes descargados frente al total esperado (`GB / GB (XX%)`).
+  - **Barra de Progreso Continua:** Nueva barra de progreso lineal nativa cian con transición animada suave.
+  - **Indicador de Fase del Proceso:** Identificación clara de la fase actual (`Descargando acelerador DFlash2`, `Descargando pesos del modelo`, `Ensamblando y verificando en Splash`).
+- **Compatibilidad con Splash 1.3.1:**
+  - Compatibilidad completa con la nueva especificación de Splash 1.3.1 (`thermal_state`, `ane_ffn`, `weights`, soporte de Pi Agent con `--port`).
+  - Soporte automático para modelos que requieren `--language-only` (Qwen 3.8, OptiQ, MTP, Instruct, DeepSeek, Coder) sin fallos iniciales de preparación.
+  - Verificador de actualizaciones del motor Splash CLI consultando la API oficial de GitHub Releases.
+- **Optimización de Consola:**
+  - Altura de consola ampliada a 140 pt con autoscroll responsivo.
+  - Limpieza de caracteres de escape ANSI y actualización en la misma línea (*in-place*) para barras de progreso `tqdm`, evitando saturación del hilo principal.
+
+---
+
 ## [1.0.6-beta] - 2026-10-07
 
 Versión mayor de pruebas y observabilidad que incorpora el **Laboratorio de Test de Modelos**,

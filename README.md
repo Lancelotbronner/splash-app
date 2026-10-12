@@ -154,9 +154,12 @@ Cada módulo de **Splash Monitor** está optimizado para la experiencia nativa d
 
 <br/>
 
-#### 5. 📦 Gestor de Modelos de Hugging Face
+#### 5. 📦 Gestor de Modelos y Telemetría de Descargas
 <img src="screenshots/module-models.png" width="850" alt="Gestor de Modelos de Hugging Face" />
-<p><b>Módulo de Modelos:</b> Control de modelos locales en disco con espacio utilizado, cambio en caliente y exploración del catálogo de Hugging Face con soporte para variantes GGUF y modo <code>--language-only</code> para modelos Coder.</p>
+<p><b>Módulo de Modelos:</b> Control de modelos locales en disco con espacio utilizado, cambio en caliente y exploración del catálogo de Hugging Face con soporte para variantes GGUF y modo <code>--language-only</code> para modelos de código y texto.</p>
+
+<img src="screenshots/module-modelDownload.png" width="850" alt="Telemetría de Descarga en Vivo" />
+<p><b>Telemetría de Descarga en Tiempo Real:</b> Medición en vivo de la tasa de transferencia en MB/s (<code>⚡️ 34.8 MB/s</code>), barra de progreso continuo, contador exacto de GB descargados frente al total esperado y detección de fases (acelerador especulativo DFlash2, pesos del modelo y ensamblado Splash).</p>
 
 <br/>
 
@@ -560,9 +563,12 @@ Every module of **Splash Monitor** is designed and optimized for a native Apple 
 
 <br/>
 
-#### 5. 📦 Hugging Face Local Model Manager
+#### 5. 📦 Hugging Face Model Manager & Download Telemetry
 <img src="screenshots/module-models.png" width="850" alt="Hugging Face Local Model Manager" />
-<p><b>Model Management Module:</b> Disk footprint inspection for local models, hot-swap deployment, and Hugging Face catalog exploration with support for GGUF variants and <code>--language-only</code> mode for Coder models.</p>
+<p><b>Model Management Module:</b> Disk footprint inspection for local models, hot-swap deployment, and Hugging Face catalog exploration with support for GGUF variants and <code>--language-only</code> mode for Coder/text models.</p>
+
+<img src="screenshots/module-modelDownload.png" width="850" alt="Live Download Telemetry" />
+<p><b>Real-Time Download Telemetry:</b> Live transfer speed measurement in MB/s (<code>⚡️ 34.8 MB/s</code>), continuous progress bar, exact GB downloaded counter vs expected total, and phase detection (DFlash2 speculative accelerator, model weights, and Splash engine assembly).</p>
 
 <br/>
 

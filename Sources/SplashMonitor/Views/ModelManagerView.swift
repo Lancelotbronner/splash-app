@@ -436,6 +436,67 @@ public struct ModelManagerView: View {
                 }
             }
             
+            // Live Download Telemetry Banner
+            if service.isInstalling {
+                VStack(spacing: 6) {
+                    HStack(spacing: 8) {
+                        // Fase actual del proceso
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .foregroundColor(.cyan)
+                                .font(.system(size: 11))
+                            Text(service.downloadPhase.isEmpty ? tr(es: "Descargando componentes...", en: "Downloading components...") : service.downloadPhase)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.95))
+                                .lineLimit(1)
+                        }
+                        
+                        Spacer()
+                        
+                        // Velocidad en tiempo real (MB/s)
+                        if service.downloadSpeedMBs > 0.05 {
+                            HStack(spacing: 3) {
+                                Image(systemName: "bolt.fill")
+                                    .foregroundColor(.yellow)
+                                    .font(.system(size: 9))
+                                Text(String(format: "%.1f MB/s", service.downloadSpeedMBs))
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.yellow)
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.yellow.opacity(0.18))
+                            .cornerRadius(4)
+                        }
+                        
+                        // Bytes transferidos / Total esperado
+                        if service.downloadedBytes > 0 {
+                            Text(formatDownloadProgress(downloaded: service.downloadedBytes, total: service.totalExpectedBytes))
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                .foregroundColor(.cyan.opacity(0.9))
+                        }
+                    }
+                    
+                    // Barra de progreso elegante
+                    if let fraction = service.downloadProgressFraction {
+                        ProgressView(value: fraction, total: 1.0)
+                            .progressViewStyle(.linear)
+                            .tint(.cyan)
+                    } else {
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                            .tint(.cyan)
+                    }
+                }
+                .padding(8)
+                .background(Color.black.opacity(0.45))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.cyan.opacity(0.25), lineWidth: 1)
+                )
+            }
+            
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
@@ -450,12 +511,14 @@ public struct ModelManagerView: View {
                     .padding(8)
                     .textSelection(.enabled)
                 }
-                .frame(height: 90)
+                .frame(height: 140)
                 .background(Color.black.opacity(0.85))
                 .cornerRadius(6)
                 .onChange(of: service.installLogs.count) { _ in
                     if let last = service.installLogs.indices.last {
-                        proxy.scrollTo(last, anchor: .bottom)
+                        withAnimation(.easeOut(duration: 0.1)) {
+                            proxy.scrollTo(last, anchor: .bottom)
+                        }
                     }
                 }
             }
@@ -463,5 +526,18 @@ public struct ModelManagerView: View {
         .padding(8)
         .background(Color(nsColor: .quaternaryLabelColor).opacity(0.2))
         .cornerRadius(8)
+    }
+    
+    private func formatDownloadProgress(downloaded: Int64, total: Int64) -> String {
+        let dlGB = Double(downloaded) / 1_073_741_824.0
+        let dlMB = Double(downloaded) / 1_048_576.0
+        let dlStr = dlGB >= 1.0 ? String(format: "%.2f GB", dlGB) : String(format: "%.0f MB", dlMB)
+        if total > 0 {
+            let totGB = Double(total) / 1_073_741_824.0
+            let pct = min(100, Int((Double(downloaded) / Double(total)) * 100))
+            return "\(dlStr) / \(String(format: "%.2f GB", totGB)) (\(pct)%)"
+        } else {
+            return "\(dlStr) recibidos"
+        }
     }
 }

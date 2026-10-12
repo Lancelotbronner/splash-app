@@ -126,5 +126,42 @@ final class ScreenshotGeneratorTests: XCTestCase {
                 print("📸 Captura generada con éxito: \(filename)")
             }
         }
+        
+        // Captura adicional para la nueva característica: Telemetría de descarga en vivo de modelos
+        let downloadService = SplashService()
+        downloadService.isInstalling = true
+        downloadService.installingModelId = "mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit"
+        downloadService.downloadPhase = "Descargando acelerador DFlash2 (especulativo)..."
+        downloadService.downloadSpeedMBs = 34.8
+        downloadService.downloadedBytes = 1_426_063_360
+        downloadService.totalExpectedBytes = 4_133_879_808
+        downloadService.downloadProgressFraction = 0.35
+        downloadService.installLogs = [
+            "Iniciando descarga y preparación para mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit...",
+            "ℹ️ Modo solo lenguaje (--language-only) activado.",
+            "ℹ️ Fetching 1 file(s), 3.85 GB, from incoai/Qwen3.8-27B-DFlash2@015e795645c7; cached files are reused.",
+            "⏳ Conectando y transfiriendo archivos grandes en paralelo...",
+            "Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]",
+            "📥 Descargando paquete: 1.33 GB recibidos..."
+        ]
+        
+        let downloadView = MainWindowView(service: downloadService, initialTab: .models)
+            .frame(width: 1000, height: 700)
+            .preferredColorScheme(.dark)
+        
+        let dlHosting = NSHostingView(rootView: downloadView)
+        dlHosting.frame = NSRect(x: 0, y: 0, width: 1000, height: 700)
+        window.contentView = dlHosting
+        dlHosting.layoutSubtreeIfNeeded()
+        
+        if let bitmap = dlHosting.bitmapImageRepForCachingDisplay(in: dlHosting.bounds) {
+            dlHosting.cacheDisplay(in: dlHosting.bounds, to: bitmap)
+            if let pngData = bitmap.representation(using: .png, properties: [:]) {
+                let filename = "module-modelDownload.png"
+                try pngData.write(to: outputDir.appendingPathComponent(filename))
+                try pngData.write(to: artifactDir.appendingPathComponent(filename))
+                print("📸 Captura generada con éxito: \(filename)")
+            }
+        }
     }
 }

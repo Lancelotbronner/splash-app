@@ -68,11 +68,16 @@ public class SplashService: ObservableObject {
     @Published public var isLoadingOnlineModels: Bool = false
     @Published public var selectedModelForLaunch: String = "incoai/Qwen3.6-35B-A3B-Splash"
     
-    // Model Installation state
+    // Model Installation state & metrics
     @Published public var isInstalling: Bool = false
     @Published public var installingModelId: String? = nil
     @Published public var installLogs: [String] = []
     @Published public var installSuccess: Bool? = nil
+    @Published public var downloadSpeedMBs: Double = 0.0
+    @Published public var downloadedBytes: Int64 = 0
+    @Published public var totalExpectedBytes: Int64 = 0
+    @Published public var downloadProgressFraction: Double? = nil
+    @Published public var downloadPhase: String = ""
     
     // Server Launching state
     @Published public var isStartingServer: Bool = false
@@ -147,6 +152,7 @@ public class SplashService: ObservableObject {
     private var ticksSinceModelRefresh = 0
     private var sizeCache = ModelSizeCache()
     private var installProcess: Process?
+    private var isInstallCancelled: Bool = false
     private var dependencyProcess: Process?
     
     // Paths
@@ -970,11 +976,21 @@ public class SplashService: ObservableObject {
             return
         }
         isInstalling = true
+        isInstallCancelled = false
         installingModelId = repoId
-        let initialLangOnly = languageOnly ?? (repoId.lowercased().contains("coder") || repoId.lowercased().contains("code"))
+        downloadSpeedMBs = 0.0
+        downloadedBytes = 0
+        totalExpectedBytes = 0
+        downloadProgressFraction = nil
+        downloadPhase = "Iniciando descarga y preparación..."
+        
+        let textOnlyKeywords = ["coder", "code", "uncensored", "optiq", "mtp", "instruct", "chat", "deepseek", "base"]
+        let autoLangOnly = textOnlyKeywords.contains { repoId.lowercased().contains($0) }
+        let initialLangOnly = languageOnly ?? autoLangOnly
+        
         installLogs = ["Iniciando descarga y preparación para \(repoId)..."]
         if initialLangOnly {
-            installLogs.append("ℹ️ Modo solo texto / código (--language-only) activado.")
+            installLogs.append("ℹ️ Modo solo lenguaje (--language-only) activado.")
         }
         installSuccess = nil
         
@@ -989,6 +1005,8 @@ public class SplashService: ObservableObject {
                     self.installLogs.append("Asegúrate de que Splash esté instalado vía: brew install incoai/tap/splash")
                     self.isInstalling = false
                     self.installSuccess = false
+                    self.downloadSpeedMBs = 0.0
+                    self.downloadPhase = "Fallo en la instalación"
                 }
                 return
             }
@@ -1002,6 +1020,10 @@ public class SplashService: ObservableObject {
                 }
                 args.append("prepare")
                 process.arguments = args
+                
+                var env = ProcessInfo.processInfo.environment
+                env["PATH"] = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                process.environment = env
                 
                 let pipe = Pipe()
                 process.standardOutput = pipe
@@ -1027,12 +1049,62 @@ public class SplashService: ObservableObject {
                 let outHandle = pipe.fileHandleForReading
                 outHandle.readabilityHandler = { handle in
                     let data = handle.availableData
-                    guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
-                    let lines = text.components(separatedBy: .newlines).filter { !$0.isEmpty }
-                    collector.append(lines)
+                    guard !data.isEmpty else { return }
+                    let rawText = String(decoding: data, as: UTF8.self)
+                    let rawLines = rawText.components(separatedBy: CharacterSet.newlines)
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                    
+                    guard !rawLines.isEmpty else { return }
+                    collector.append(rawLines)
+                    
                     Task { @MainActor in
-                        for line in lines {
-                            self.installLogs.append(line)
+                        for line in rawLines {
+                            let clean = line.replacingOccurrences(of: "\\x1b\\[[0-9;]*[a-zA-Z]", with: "", options: .regularExpression)
+                            if clean.isEmpty { continue }
+                            
+                            if clean.contains("Fetching ") && clean.contains("GB") {
+                                self.installLogs.append("ℹ️ \(clean)")
+                                self.installLogs.append("⏳ Conectando y transfiriendo archivos grandes en paralelo...")
+                                
+                                if let match = clean.range(of: "[0-9.]+\\s*GB", options: .regularExpression) {
+                                    let gbSubstring = clean[match].replacingOccurrences(of: "GB", with: "").trimmingCharacters(in: .whitespaces)
+                                    if let gbVal = Double(gbSubstring) {
+                                        self.totalExpectedBytes += Int64(gbVal * 1_073_741_824.0)
+                                    }
+                                }
+                                
+                                if clean.contains("DFlash2") {
+                                    self.downloadPhase = "Descargando acelerador DFlash2..."
+                                } else {
+                                    self.downloadPhase = "Descargando pesos del modelo..."
+                                }
+                                continue
+                            }
+                            
+                            if clean.contains("Installing ") && clean.contains("as ") {
+                                self.downloadPhase = "Ensamblando y verificando en Splash..."
+                                self.downloadProgressFraction = 0.99
+                            }
+                            
+                            let isFileCounter = clean.contains("Fetching ") && clean.contains("%|")
+                            let isByteCounter = clean.contains("Downloading bytes") || clean.contains("it/s")
+                            
+                            if isFileCounter {
+                                if let last = self.installLogs.last, last.contains("Fetching ") && last.contains("%|") {
+                                    self.installLogs[self.installLogs.count - 1] = clean
+                                } else {
+                                    self.installLogs.append(clean)
+                                }
+                            } else if isByteCounter {
+                                if let last = self.installLogs.last, (last.contains("Downloading bytes") || last.contains("it/s")) {
+                                    self.installLogs[self.installLogs.count - 1] = clean
+                                } else {
+                                    self.installLogs.append(clean)
+                                }
+                            } else {
+                                self.installLogs.append(clean)
+                            }
                         }
                     }
                 }
@@ -1041,12 +1113,70 @@ public class SplashService: ObservableObject {
                     self.installProcess = process
                 }
                 
+                let hubDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".cache/huggingface/hub")
+                
+                func currentHubSize() -> Int64 {
+                    guard let enumerator = FileManager.default.enumerator(at: hubDir, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) else { return 0 }
+                    var total: Int64 = 0
+                    while let fileURL = enumerator.nextObject() as? URL {
+                        if let res = try? fileURL.resourceValues(forKeys: [.fileSizeKey]) {
+                            total += Int64(res.fileSize ?? 0)
+                        }
+                    }
+                    return total
+                }
+                
+                let initialHubSize = currentHubSize()
+                
+                final class SpeedTracker: @unchecked Sendable {
+                    private let lock = NSLock()
+                    private var lastBytes: Int64 = 0
+                    private var lastTime = Date()
+                    private var smoothedSpeed: Double = 0.0
+                    
+                    func update(current: Int64) -> Double {
+                        lock.lock()
+                        defer { lock.unlock() }
+                        let now = Date()
+                        let dt = now.timeIntervalSince(lastTime)
+                        guard dt >= 0.5 else { return smoothedSpeed }
+                        let delta = max(0, current - lastBytes)
+                        let instantSpeed = Double(delta) / (dt * 1_048_576.0)
+                        smoothedSpeed = smoothedSpeed == 0.0 ? instantSpeed : (smoothedSpeed * 0.4 + instantSpeed * 0.6)
+                        lastBytes = current
+                        lastTime = now
+                        return smoothedSpeed
+                    }
+                }
+                
+                let speedTracker = SpeedTracker()
+                
+                let monitorTask = Task.detached(priority: .utility) {
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 800_000_000)
+                        if Task.isCancelled { break }
+                        let currentSize = currentHubSize()
+                        let downloaded = max(0, currentSize - initialHubSize)
+                        let speed = speedTracker.update(current: downloaded)
+                        
+                        await MainActor.run {
+                            self.downloadedBytes = downloaded
+                            self.downloadSpeedMBs = speed
+                            if self.totalExpectedBytes > 0 {
+                                self.downloadProgressFraction = min(0.99, max(0.01, Double(downloaded) / Double(self.totalExpectedBytes)))
+                            }
+                        }
+                    }
+                }
+                
                 do {
                     try process.run()
                     process.waitUntilExit()
+                    monitorTask.cancel()
                     outHandle.readabilityHandler = nil
                     return (process.terminationStatus == 0, collector.getLogs())
                 } catch {
+                    monitorTask.cancel()
                     outHandle.readabilityHandler = nil
                     return (false, collector.getLogs())
                 }
@@ -1060,7 +1190,7 @@ public class SplashService: ObservableObject {
                 if joinedLogs.contains("vision projector") || joinedLogs.contains("mmproj") || joinedLogs.contains("--language-only") {
                     await MainActor.run {
                         self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-                        self.installLogs.append("ℹ️ Detectado modelo de código/texto sin proyector de visión (mmproj).")
+                        self.installLogs.append("ℹ️ Detectado modelo sin componentes de visión (mmproj).")
                         self.installLogs.append("🔄 Reintentando preparación automáticamente con --language-only...")
                         self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                     }
@@ -1071,13 +1201,20 @@ public class SplashService: ObservableObject {
             
             let finalSuccess = success
             await MainActor.run {
+                if self.isInstallCancelled {
+                    return
+                }
                 self.installProcess = nil
                 self.isInstalling = false
                 self.installSuccess = finalSuccess
+                self.downloadSpeedMBs = 0.0
                 if finalSuccess {
+                    self.downloadProgressFraction = 1.0
+                    self.downloadPhase = "Instalación completada con éxito"
                     self.installLogs.append("✅ Instalación y verificación de \(repoId) completada con éxito.")
                     self.refreshInstalledModels()
                 } else {
+                    self.downloadPhase = "Fallo en la instalación"
                     self.installLogs.append("❌ Error al instalar \(repoId).")
                 }
             }
@@ -1085,11 +1222,15 @@ public class SplashService: ObservableObject {
     }
     
     public func cancelModelInstall() {
+        isInstallCancelled = true
         installProcess?.terminate()
         installProcess = nil
         isInstalling = false
         installSuccess = false
-        installLogs.append(" Descarga cancelada por el usuario.")
+        downloadSpeedMBs = 0.0
+        downloadProgressFraction = nil
+        downloadPhase = "Descarga cancelada por el usuario"
+        installLogs.append("⚠️ Descarga cancelada por el usuario.")
     }
     
     // MARK: - Server Control
