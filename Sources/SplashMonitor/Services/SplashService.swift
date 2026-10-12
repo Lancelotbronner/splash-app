@@ -863,35 +863,25 @@ public class SplashService: ObservableObject {
         self.isLoadingOnlineModels = true
         var allItems: [String: HuggingFaceModelItem] = [:]
         
-        // 1. Fetch Inco AI models
-        if let incoUrl = URL(string: "https://huggingface.co/api/models?author=incoai") {
-            if let (data, _) = try? await URLSession.shared.data(from: incoUrl),
-               let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
-                for item in items {
-                    if item.id.hasSuffix("-Splash") || (item.tags?.contains("splash") ?? false) {
-                        allItems[item.id] = item
-                    }
-                }
-            }
-        }
-        
-        // 2. Fetch all models with tag "splash"
-        if let splashTagUrl = URL(string: "https://huggingface.co/api/models?filter=splash") {
-            if let (data, _) = try? await URLSession.shared.data(from: splashTagUrl),
-               let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
-                for item in items {
-                    allItems[item.id] = item
-                }
-            }
-        }
-        
-        // 3. Fetch official MLX community models (Splash 1.3.1+)
+        // 1. Fetch official MLX community models (Splash 1.3.1+)
         if let mlxUrl = URL(string: "https://huggingface.co/api/models?author=mlx-community&search=Qwen3") {
             if let (data, _) = try? await URLSession.shared.data(from: mlxUrl),
                let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
                 for item in items {
                     let lower = item.id.lowercased()
                     if (lower.contains("27b") || lower.contains("35b")) && (lower.contains("4bit") || lower.contains("8bit") || lower.contains("optiq")) {
+                        allItems[item.id] = item
+                    }
+                }
+            }
+        }
+        
+        // 2. Fetch models with tag "splash" (excluyendo paquetes viejos y discontinuados -Splash)
+        if let splashTagUrl = URL(string: "https://huggingface.co/api/models?filter=splash") {
+            if let (data, _) = try? await URLSession.shared.data(from: splashTagUrl),
+               let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
+                for item in items {
+                    if !item.id.hasSuffix("-Splash") {
                         allItems[item.id] = item
                     }
                 }

@@ -252,7 +252,8 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
     }
     
     public var isOfficial: Bool {
-        return id.hasPrefix("incoai/") || id.hasPrefix("mlx-community/Qwen3.8-27B") || id.hasPrefix("mlx-community/Qwen3.6-35B")
+        if id.hasSuffix("-Splash") { return false }
+        return id.hasPrefix("mlx-community/Qwen3.8-27B") || id.hasPrefix("mlx-community/Qwen3.6-35B")
     }
     
     public var displayName: String {

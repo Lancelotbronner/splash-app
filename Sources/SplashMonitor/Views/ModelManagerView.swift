@@ -275,6 +275,14 @@ public struct ModelManagerView: View {
                                                 .background(Color.blue.opacity(0.2))
                                                 .foregroundColor(.blue)
                                                 .cornerRadius(3)
+                                        } else if item.id.hasSuffix("-Splash") {
+                                            Text(tr(es: "DESCONTINUADO", en: "DEPRECATED"))
+                                                .font(.system(size: 8, weight: .bold))
+                                                .padding(.horizontal, 4)
+                                                .padding(.vertical, 1)
+                                                .background(Color.red.opacity(0.2))
+                                                .foregroundColor(.red)
+                                                .cornerRadius(3)
                                         }
                                     }
                                     
