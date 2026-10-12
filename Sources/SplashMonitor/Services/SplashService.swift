@@ -740,23 +740,84 @@ public class SplashService: ObservableObject {
             self.lastError = "Identificador de modelo no válido: \(repoId)"
             return
         }
-        let symlinkURL = modelsDirectory.appendingPathComponent(repoId)
+        
         let fm = FileManager.default
-        do {
-            if repoId == activeModel && isRunning {
-                stopServer()
-            }
-            if fm.fileExists(atPath: symlinkURL.path) {
-                try fm.removeItem(at: symlinkURL)
-            }
-            sizeCache.invalidate(repoId: repoId)
-            refreshInstalledModels()
-        } catch {
-            print("Error deleting model symlink \(repoId): \(error)")
+        let baseRepo = ModelIDValidator.components(from: repoId).map { "\($0.owner)/\($0.repository)" } ?? repoId
+        
+        if (repoId == activeModel || baseRepo == activeModel) && isRunning {
+            stopServer()
         }
+        
+        // 1. Eliminar symlinks o carpetas en models/OWNER/REPO y models/OWNER/REPO:VARIANT
+        let directURL = modelsDirectory.appendingPathComponent(repoId)
+        if fm.fileExists(atPath: directURL.path) {
+            try? fm.removeItem(at: directURL)
+        }
+        let baseURL = modelsDirectory.appendingPathComponent(baseRepo)
+        if fm.fileExists(atPath: baseURL.path) {
+            try? fm.removeItem(at: baseURL)
+        }
+        
+        // 2. Eliminar de models/.resolved cualquier descriptor cuyo model.json apunte a este repoId o baseRepo
+        let resolvedDir = modelsDirectory.appendingPathComponent(".resolved")
+        if fm.fileExists(atPath: resolvedDir.path),
+           let resolvedEntries = try? fm.contentsOfDirectory(at: resolvedDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+            for dir in resolvedEntries where dir.hasDirectoryPath {
+                let jsonURL = dir.appendingPathComponent("model.json")
+                if let data = try? Data(contentsOf: jsonURL),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let mid = json["model"] as? String {
+                    if mid == repoId || mid == baseRepo {
+                        try? fm.removeItem(at: dir)
+                    }
+                }
+            }
+        }
+        
+        // 3. Limpiar enlaces muertos o asociados en models/.selections
+        let selectionsDir = modelsDirectory.appendingPathComponent(".selections")
+        if fm.fileExists(atPath: selectionsDir.path),
+           let selectionEntries = try? fm.contentsOfDirectory(at: selectionsDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+            for sel in selectionEntries {
+                let dest = (try? fm.destinationOfSymbolicLink(atPath: sel.path)) ?? ""
+                if !fm.fileExists(atPath: sel.resolvingSymlinksInPath().path) || dest.isEmpty {
+                    try? fm.removeItem(at: sel)
+                }
+            }
+        }
+        
+        // 4. Eliminar del caché de Hugging Face si existe (~/.cache/huggingface/hub/models--owner--repo)
+        if let comps = ModelIDValidator.components(from: repoId) {
+            let hfCacheDir = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".cache/huggingface/hub")
+                .appendingPathComponent("models--\(comps.owner)--\(comps.repository)")
+            if fm.fileExists(atPath: hfCacheDir.path) {
+                try? fm.removeItem(at: hfCacheDir)
+            }
+        }
+        
+        // 5. Limpiar carpeta de owner si quedó vacía (ej. models/HauhauCS/)
+        if let comps = ModelIDValidator.components(from: repoId) {
+            let ownerDir = modelsDirectory.appendingPathComponent(comps.owner)
+            if let contents = try? fm.contentsOfDirectory(at: ownerDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]),
+               contents.isEmpty {
+                try? fm.removeItem(at: ownerDir)
+            }
+        }
+        
+        sizeCache.invalidate(repoId: repoId)
+        sizeCache.invalidate(repoId: baseRepo)
+        refreshInstalledModels()
     }
     
     public func openModelInFinder(repoId: String) {
+        if let installed = installedModels.first(where: { $0.repoId == repoId }) {
+            let target = installed.localPath.resolvingSymlinksInPath()
+            if FileManager.default.fileExists(atPath: target.path) {
+                NSWorkspace.shared.selectFile(target.path, inFileViewerRootedAtPath: "")
+                return
+            }
+        }
         let symlinkURL = modelsDirectory.appendingPathComponent(repoId)
         let resolved = symlinkURL.resolvingSymlinksInPath()
         if FileManager.default.fileExists(atPath: resolved.path) {
