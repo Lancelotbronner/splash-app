@@ -452,20 +452,38 @@ MIT License — Copyright (c) 2026 JMGREP Developers / Joan Gregorio Pérez
 
 #### Atribuciones y Licencias de Componentes
 
-Splash Monitor es una aplicación independiente que interactúa con componentes de terceros. A continuación se detallan las licencias de cada dependencia:
+Splash Monitor es una aplicación independiente de código abierto que interactúa con el motor Splash, modelos de inteligencia artificial y agentes de código autónomos. A continuación se detallan las licencias y atribuciones de cada componente:
 
-| Componente | Licencia | Repositorio |
-|:-----------|:---------|:------------|
-| **Splash Monitor** | MIT | [hometrix/SplashMonitor](https://github.com/hometrix/SplashMonitor) |
-| **Splash Engine** | Apache-2.0 | [incoai/splash](https://github.com/incoai/splash) |
-| **Modelo Qwen3.8-27B-Splash** | Apache-2.0 | [incoai/Qwen3.8-27B-Splash](https://huggingface.co/incoai/Qwen3.8-27B-Splash) |
-| **Modelo Qwen3.6-35B-A3B-Splash** | Apache-2.0 | [incoai/Qwen3.6-35B-A3B-Splash](https://huggingface.co/incoai/Qwen3.6-35B-A3B-Splash) |
-| **Qwen3.8-27B** (base) | Apache-2.0 | [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) |
-| **Qwen3.6-35B-A3B** (base) | Apache-2.0 | [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B) |
+##### 1. Motor de Inferencia y Monitor
+| Componente | Licencia | Autor / Organización | Repositorio |
+|:-----------|:---------|:---------------------|:------------|
+| **Splash Monitor** | MIT | JMGREP Developers (Joan Gregorio Pérez) | [hometrix/SplashMonitor](https://github.com/hometrix/SplashMonitor) |
+| **Splash Engine** | Apache-2.0 | Inco AI | [incoai/splash](https://github.com/incoai/splash) |
 
-> ⚠️ **Aviso**: Los pesos de los modelos mantienen sus propias licencias. Consulta cada repositorio en Hugging Face para los términos específicos.
+##### 2. Modelos Cuantizados y Aceleradores Especulativos (Splash 1.3.1 / 1.3.2)
+| Modelo / Checkpoint | Licencia | Distribuidor / Creador | Repositorio |
+|:--------------------|:---------|:-----------------------|:------------|
+| **Qwen3.8-27B-NVFP4** | Apache-2.0 | NVIDIA Model Optimizer | [nvidia/Qwen3.8-27B-NVFP4](https://huggingface.co/nvidia/Qwen3.8-27B-NVFP4) |
+| **Qwen3.6-35B-A3B-nvfp4** | Apache-2.0 | MLX Community | [mlx-community/Qwen3.6-35B-A3B-nvfp4](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-nvfp4) |
+| **Qwen3.8-27B-4bit** | Apache-2.0 | MLX Community | [mlx-community/Qwen3.8-27B-4bit](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) |
+| **Qwen3.6-35B-A3B-4bit** | Apache-2.0 | MLX Community | [mlx-community/Qwen3.6-35B-A3B-4bit](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-4bit) |
+| **DFlash 2 Speculative Decoders** | Apache-2.0 | Inco AI | [incoai/Qwen3.8-27B-DFlash2](https://huggingface.co/incoai/Qwen3.8-27B-DFlash2) |
+| **Qwen Base Models (27B & 35B)** | Apache-2.0 | Alibaba Cloud / Qwen Team | [Qwen/Qwen](https://github.com/QwenLM/Qwen) |
+| **Variantes Cuantizadas GGUF** | Apache-2.0 / MIT | llama.cpp / Creadores Comunitarios | [Hugging Face Hub](https://huggingface.co) |
 
-> ℹ️ **Disclaimer**: Splash Monitor es un proyecto independiente y **no está afiliado, patrocinado ni respaldado por Inco AI**. "Splash" es una marca de Inco AI. Este proyecto utiliza la API pública de Splash bajo los términos de la licencia Apache-2.0.
+##### 3. Clientes y Agentes de Código Autónomos Conectados
+| Agente / Cliente | Licencia / Términos | Desarrollador | Enlace Oficial |
+|:-----------------|:--------------------|:--------------|:---------------|
+| **DeepSeek Harness (`dsh`)** | MIT | DeepSeek Community | [GitHub](https://github.com/deepseek-ai) |
+| **Pi Agent (`pi`)** | MIT | Mario Zechner / Pi.dev | [pi.dev](https://pi.dev) |
+| **Hermes Agent** | MIT | Nous Research | [NousResearch](https://github.com/NousResearch) |
+| **OpenCode** | MIT | SST | [opencode.ai](https://opencode.ai) |
+| **Codex CLI** | Apache-2.0 / MIT | OpenAI Community | [OpenAI Developers](https://platform.openai.com) |
+| **Claude Code & Cowork** | Términos de Servicio | Anthropic, PBC | [anthropic.com](https://www.anthropic.com) |
+
+> ⚠️ **Aviso de Pesos de Modelos**: Los pesos, puntos de control (*checkpoints*) y cuantizaciones de modelos mantienen sus propios términos de licencia y acuerdos de uso de cada autor en Hugging Face Hub.
+
+> ℹ️ **Descargo de Responsabilidad (*Disclaimer*)**: Splash Monitor es un proyecto independiente desarrollado por JMGREP Developers y **no está afiliado, patrocinado ni respaldado por Inco AI, Anthropic, OpenAI, NVIDIA o Alibaba Cloud**. "Splash" es una marca comercial de Inco AI. Este software interactúa con la API pública local del motor Splash bajo los términos de su licencia Apache-2.0.
 
 ---
 
@@ -901,20 +919,38 @@ MIT License — Copyright (c) 2026 JMGREP Developers / Joan Gregorio Pérez
 
 #### Attributions & Component Licenses
 
-Splash Monitor is an independent application that interfaces with third-party components. Below are the licenses for each dependency:
+Splash Monitor is an independent open-source application that interfaces with the Splash inference engine, machine learning models, and autonomous coding agents. Below are the licenses and attributions for each component:
 
-| Component | License | Repository |
-|:----------|:--------|:-----------|
-| **Splash Monitor** | MIT | [hometrix/SplashMonitor](https://github.com/hometrix/SplashMonitor) |
-| **Splash Engine** | Apache-2.0 | [incoai/splash](https://github.com/incoai/splash) |
-| **Qwen3.8-27B (MLX / Splash)** | Apache-2.0 | [mlx-community/Qwen3.8-27B-4bit](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) |
-| **Qwen3.6-35B-A3B (MLX / Splash)** | Apache-2.0 | [mlx-community/Qwen3.6-35B-A3B-4bit](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-4bit) |
-| **Qwen3.8-27B** (base model) | Apache-2.0 | [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) |
-| **Qwen3.6-35B-A3B** (base model) | Apache-2.0 | [Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B) |
+##### 1. Inference Engine & Monitor
+| Component | License | Author / Organization | Repository |
+|:----------|:--------|:----------------------|:-----------|
+| **Splash Monitor** | MIT | JMGREP Developers (Joan Gregorio Pérez) | [hometrix/SplashMonitor](https://github.com/hometrix/SplashMonitor) |
+| **Splash Engine** | Apache-2.0 | Inco AI | [incoai/splash](https://github.com/incoai/splash) |
 
-> ⚠️ **Note**: Model weights retain their own licenses. Check each Hugging Face repository for specific terms.
+##### 2. Quantized Models & Speculative Accelerators (Splash 1.3.1 / 1.3.2)
+| Model / Checkpoint | License | Provider / Origin | Repository |
+|:-------------------|:--------|:------------------|:-----------|
+| **Qwen3.8-27B-NVFP4** | Apache-2.0 | NVIDIA Model Optimizer | [nvidia/Qwen3.8-27B-NVFP4](https://huggingface.co/nvidia/Qwen3.8-27B-NVFP4) |
+| **Qwen3.6-35B-A3B-nvfp4** | Apache-2.0 | MLX Community | [mlx-community/Qwen3.6-35B-A3B-nvfp4](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-nvfp4) |
+| **Qwen3.8-27B-4bit** | Apache-2.0 | MLX Community | [mlx-community/Qwen3.8-27B-4bit](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) |
+| **Qwen3.6-35B-A3B-4bit** | Apache-2.0 | MLX Community | [mlx-community/Qwen3.6-35B-A3B-4bit](https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-4bit) |
+| **DFlash 2 Speculative Decoders** | Apache-2.0 | Inco AI | [incoai/Qwen3.8-27B-DFlash2](https://huggingface.co/incoai/Qwen3.8-27B-DFlash2) |
+| **Qwen Base Models (27B & 35B)** | Apache-2.0 | Alibaba Cloud / Qwen Team | [Qwen/Qwen](https://github.com/QwenLM/Qwen) |
+| **GGUF Quantized Variants** | Apache-2.0 / MIT | llama.cpp / Community Creators | [Hugging Face Hub](https://huggingface.co) |
 
-> ℹ️ **Disclaimer**: Splash Monitor is an independent project and is **not affiliated with, sponsored by, or endorsed by Inco AI**. "Splash" is a trademark of Inco AI. This project interfaces with the public Splash API under the terms of the Apache-2.0 license.
+##### 3. Supported Autonomous Coding Agents & Clients
+| Agent / Client | License / Terms | Developer | Official Link |
+|:---------------|:----------------|:----------|:--------------|
+| **DeepSeek Harness (`dsh`)** | MIT | DeepSeek Community | [GitHub](https://github.com/deepseek-ai) |
+| **Pi Agent (`pi`)** | MIT | Mario Zechner / Pi.dev | [pi.dev](https://pi.dev) |
+| **Hermes Agent** | MIT | Nous Research | [NousResearch](https://github.com/NousResearch) |
+| **OpenCode** | MIT | SST | [opencode.ai](https://opencode.ai) |
+| **Codex CLI** | Apache-2.0 / MIT | OpenAI Community | [OpenAI Developers](https://platform.openai.com) |
+| **Claude Code & Cowork** | Terms of Service | Anthropic, PBC | [anthropic.com](https://www.anthropic.com) |
+
+> ⚠️ **Model Weights Notice**: Model checkpoints, weights, and quantizations retain their own specific licenses and terms from their respective authors on the Hugging Face Hub.
+
+> ℹ️ **Disclaimer**: Splash Monitor is an independent project developed by JMGREP Developers and is **not affiliated with, sponsored by, or endorsed by Inco AI, Anthropic, OpenAI, NVIDIA, or Alibaba Cloud**. "Splash" is a trademark of Inco AI. This software interfaces with the public Splash local API under the terms of the Apache-2.0 license.
 
 ---
 
