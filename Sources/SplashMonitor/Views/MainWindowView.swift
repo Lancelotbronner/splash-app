@@ -584,6 +584,70 @@ public struct MainWindowView: View {
                 
                 Divider()
                 
+                HStack {
+                    Text(loc.isSpanish ? "Liberación de memoria por inactividad:" : "Idle memory release timeout:")
+                        .font(.system(size: 12))
+                    Spacer()
+                    Picker("", selection: $service.idleRelease) {
+                        Text(loc.isSpanish ? "1 min (Ahorro rápido)" : "1 min (Fast saving)").tag("1m")
+                        Text(loc.isSpanish ? "2 min (Agresivo)" : "2 min (Aggressive)").tag("2m")
+                        Text(loc.isSpanish ? "5 min (Equilibrado)" : "5 min (Balanced)").tag("5m")
+                        Text(loc.isSpanish ? "10 min (Por defecto Splash)" : "10 min (Splash default)").tag("10m")
+                        Text(loc.isSpanish ? "30 min (Extendido)" : "30 min (Extended)").tag("30m")
+                        Text(loc.isSpanish ? "Desactivado (Siempre en RAM)" : "Disabled (Always in RAM)").tag("off")
+                    }
+                    .labelsHidden()
+                    .frame(width: 220)
+                }
+                
+                Text(loc.isSpanish
+                     ? "Parámetro --idle-release: desvincula y libera los pesos en VRAM cuando no hay peticiones activas, restaurándolos al vuelo al recibir nuevas consultas."
+                     : "Flag --idle-release: unwires and frees VRAM model weights when idle, restoring them on-the-fly when new queries arrive.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                
+                Divider()
+                
+                HStack {
+                    Text(loc.isSpanish ? "Presupuesto máximo de memoria Metal:" : "Max Metal memory budget:")
+                        .font(.system(size: 12))
+                    Spacer()
+                    Picker("", selection: $service.maxMemory) {
+                        Text(loc.isSpanish ? "Automático (sin límite)" : "Automatic (unlimited)").tag("auto")
+                        Text("16 GB").tag("16G")
+                        Text("24 GB").tag("24G")
+                        Text("28 GB").tag("28G")
+                        Text("32 GB").tag("32G")
+                        Text("40 GB").tag("40G")
+                        Text("48 GB").tag("48G")
+                        Text("64 GB").tag("64G")
+                    }
+                    .labelsHidden()
+                    .frame(width: 220)
+                }
+                
+                Text(loc.isSpanish
+                     ? "Parámetro --max-memory: limita el techo de memoria unificada asignable a Metal para no copar la RAM disponible en el Mac."
+                     : "Flag --max-memory: limits the Metal unified memory budget to avoid exhausting Mac RAM.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                
+                Divider()
+                
+                Toggle(loc.isSpanish
+                       ? "Protección automática ante presión crítica de memoria macOS"
+                       : "Automatic protection under macOS critical memory pressure",
+                       isOn: $service.autoReleaseOnMemoryPressure)
+                    .font(.system(size: 12))
+                
+                Text(loc.isSpanish
+                     ? "Monitorea eventos del kernel de macOS. Si el sistema entra en presión de memoria crítica y Splash está inactivo, libera los recursos para evitar bloqueos del sistema."
+                     : "Monitors macOS kernel events. If the system enters critical memory pressure and Splash is idle, frees resources to prevent system freezing.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                
+                Divider()
+                
                 Toggle(loc.isSpanish
                        ? "Modo Solo Lenguaje / Código (--language-only)"
                        : "Language / Code Only mode (--language-only)",

@@ -157,6 +157,19 @@ public struct MenuBarView: View {
             .buttonStyle(.plain)
             .help(tr(es: "Cambiar idioma", en: "Switch language"))
             
+            // Free memory button if running
+            if service.isRunning {
+                Button {
+                    service.releaseMemoryNow()
+                } label: {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                }
+                .buttonStyle(.plain)
+                .help(tr(es: "Liberar memoria (Descargar pesos del modelo)", en: "Release memory (Unload model weights)"))
+            }
+            
             // Stop server button if running
             if service.isRunning {
                 Button {

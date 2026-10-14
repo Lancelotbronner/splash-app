@@ -207,8 +207,8 @@ public struct ConnectedAppsView: View {
                 .font(.system(size: 14, weight: .semibold))
             
             Text(tr(
-                es: "Aún no hay clientes conectados al puerto \(service.activePort).\nPuedes conectar Cursor, VS Code, Claude Code, Claude Cowork, OpenCode, Hermes o cualquier app compatible con la API de OpenAI.",
-                en: "No clients connected to port \(service.activePort) yet.\nYou can connect Cursor, VS Code, Claude Code, Claude Cowork, OpenCode, Hermes, or any OpenAI API compatible app."
+                es: "Aún no hay clientes conectados al puerto \(service.activePort).\nPuedes conectar Cursor, VS Code, Claude Code, Claude Cowork, DeepSeek Harness, OpenCode, Hermes o cualquier app compatible con la API de OpenAI.",
+                en: "No clients connected to port \(service.activePort) yet.\nYou can connect Cursor, VS Code, Claude Code, Claude Cowork, DeepSeek Harness, OpenCode, Hermes, or any OpenAI API compatible app."
             ))
             .font(.system(size: 11))
             .foregroundColor(.secondary)
@@ -388,6 +388,38 @@ public struct ConnectedAppsView: View {
                         "  -d '{\"model\": \"\(service.activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola!\"}]}'"
                     ],
                     copyText: "curl http://\(host):\(service.activePort)/v1/chat/completions -H 'Content-Type: application/json' -d '{\"model\": \"\(service.activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola\"}]}'"
+                )
+                
+                IntegrationGuideCard(
+                    title: "DeepSeek Harness (dsh)",
+                    subtitle: tr(es: "Agente autónomo de DeepSeek", en: "DeepSeek autonomous coding agent"),
+                    icon: "cpu.fill",
+                    badge: "OpenAI Protocol",
+                    color: .blue,
+                    steps: [
+                        tr(es: "1. Lanza el entorno web de DeepSeek Harness:", en: "1. Launch DeepSeek Harness web runtime:"),
+                        "npx @deepseek-ai/dsh web",
+                        tr(es: "2. En Settings → Models → Custom model API:", en: "2. In Settings → Models → Custom model API:"),
+                        "Base URL: http://\(host):\(service.activePort)/v1",
+                        tr(es: "3. Protocol: openai-completions | API Key: splash", en: "3. Protocol: openai-completions | API Key: splash")
+                    ],
+                    copyText: "export OPENAI_BASE_URL=\"http://\(host):\(service.activePort)/v1\"\nexport OPENAI_API_KEY=\"splash\"\nnpx @deepseek-ai/dsh web"
+                )
+                
+                IntegrationGuideCard(
+                    title: "Hermes Agent",
+                    subtitle: tr(es: "Agente de Nous Research", en: "Nous Research coding agent"),
+                    icon: "bolt.horizontal.fill",
+                    badge: "OpenAI Compatible",
+                    color: .orange,
+                    steps: [
+                        tr(es: "1. En tu archivo .env o configuración de Hermes:", en: "1. In your Hermes .env or configuration:"),
+                        "OPENAI_BASE_URL=\"http://\(host):\(service.activePort)/v1\"",
+                        "OPENAI_API_KEY=\"splash\"",
+                        tr(es: "2. Modelo activo en Splash:", en: "2. Active model in Splash:"),
+                        service.activeModel.isEmpty ? "mlx-community/Qwen3.8-27B-4bit" : service.activeModel
+                    ],
+                    copyText: "export OPENAI_BASE_URL=\"http://\(host):\(service.activePort)/v1\"\nexport OPENAI_API_KEY=\"splash\""
                 )
             }
         }

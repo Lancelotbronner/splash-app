@@ -12,6 +12,7 @@ public struct ModelManagerView: View {
     // Model deletion alert state
     @State private var showingDeleteAlert: Bool = false
     @State private var modelToDelete: InstalledSplashModel? = nil
+    @State private var copiedLogs: Bool = false
     
     public init(service: SplashService) {
         self.service = service
@@ -417,6 +418,26 @@ public struct ModelManagerView: View {
                 
                 Spacer()
                 
+                if !service.installLogs.isEmpty {
+                    Button {
+                        let text = service.installLogs.joined(separator: "\n")
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string)
+                        copiedLogs = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            copiedLogs = false
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: copiedLogs ? "checkmark" : "doc.on.doc")
+                            Text(copiedLogs ? tr(es: "¡Copiado!", en: "Copied!") : tr(es: "Copiar Logs", en: "Copy Logs"))
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(copiedLogs ? .green : .cyan)
+                    }
+                    .buttonStyle(.borderless)
+                }
+                
                 if service.isInstalling {
                     Button(role: .destructive) {
                         service.cancelModelInstall()
@@ -434,6 +455,11 @@ public struct ModelManagerView: View {
                     .buttonStyle(.borderless)
                     .font(.system(size: 10))
                 }
+            }
+            
+            // Gated Repository Help Banner
+            if isGatedError {
+                gatedModelHelpBanner
             }
             
             // Live Download Telemetry Banner
@@ -539,5 +565,91 @@ public struct ModelManagerView: View {
         } else {
             return "\(dlStr) recibidos"
         }
+    }
+    
+    // MARK: - Gated Model Guidance
+    private var isGatedError: Bool {
+        service.installSuccess == false &&
+        service.installLogs.contains { line in
+            line.contains("gated repo") || line.contains("Access to model") || line.contains("403") || line.contains("Gated")
+        }
+    }
+    
+    private var targetGatedModelId: String? {
+        if let current = service.installingModelId, !current.isEmpty {
+            return current
+        }
+        let custom = customRepoId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return custom.isEmpty ? nil : custom
+    }
+    
+    private var gatedModelHelpBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.shield.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 18))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tr(
+                        es: "Modelo con acceso restringido ('Gated')",
+                        en: "Restricted Access Model ('Gated')"
+                    ))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+                    
+                    Text(tr(
+                        es: "Hugging Face requiere que autorices el acceso con tu cuenta antes de descargar.",
+                        en: "Hugging Face requires you to authorize access with your account before downloading."
+                    ))
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.85))
+                }
+                
+                Spacer()
+                
+                if let modelId = targetGatedModelId,
+                   let url = URL(string: "https://huggingface.co/\(modelId)") {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "safari")
+                            Text(tr(es: "Solicitar Acceso en HF", en: "Request Access on HF"))
+                        }
+                        .font(.system(size: 10, weight: .semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .controlSize(.small)
+                }
+            }
+            
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(.yellow)
+                    .font(.system(size: 10))
+                    .padding(.top, 1)
+                
+                Text(tr(
+                    es: "La mayoría de estos modelos tienen aprobación instantánea ('auto'). Al pulsar 'Agree and access repository' en tu navegador, tu cuenta quedará habilitada y podrás volver a pulsar 'Descargar'.",
+                    en: "Most of these models have instant approval ('auto'). Once you click 'Agree and access repository' in your browser, your account is enabled and you can click 'Download' again."
+                ))
+                .font(.system(size: 9.5))
+                .foregroundColor(.white.opacity(0.92))
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.black.opacity(0.35))
+            .cornerRadius(6)
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.2))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.orange.opacity(0.55), lineWidth: 1)
+        )
     }
 }

@@ -149,6 +149,79 @@ public struct TokenMetricsView: View {
                     }
                 }
                 
+                // Estado de Pesos Metal y Presión del Sistema macOS
+                HStack(spacing: 8) {
+                    if let weights = service.status?.weights {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(weights.released == true ? Color.orange : Color.green)
+                                .frame(width: 6, height: 6)
+                            if weights.released == true {
+                                Text(tr(es: "Pesos Liberados (Metal Desvinculado)", en: "Weights Released (Metal Unwired)"))
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            } else {
+                                Text(tr(es: "Pesos Activos en VRAM", en: "Weights Active in VRAM"))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            if let restores = weights.restores, restores > 0 {
+                                Text("· \(restores) \(tr(es: "recuperaciones", en: "restores"))")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Aviso o Botón de Liberación Manual
+                    if service.isRunning {
+                        Button {
+                            service.releaseMemoryNow()
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                                    .font(.system(size: 9))
+                                Text(tr(es: "Liberar Memoria", en: "Free Memory"))
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.1))
+                            .cornerRadius(4)
+                        }
+                        .buttonStyle(.plain)
+                        .help(tr(
+                            es: "Detiene el servidor y descarga inmediatamente toda la memoria unificada de Metal utilizada por el modelo.",
+                            en: "Stops the server and immediately unloads all Metal unified memory used by the model."
+                        ))
+                    }
+                }
+                
+                if let notice = service.memoryReliefNotice {
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.blue)
+                        Text(notice)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button {
+                            service.memoryReliefNotice = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(4)
+                    .background(Color.blue.opacity(0.08))
+                    .cornerRadius(4)
+                }
+                
                 if let ane = service.status?.aneFfn, let state = ane.state {
                     HStack {
                         Label {

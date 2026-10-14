@@ -24,8 +24,9 @@ final class ServerCLIValidatorTests: XCTestCase {
         XCTAssertNil(error1)
         XCTAssertTrue(tokens1.isEmpty)
         
-        let (tokens2, error2) = ServerCLIValidator.validateAndTokenize("   \n\t  ")
-        // Whitespace with \n or \t might be trimmed or rejected, let's verify:
+        let (tokens2, _) = ServerCLIValidator.validateAndTokenize("   \n\t  ")
+        XCTAssertTrue(tokens2.isEmpty)
+        
         let (tokens3, error3) = ServerCLIValidator.validateAndTokenize("    ")
         XCTAssertNil(error3)
         XCTAssertTrue(tokens3.isEmpty)
@@ -73,5 +74,61 @@ final class ServerCLIValidatorTests: XCTestCase {
         
         let malicious = ServerCLIValidator.sanitizedString("--no-webui ; evil")
         XCTAssertEqual(malicious, "")
+    }
+    
+    func testValidateIdleReleaseAcceptsStandardDurations() {
+        XCTAssertEqual(ServerCLIValidator.validateIdleRelease("off"), "off")
+        XCTAssertEqual(ServerCLIValidator.validateIdleRelease("OFF"), "off")
+        XCTAssertEqual(ServerCLIValidator.validateIdleRelease("30s"), "30s")
+        XCTAssertEqual(ServerCLIValidator.validateIdleRelease("2m"), "2m")
+        XCTAssertEqual(ServerCLIValidator.validateIdleRelease("10M"), "10m")
+        XCTAssertEqual(ServerCLIValidator.validateIdleRelease("1h"), "1h")
+        XCTAssertEqual(ServerCLIValidator.validateIdleRelease("600"), "600")
+        
+        // Rechazos
+        XCTAssertNil(ServerCLIValidator.validateIdleRelease("10m; rm -rf /"))
+        XCTAssertNil(ServerCLIValidator.validateIdleRelease("fast"))
+        XCTAssertNil(ServerCLIValidator.validateIdleRelease("-5m"))
+    }
+    
+    func testValidateMaxMemoryAcceptsStandardBudgets() {
+        XCTAssertEqual(ServerCLIValidator.validateMaxMemory("auto"), "auto")
+        XCTAssertEqual(ServerCLIValidator.validateMaxMemory("AUTO"), "auto")
+        XCTAssertEqual(ServerCLIValidator.validateMaxMemory("16G"), "16G")
+        XCTAssertEqual(ServerCLIValidator.validateMaxMemory("28g"), "28G")
+        XCTAssertEqual(ServerCLIValidator.validateMaxMemory("512M"), "512M")
+        XCTAssertEqual(ServerCLIValidator.validateMaxMemory("1024"), "1024")
+        
+        // Rechazos
+        XCTAssertNil(ServerCLIValidator.validateMaxMemory("28GB; whoami"))
+        XCTAssertNil(ServerCLIValidator.validateMaxMemory("unlimited"))
+        XCTAssertNil(ServerCLIValidator.validateMaxMemory("-16G"))
+    }
+    
+    func testValidateStateFormat() {
+        XCTAssertEqual(ServerCLIValidator.validateStateFormat("bf16"), "bf16")
+        XCTAssertEqual(ServerCLIValidator.validateStateFormat("BF16"), "bf16")
+        XCTAssertEqual(ServerCLIValidator.validateStateFormat("fp32"), "fp32")
+        XCTAssertEqual(ServerCLIValidator.validateStateFormat("FP32"), "fp32")
+        
+        // Rechazos
+        XCTAssertNil(ServerCLIValidator.validateStateFormat("fp16"))
+        XCTAssertNil(ServerCLIValidator.validateStateFormat("int8"))
+        XCTAssertNil(ServerCLIValidator.validateStateFormat("bf16; rm -rf /"))
+    }
+    
+    func testValidateThinkingBudget() {
+        XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("auto"), "auto")
+        XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("-1"), "-1")
+        XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("off"), "-1")
+        XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("0"), "-1")
+        XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("4K"), "4000")
+        XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("16k"), "16000")
+        XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("8192"), "8192")
+        
+        // Rechazos
+        XCTAssertNil(ServerCLIValidator.validateThinkingBudget("-2"))
+        XCTAssertNil(ServerCLIValidator.validateThinkingBudget("4K; whoami"))
+        XCTAssertNil(ServerCLIValidator.validateThinkingBudget("unlimited"))
     }
 }

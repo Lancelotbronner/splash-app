@@ -260,6 +260,49 @@ final class ServerOptionsTests: XCTestCase {
         XCTAssertFalse(cmd.contains("rm -rf"), "No debe inyectar comandos maliciosos: \(cmd)")
         XCTAssertFalse(cmd.contains("--no-webui"), "Debe descartar toda la cadena de flags si contiene metacaracteres peligrosos: \(cmd)")
     }
+    
+    func testServerLaunchWithIdleReleaseAndMaxMemory() async throws {
+        let dir = try TempDirectory()
+        let (service, capturedCommand) = makeService(directory: dir.url)
+        service.idleRelease = "2m"
+        service.maxMemory = "24G"
+        
+        service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
+        try await Task.sleep(nanoseconds: 80_000_000)
+        
+        guard let cmd = capturedCommand.value else {
+            XCTFail("No command captured")
+            return
+        }
+        
+        XCTAssertTrue(cmd.contains("--idle-release \"2m\""), "Debe inyectar --idle-release 2m: \(cmd)")
+        XCTAssertTrue(cmd.contains("--max-memory \"24G\""), "Debe inyectar --max-memory 24G: \(cmd)")
+        XCTAssertTrue(cmd.contains("⏳ Inactividad: 2m"), "El banner debe reflejar inactividad: \(cmd)")
+        XCTAssertTrue(cmd.contains("💾 Límite RAM: 24G"), "El banner debe reflejar el límite de memoria: \(cmd)")
+    }
+    
+    func testServerLaunchWithSplash132Features() async throws {
+        let dir = try TempDirectory()
+        let (service, capturedCommand) = makeService(directory: dir.url)
+        service.stateFormat = "bf16"
+        service.thinkingTokenBudget = "8K"
+        service.persistentCache = true
+        
+        service.startServer(model: "nvidia/Qwen3.8-27B-NVFP4", port: testPort)
+        try await Task.sleep(nanoseconds: 80_000_000)
+        
+        guard let cmd = capturedCommand.value else {
+            XCTFail("No command captured")
+            return
+        }
+        
+        XCTAssertTrue(cmd.contains("--state-format \"bf16\""), "Debe inyectar --state-format bf16: \(cmd)")
+        XCTAssertTrue(cmd.contains("--thinking-token-budget \"8000\""), "Debe inyectar --thinking-token-budget 8000: \(cmd)")
+        XCTAssertTrue(cmd.contains("--persistent-cache"), "Debe inyectar --persistent-cache: \(cmd)")
+        XCTAssertTrue(cmd.contains("⚡️ Estado GDN: BF16 (-50% RAM)"), "El banner debe incluir el estado GDN: \(cmd)")
+        XCTAssertTrue(cmd.contains("💭 Thinking:  8K"), "El banner debe incluir el thinking token budget: \(cmd)")
+        XCTAssertTrue(cmd.contains("💾 Caché SSD:  Persistente activada"), "El banner debe indicar caché persistente: \(cmd)")
+    }
 }
 
 /// Helper para capturar valores dentro de closures concurrentes en tests

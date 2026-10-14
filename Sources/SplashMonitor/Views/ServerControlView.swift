@@ -86,15 +86,15 @@ public struct ServerControlView: View {
                 let url = service.agentInstallURL(agent: pendingAgentCommand)
                 NSWorkspace.shared.open(url)
             }
-            Button(tr(es: pendingAgentCommand == "claude-cowork" ? "Abrir Claude de Todos Modos" : (pendingAgentCommand == "chatgpt" ? "Abrir ChatGPT de Todos Modos" : "Lanzar en Terminal de Todos Modos"),
-                      en: pendingAgentCommand == "claude-cowork" ? "Open Claude Anyway" : (pendingAgentCommand == "chatgpt" ? "Open ChatGPT Anyway" : "Launch in Terminal Anyway"))) {
+            Button(tr(es: pendingAgentCommand == "claude-cowork" ? "Abrir Claude de Todos Modos" : (pendingAgentCommand == "chatgpt" ? "Abrir ChatGPT de Todos Modos" : (pendingAgentCommand == "dsh" ? "Lanzar vía npx de Todos Modos" : "Lanzar en Terminal de Todos Modos")),
+                      en: pendingAgentCommand == "claude-cowork" ? "Open Claude Anyway" : (pendingAgentCommand == "chatgpt" ? "Open ChatGPT Anyway" : (pendingAgentCommand == "dsh" ? "Launch via npx Anyway" : "Launch in Terminal Anyway")))) {
                 service.launchAgent(agent: pendingAgentCommand)
             }
             Button(tr(es: "Cancelar", en: "Cancel"), role: .cancel) {}
         } message: {
             Text(tr(
-                es: pendingAgentCommand == "claude-cowork" ? "No se detectó la aplicación Claude for Mac en tu sistema (/Applications/Claude.app). Puedes descargarla desde la web oficial de Claude." : (pendingAgentCommand == "chatgpt" ? "No se detectó la aplicación ChatGPT for Mac en tu sistema (/Applications/ChatGPT.app). Puedes descargarla desde la web oficial de OpenAI." : "No se detectó el comando '\(pendingAgentCommand)' en tu sistema. Puedes instalarlo siguiendo la guía oficial."),
-                en: pendingAgentCommand == "claude-cowork" ? "Claude for Mac application was not detected on your system (/Applications/Claude.app). You can download it from the official Claude website." : (pendingAgentCommand == "chatgpt" ? "ChatGPT for Mac application was not detected on your system (/Applications/ChatGPT.app). You can download it from the official OpenAI website." : "Command '\(pendingAgentCommand)' was not detected on your system. You can install it following the official guide.")
+                es: pendingAgentCommand == "claude-cowork" ? "No se detectó la aplicación Claude for Mac en tu sistema (/Applications/Claude.app). Puedes descargarla desde la web oficial de Claude." : (pendingAgentCommand == "chatgpt" ? "No se detectó la aplicación ChatGPT for Mac en tu sistema (/Applications/ChatGPT.app). Puedes descargarla desde la web oficial de OpenAI." : (pendingAgentCommand == "dsh" ? "No se detectó el binario 'dsh' en tu PATH. Puedes instalarlo con 'npm i -g @deepseek-ai/dsh' o lanzarlo automáticamente vía npx." : "No se detectó el comando '\(pendingAgentCommand)' en tu sistema. Puedes instalarlo siguiendo la guía oficial.")),
+                en: pendingAgentCommand == "claude-cowork" ? "Claude for Mac application was not detected on your system (/Applications/Claude.app). You can download it from the official Claude website." : (pendingAgentCommand == "chatgpt" ? "ChatGPT for Mac application was not detected on your system (/Applications/ChatGPT.app). You can download it from the official OpenAI website." : (pendingAgentCommand == "dsh" ? "Binary 'dsh' was not detected in your PATH. You can install it via 'npm i -g @deepseek-ai/dsh' or run automatically via npx." : "Command '\(pendingAgentCommand)' was not detected on your system. You can install it following the official guide."))
             ))
         }
         .alert(
@@ -583,6 +583,100 @@ public struct ServerControlView: View {
                         en: "Configures whether Splash should initialize multimodal image support or text-only mode (--language-only, required for Coder models without mmproj projectors)."
                     ))
                     
+                    Divider()
+                        .frame(height: 14)
+                    
+                    // Selector de Liberación de Memoria por Inactividad (--idle-release)
+                    Menu {
+                        ForEach([
+                            ("1m", tr(es: "1 min (Ahorro rápido)", en: "1 min (Fast saving)")),
+                            ("2m", tr(es: "2 min (Agresivo)", en: "2 min (Aggressive)")),
+                            ("5m", tr(es: "5 min (Equilibrado)", en: "5 min (Balanced)")),
+                            ("10m", tr(es: "10 min (Por defecto)", en: "10 min (Default)")),
+                            ("30m", tr(es: "30 min (Extendido)", en: "30 min (Extended)")),
+                            ("off", tr(es: "Desactivado (Siempre en RAM)", en: "Disabled (Always in RAM)"))
+                        ], id: \.0) { item in
+                            Button {
+                                service.idleRelease = item.0
+                            } label: {
+                                HStack {
+                                    Text(item.1)
+                                    if service.idleRelease == item.0 {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "timer")
+                                .font(.system(size: 10))
+                                .foregroundColor(.cyan)
+                            Text("Reposo: \(service.idleRelease)")
+                                .font(.system(size: 10, design: .monospaced))
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.secondary.opacity(0.08))
+                        .cornerRadius(5)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help(tr(
+                        es: "Tiempo de inactividad antes de desvincular y liberar la memoria unificada de Metal (--idle-release). Cuando llega una nueva consulta, Splash recarga los pesos al vuelo.",
+                        en: "Idle time before unwiring and releasing Metal unified memory weights (--idle-release). Weights are restored automatically on incoming requests."
+                    ))
+                    
+                    Divider()
+                        .frame(height: 14)
+                    
+                    // Selector de Límite de Memoria (--max-memory)
+                    Menu {
+                        Button {
+                            service.maxMemory = "auto"
+                        } label: {
+                            HStack {
+                                Text(tr(es: "Automático (sin límite)", en: "Auto (unlimited)"))
+                                if service.maxMemory == "auto" {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                        Divider()
+                        ForEach(["16G", "24G", "28G", "32G", "40G", "48G", "64G"], id: \.self) { mem in
+                            Button {
+                                service.maxMemory = mem
+                            } label: {
+                                HStack {
+                                    Text("\(mem) Metal")
+                                    if service.maxMemory == mem {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "memorychip")
+                                .font(.system(size: 10))
+                                .foregroundColor(.indigo)
+                            Text(service.maxMemory == "auto" ? "RAM: Auto" : "RAM: \(service.maxMemory)")
+                                .font(.system(size: 10, design: .monospaced))
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.secondary.opacity(0.08))
+                        .cornerRadius(5)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help(tr(
+                        es: "Presupuesto máximo de memoria Metal (--max-memory) para evitar acaparar toda la memoria unificada del Mac.",
+                        en: "Maximum Metal memory budget (--max-memory) to prevent hogging all unified memory."
+                    ))
+                    
                     Spacer()
                     
                     let targetModel = isCustomModel ? customModelText.trimmingCharacters(in: .whitespacesAndNewlines) : service.selectedModelForLaunch
@@ -644,6 +738,134 @@ public struct ServerControlView: View {
                     }
                 }
             }
+            
+            // Fila 3: Optimizaciones Splash 1.3.2+ (Estado GDN BF16, Presupuesto Thinking y Caché SSD)
+            HStack(spacing: 8) {
+                // Selector de Formato de Estado Recurrente GDN (--state-format)
+                Menu {
+                    Button {
+                        service.stateFormat = "fp32"
+                    } label: {
+                        HStack {
+                            Text("FP32 (Estándar, máxima fidelidad)")
+                            if service.stateFormat == "fp32" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    Button {
+                        service.stateFormat = "bf16"
+                    } label: {
+                        HStack {
+                            Text("BF16 (-50% RAM en estados GDN)")
+                            if service.stateFormat == "bf16" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10))
+                            .foregroundColor(.pink)
+                        Text(service.stateFormat.uppercased() == "BF16" ? "GDN: BF16 (-50%)" : "GDN: FP32")
+                            .font(.system(size: 10, design: .monospaced))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.secondary.opacity(0.08))
+                    .cornerRadius(5)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help(tr(
+                    es: "Formato de almacenamiento para los estados recurrentes GDN (--state-format). BF16 reduce a la mitad el tamaño del estado en RAM (de 153 MiB a 81 MiB en 27B) manteniendo el cálculo en FP32.",
+                    en: "Storage format for GDN recurrent states (--state-format). BF16 halves state memory in RAM (from 153 to 81 MiB on 27B) while keeping computation in FP32."
+                ))
+                
+                Divider()
+                    .frame(height: 14)
+                
+                // Selector de Presupuesto de Razonamiento (--thinking-token-budget)
+                Menu {
+                    Button {
+                        service.thinkingTokenBudget = "auto"
+                    } label: {
+                        HStack {
+                            Text(tr(es: "Ilimitado (Sin tope)", en: "Uncapped (No limit)"))
+                            if service.thinkingTokenBudget == "auto" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    Divider()
+                    ForEach(["2K", "4K", "8K", "16K", "32K"], id: \.self) { budget in
+                        Button {
+                            service.thinkingTokenBudget = budget
+                        } label: {
+                            HStack {
+                                Text("\(budget) tokens")
+                                if service.thinkingTokenBudget == budget {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                    Divider()
+                    Button {
+                        service.thinkingTokenBudget = "off"
+                    } label: {
+                        HStack {
+                            Text(tr(es: "Desactivado (-1)", en: "Disabled (-1)"))
+                            if service.thinkingTokenBudget == "off" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lightbulb")
+                            .font(.system(size: 10))
+                            .foregroundColor(.yellow)
+                        Text(service.thinkingTokenBudget == "auto" ? "Thinking: Auto" : (service.thinkingTokenBudget == "off" ? "Thinking: Off" : "Thinking: \(service.thinkingTokenBudget)"))
+                            .font(.system(size: 10, design: .monospaced))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.secondary.opacity(0.08))
+                    .cornerRadius(5)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help(tr(
+                    es: "Presupuesto máximo de tokens de razonamiento / pensamiento (--thinking-token-budget) para modelos con cadena de pensamiento.",
+                    en: "Maximum reasoning / thinking token budget (--thinking-token-budget) for chain-of-thought models."
+                ))
+                
+                Divider()
+                    .frame(height: 14)
+                
+                // Toggle Caché SSD Persistente (--persistent-cache)
+                Toggle(isOn: $service.persistentCache) {
+                    HStack(spacing: 4) {
+                        Image(systemName: service.persistentCache ? "internaldrive.fill" : "internaldrive")
+                            .font(.system(size: 10))
+                            .foregroundColor(service.persistentCache ? .green : .secondary)
+                        Text(tr(es: "Caché SSD Persistente", en: "Persistent SSD Cache"))
+                            .font(.system(size: 10))
+                    }
+                }
+                .toggleStyle(.checkbox)
+                .help(tr(
+                    es: "Mantiene la caché de prefijos en SSD a través de reinicios (--persistent-cache). En Splash 1.3.2 la caché SSD viene activada en modo 'auto' y se adapta al disco.",
+                    en: "Keeps prefix cache on SSD across restarts (--persistent-cache). In Splash 1.3.2 SSD cache is on by default in 'auto' mode and adjusts to disk space."
+                ))
+                
+                Spacer()
+            }
+            .padding(.top, 2)
             
             // Flags CLI adicionales (ej. --no-webui --max-cache-disk 50GB)
             VStack(alignment: .leading, spacing: 3) {
@@ -808,6 +1030,17 @@ public struct ServerControlView: View {
                     isServerRunning: service.isRunning
                 ) {
                     handleAgentLaunch(name: "Pi Agent", command: "pi")
+                }
+                
+                AgentButton(
+                    name: "DeepSeek Harness",
+                    icon: "cpu.fill",
+                    command: "dsh",
+                    subtitle: "dsh web (DeepSeek AI)",
+                    isInstalled: service.isAgentInstalled(agent: "dsh"),
+                    isServerRunning: service.isRunning
+                ) {
+                    handleAgentLaunch(name: "DeepSeek Harness", command: "dsh")
                 }
             }
         }

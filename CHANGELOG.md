@@ -5,6 +5,29 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.8-beta] - 2026-10-14
+
+Versión mayor de compatibilidad con **Splash 1.3.2**, optimización de memoria recurrente GDN (BF16), liberación dinámica de RAM bajo presión (`POST /v1/memory/release`), control granular de *Thinking Token Budget*, persistencia de caché SSD y soporte de modelos NVIDIA NVFP4/FP8 y DeepSeek Harness.
+
+### 🚀 Novedades y Características
+
+- **Compatibilidad Integral con Splash 1.3.2:**
+  - **Soporte de Formato de Estado GDN (`--state-format bf16`):** Reduce a la mitad el almacenamiento de memoria de estados recurrentes (ej. Qwen 27B pasa de 153 MB a 81 MB, un 47% menos de RAM por contexto).
+  - **Liberación Dinámica de Pesos (`POST /v1/memory/release`):** Libera memoria de pesos inactivos bajo demanda sin perder la caché de prefijos en disco SSD, con fallback seguro a detención si se usa un motor legacy.
+  - **Control de Presupuesto de Razonamiento (`--thinking-token-budget`):** Control para modelos de razonamiento con selector interactivo (`Auto`, `2K`, `4K`, `8K`, `16K`, `32K`, `Apagado (-1)`).
+  - **Caché SSD de Prefijos Persistente (`--persistent-cache`):** Retiene la caché de prefijos entre reinicios del servidor sin requerir cuota fija explícita.
+  - **Soporte para Modelos NVIDIA NVFP4 y FP8:** Detección, validación y filtrado de modelos cuantizados oficial (`nvidia/Qwen3.8-27B-NVFP4`, `mlx-community/Qwen3.6-35B-A3B-nvfp4`).
+  - **Métricas de Deduplicación de Tokens (`deduplicated_tokens`):** Monitoreo del ahorro real de tokens reutilizados en caché KV y prefijos.
+- **Centinela de Presión de Memoria del Sistema (System Memory Pressure Sentinel):**
+  - Monitoreo continuo mediante `dispatch_source_t` del kernel de macOS con niveles `Normal`, `Warning` y `Critical`.
+  - Acción rápida de liberación de memoria de un clic desde el menú y panel principal.
+- **Conexión con Agentes de Código:**
+  - Integración nativa de **DeepSeek Harness (`dsh`)** en la pestaña de Aplicaciones Conectadas con detección de instalación local y comando rápido de inicio.
+- **Gestor de Modelos y Hugging Face:**
+  - Manejo amigable y explicativo para repositorios protegidos (*gated models* con error HTTP 403), guiando al usuario para autenticación con token de Hugging Face.
+
+---
+
 ## [1.0.7-beta] - 2026-10-11
 
 Versión de compatibilidad total con **Splash 1.3.1**, telemetría en tiempo real de descargas, soporte de decodificación especulativa DFlash2 y optimizaciones del Gestor de Modelos.

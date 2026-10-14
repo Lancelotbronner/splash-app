@@ -93,9 +93,22 @@ public class SplashService: ObservableObject {
     @AppStorage("lastUsedPort") public var lastUsedPort: Int = 8000
     @AppStorage("listenOnAllInterfaces") public var listenOnAllInterfaces: Bool = false
     @AppStorage("maxContext") public var maxContext: String = "auto"
+    @AppStorage("idleRelease") public var idleRelease: String = "10m"
+    @AppStorage("maxMemory") public var maxMemory: String = "auto"
+    @AppStorage("autoReleaseOnMemoryPressure") public var autoReleaseOnMemoryPressure: Bool = true
     @AppStorage("allowedHosts") public var allowedHosts: String = ""
     @AppStorage("languageOnly") public var languageOnly: Bool = false
     @AppStorage("customServerFlags") public var customServerFlags: String = ""
+    
+    // Splash 1.3.2+ Settings
+    @AppStorage("stateFormat") public var stateFormat: String = "fp32" // "fp32" | "bf16"
+    @AppStorage("thinkingTokenBudget") public var thinkingTokenBudget: String = "auto" // "auto", "2K", "4K", "8K", "16K", "32K", "off" (-1)
+    @AppStorage("persistentCache") public var persistentCache: Bool = false
+    
+    /// Nivel actual de presión de memoria del sistema macOS.
+    @Published public var systemMemoryPressure: SystemMemoryPressureLevel = .normal
+    /// Mensaje informativo cuando la memoria se ha liberado por presión o manualmente.
+    @Published public var memoryReliefNotice: String? = nil
     
     /// Dirección IPv4 primaria en la red de área local (ej. "192.168.1.49").
     public var localNetworkIP: String? {
@@ -242,6 +255,7 @@ public class SplashService: ObservableObject {
         startPolling()
         refreshInstalledModels()
         cleanLegacyArtifacts()
+        SystemMemoryPressureSentinel.shared.delegate = self
         // `bootstrapNetwork: false` evita tráfico real (Hugging Face, GitHub) en las
         // pruebas y en cualquier integración que necesite un arranque hermético.
         if bootstrapNetwork {
@@ -936,14 +950,27 @@ public class SplashService: ObservableObject {
                let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
                 for item in items {
                     let lower = item.id.lowercased()
-                    if (lower.contains("27b") || lower.contains("35b")) && (lower.contains("4bit") || lower.contains("8bit") || lower.contains("optiq")) {
+                    if (lower.contains("27b") || lower.contains("35b")) && (lower.contains("4bit") || lower.contains("8bit") || lower.contains("optiq") || lower.contains("nvfp4") || lower.contains("fp8")) {
                         allItems[item.id] = item
                     }
                 }
             }
         }
         
-        // 2. Fetch models with tag "splash" (excluyendo paquetes viejos y discontinuados -Splash)
+        // 2. Fetch NVIDIA official NVFP4/FP8 models (Splash 1.3.2+)
+        if let nvidiaUrl = URL(string: "https://huggingface.co/api/models?author=nvidia&search=Qwen") {
+            if let (data, _) = try? await URLSession.shared.data(from: nvidiaUrl),
+               let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
+                for item in items {
+                    let lower = item.id.lowercased()
+                    if (lower.contains("27b") || lower.contains("35b")) && (lower.contains("nvfp4") || lower.contains("fp8") || lower.contains("4bit")) {
+                        allItems[item.id] = item
+                    }
+                }
+            }
+        }
+        
+        // 3. Fetch models with tag "splash" (excluyendo paquetes viejos y discontinuados -Splash)
         if let splashTagUrl = URL(string: "https://huggingface.co/api/models?filter=splash") {
             if let (data, _) = try? await URLSession.shared.data(from: splashTagUrl),
                let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
@@ -1023,6 +1050,13 @@ public class SplashService: ObservableObject {
                 
                 var env = ProcessInfo.processInfo.environment
                 env["PATH"] = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                if env["HF_TOKEN"] == nil || env["HF_TOKEN"]?.isEmpty == true {
+                    let hfTokenURL = FileManager.default.homeDirectoryForCurrentUser
+                        .appendingPathComponent(".cache/huggingface/token")
+                    if let token = try? String(contentsOf: hfTokenURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
+                        env["HF_TOKEN"] = token
+                    }
+                }
                 process.environment = env
                 
                 let pipe = Pipe()
@@ -1216,6 +1250,19 @@ public class SplashService: ObservableObject {
                 } else {
                     self.downloadPhase = "Fallo en la instalación"
                     self.installLogs.append("❌ Error al instalar \(repoId).")
+                    if self.installLogs.contains(where: { $0.contains("gated repo") || $0.contains("Access to model") || $0.contains("403") }) {
+                        self.installLogs.append("🔒 Este modelo tiene acceso restringido ('Gated') en Hugging Face.")
+                        self.installLogs.append("💡 Muchos modelos protegidos tienen aprobación instantánea ('auto').")
+                        self.installLogs.append("👉 Pasos para habilitar la descarga:")
+                        self.installLogs.append("   1. Inicia sesión en Hugging Face con tu cuenta.")
+                        self.installLogs.append("   2. Visita: https://huggingface.co/\(repoId)")
+                        self.installLogs.append("   3. Pulsa 'Agree and access repository' (o Aceptar términos).")
+                        self.installLogs.append("   4. Regresa a Splash Monitor y haz clic nuevamente en Descargar.")
+                    } else if self.installLogs.contains(where: { $0.contains("HTTP Error 500") || $0.contains("Error 502") || $0.contains("Error 503") || $0.contains("Error 504") || $0.contains("check your connection") }) {
+                        self.installLogs.append("⚠️ Interrupción temporal en los servidores de Hugging Face o en la red (Error 500 / Timeout).")
+                        self.installLogs.append("💾 ¡Los archivos ya transferidos están a salvo en la caché local (~17 GB guardados)!")
+                        self.installLogs.append("👉 Solo pulsa 'Descargar' de nuevo; el proceso reanudará al instante solo lo que falta.")
+                    }
                 }
             }
         }
@@ -1491,7 +1538,12 @@ public class SplashService: ObservableObject {
             
             // Aliases de modelos Anthropic, OpenAI y de la familia Splash/IncoAI
             let baseModelAliases = [
-                // Familia Oficial Splash 1.3.1 (MLX Community y modelos base)
+                // Familia Oficial Splash 1.3.1 / 1.3.2 (NVFP4, FP8, MLX Community y modelos base)
+                "nvidia/Qwen3.8-27B-NVFP4",
+                "mlx-community/Qwen3.6-35B-A3B-nvfp4",
+                "mlx-community/Qwen3.8-27B-nvfp4",
+                "Qwen3.8-27B-NVFP4",
+                "Qwen3.6-35B-A3B-nvfp4",
                 "mlx-community/Qwen3.8-27B-4bit",
                 "mlx-community/Qwen3.6-35B-A3B-4bit",
                 "mlx-community/Qwen3.8-27B-8bit",
@@ -1605,7 +1657,42 @@ public class SplashService: ObservableObject {
                 }
             }
             
+            var idleReleaseFlag = ""
+            let trimmedIdle = self.idleRelease.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedIdle.isEmpty {
+                if let validIdle = ServerCLIValidator.validateIdleRelease(trimmedIdle) {
+                    idleReleaseFlag = "--idle-release \"\(validIdle)\""
+                }
+            }
+            
+            var maxMemoryFlag = ""
+            let trimmedMaxMem = self.maxMemory.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedMaxMem.isEmpty && trimmedMaxMem.lowercased() != "auto" {
+                if let validMem = ServerCLIValidator.validateMaxMemory(trimmedMaxMem) {
+                    maxMemoryFlag = "--max-memory \"\(validMem)\""
+                }
+            }
+            
             let languageFlag = self.languageOnly ? "--language-only" : ""
+            
+            var stateFormatFlag = ""
+            let trimmedState = self.stateFormat.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if trimmedState == "bf16" {
+                stateFormatFlag = "--state-format \"bf16\""
+            }
+            
+            var thinkingBudgetFlag = ""
+            let trimmedThinking = self.thinkingTokenBudget.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if trimmedThinking == "off" || trimmedThinking == "-1" {
+                thinkingBudgetFlag = "--thinking-token-budget \"-1\""
+            } else if !trimmedThinking.isEmpty && trimmedThinking != "auto" {
+                let clean = trimmedThinking.replacingOccurrences(of: "k", with: "000")
+                if let num = Int(clean), num > 0 {
+                    thinkingBudgetFlag = "--thinking-token-budget \"\(num)\""
+                }
+            }
+            
+            let persistentCacheFlag = self.persistentCache ? "--persistent-cache" : ""
             
             // Flags CLI adicionales proporcionados por el usuario (ej. --no-webui --max-cache-disk 50GB)
             let (customTokens, customError) = ServerCLIValidator.validateAndTokenize(self.customServerFlags)
@@ -1615,13 +1702,18 @@ public class SplashService: ObservableObject {
             let customFlagsString = customTokens.joined(separator: " ")
             let customFlagsEcho = customTokens.isEmpty ? "" : "\necho \"🛠️ Flags CLI:  \(customFlagsString)\""
             
-            let extraOptions = [hostFlag, allowedHostFlags, contextFlag, languageFlag, customFlagsString].filter { !$0.isEmpty }.joined(separator: " ")
+            let extraOptions = [hostFlag, allowedHostFlags, contextFlag, idleReleaseFlag, maxMemoryFlag, languageFlag, stateFormatFlag, thinkingBudgetFlag, persistentCacheFlag, customFlagsString].filter { !$0.isEmpty }.joined(separator: " ")
             let runCmd = "\"\(splashPath)\" serve --model \"\(validatedModel)\" --port \"\(port)\" \(extraOptions) \(aliasFlags)"
             
             let hostLabel = self.listenOnAllInterfaces ? "0.0.0.0 (Toda la red local / LAN)" : "127.0.0.1 (Solo localhost)"
             let contextLabel = (trimmedContext.isEmpty || trimmedContext.lowercased() == "auto") ? "Automático (por memoria)" : trimmedContext.uppercased()
+            let idleLabel = (trimmedIdle.isEmpty || trimmedIdle == "10m") ? "10m (Por defecto)" : (trimmedIdle.lowercased() == "off" ? "Desactivado (Siempre en RAM)" : trimmedIdle)
+            let memoryLabel = (trimmedMaxMem.isEmpty || trimmedMaxMem.lowercased() == "auto") ? "Automático (sin límite)" : trimmedMaxMem.uppercased()
             let modalityLabel = self.languageOnly ? "Solo Texto / Código (--language-only)" : "Multimodal (Texto y Visión)"
             let allowedHostsEcho = parsedAllowedHosts.isEmpty ? "" : "\necho \"🛡️ Dominios: \(parsedAllowedHosts.joined(separator: ", "))\""
+            let stateEcho = (trimmedState == "bf16") ? "\necho \"⚡️ Estado GDN: BF16 (-50% RAM)\"" : ""
+            let thinkingEcho = (trimmedThinking != "auto" && !trimmedThinking.isEmpty) ? "\necho \"💭 Thinking:  \(self.thinkingTokenBudget)\"" : ""
+            let cacheEcho = self.persistentCache ? "\necho \"💾 Caché SSD:  Persistente activada\"" : ""
             
             let cmd = """
             echo "🌊 ==============================================="
@@ -1630,7 +1722,9 @@ public class SplashService: ObservableObject {
             echo "🔌 Puerto:   \(port)"
             echo "🌐 Red/Host: \(hostLabel)"\(allowedHostsEcho)
             echo "🧠 Contexto: \(contextLabel)"
-            echo "👁️ Modalidad: \(modalityLabel)"\(customFlagsEcho)
+            echo "⏳ Inactividad: \(idleLabel)"
+            echo "💾 Límite RAM: \(memoryLabel)"
+            echo "👁️ Modalidad: \(modalityLabel)"\(stateEcho)\(thinkingEcho)\(cacheEcho)\(customFlagsEcho)
             echo "⚡️ Motor:    \(splashPath)"
             echo "==============================================="
             echo "Presiona Ctrl+C en esta ventana para detener el servidor."
@@ -1852,13 +1946,20 @@ public class SplashService: ObservableObject {
                 || FileManager.default.fileExists(atPath: "/Applications/ChatGPT.app")
                 || FileManager.default.fileExists(atPath: "\(home)/Applications/ChatGPT.app")
         }
+        if agent == "dsh" {
+            let home = FileManager.default.homeDirectoryForCurrentUser.path
+            return installedAgents.contains("dsh")
+                || FileManager.default.isExecutableFile(atPath: "/opt/homebrew/bin/dsh")
+                || FileManager.default.isExecutableFile(atPath: "/usr/local/bin/dsh")
+                || FileManager.default.isExecutableFile(atPath: "\(home)/.npm-global/bin/dsh")
+                || FileManager.default.isExecutableFile(atPath: "\(home)/.local/bin/dsh")
+        }
         return installedAgents.contains(agent)
     }
     
     /// Background check — safe to call from any thread
-    /// Background check — safe to call from any thread
     public func refreshAgentAvailability() {
-        let agents = ["claude", "opencode", "codex", "hermes", "pi"]
+        let agents = ["claude", "opencode", "codex", "hermes", "pi", "dsh"]
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         
         Task.detached(priority: .utility) {
@@ -1909,13 +2010,15 @@ public class SplashService: ObservableObject {
             return URL(string: "https://hermes-agent.nousresearch.com/docs/getting-started/installation/")!
         case "pi":
             return URL(string: "https://pi.dev/")!
+        case "dsh":
+            return URL(string: "https://github.com/deepseek-ai/deepseek-harness")!
         default:
             return URL(string: "https://github.com/incoai/splash")!
         }
     }
     
-    /// Agentes que el motor sabe lanzar (`splash <agente>` o app nativa para cowork/chatgpt).
-    public static let supportedAgents = ["claude", "claude-cowork", "opencode", "codex", "hermes", "pi", "chatgpt"]
+    /// Agentes que el motor sabe lanzar (`splash <agente>` o app nativa para cowork/chatgpt o dsh).
+    public static let supportedAgents = ["claude", "claude-cowork", "opencode", "codex", "hermes", "pi", "chatgpt", "dsh"]
     
     public func launchAgent(agent: String) {
         guard isSplashInstalled else {
@@ -1976,6 +2079,48 @@ public class SplashService: ObservableObject {
             } else {
                 _ = CommandRunner.run("/usr/bin/open", ["-a", "ChatGPT"])
             }
+            return
+        }
+        
+        // Manejo específico para DeepSeek Harness (dsh)
+        if agent == "dsh" {
+            let port = self.activePort
+            let home = FileManager.default.homeDirectoryForCurrentUser.path
+            let dshCandidates = [
+                "/opt/homebrew/bin/dsh",
+                "/usr/local/bin/dsh",
+                "\(home)/.npm-global/bin/dsh",
+                "\(home)/.local/bin/dsh"
+            ]
+            let dshExec = dshCandidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) })
+            
+            let runDshCommand: String
+            if let exec = dshExec {
+                runDshCommand = "exec \"\(exec)\" web --port 3080"
+            } else {
+                runDshCommand = "exec npx -y @deepseek-ai/dsh web --port 3080"
+            }
+            
+            let cmd = """
+            echo "🤖 ==============================================="
+            echo "⚡️ Conectando DeepSeek Harness (dsh) a Splash..."
+            echo "🔌 Puerto Splash: \(port)"
+            echo "🌐 Endpoint OpenAI: http://127.0.0.1:\(port)/v1"
+            echo "==============================================="
+            echo ""
+            export SPLASH_PORT="\(port)"
+            export OPENAI_BASE_URL="http://127.0.0.1:\(port)/v1"
+            export OPENAI_API_KEY="splash"
+            export DEEPSEEK_BASE_URL="http://127.0.0.1:\(port)/v1"
+            export DSH_BASE_URL="http://127.0.0.1:\(port)/v1"
+            \(runDshCommand)
+            """
+            
+            runInTerminal(
+                command: cmd,
+                title: "DeepSeek Harness - Splash",
+                scriptFileName: "launch_dsh.command"
+            )
             return
         }
         
@@ -2176,7 +2321,12 @@ public class SplashService: ObservableObject {
                 category = .codingAgent
             } else if lowerName.contains("cursor") || lowerName.contains("code") || lowerName.contains("xcode") || lowerName.contains("zed") || lowerName.contains("studio") || lowerName.contains("intellij") || lowerName.contains("pycharm") {
                 category = .ide
-            } else if lowerComm.contains("claude") || lowerComm.contains("opencode") || lowerComm.contains("hermes") || lowerComm.contains("codex") || lowerComm.contains("aider") {
+            } else if lowerComm.contains("claude") || lowerComm.contains("opencode") || lowerComm.contains("hermes") || lowerComm.contains("codex") || lowerComm.contains("aider") || lowerComm.contains("dsh") || lowerComm.contains("deepseek") || lowerComm.contains("harness") {
+                if lowerComm.contains("dsh") || lowerComm.contains("deepseek") || lowerComm.contains("harness") {
+                    appName = "DeepSeek Harness (dsh)"
+                } else if lowerComm.contains("hermes") {
+                    appName = "Hermes Agent"
+                }
                 category = .codingAgent
             } else if lowerName.contains("chat") || lowerName.contains("webui") || lowerName.contains("lmstudio") || lowerName.contains("ollama") || lowerName.contains("nextchat") {
                 category = .chatbot
@@ -2276,4 +2426,62 @@ public class SplashService: ObservableObject {
         self.connectedApps.removeAll(where: { $0.pid == app.pid })
         return true
     }
+    
+    /// Libera la memoria del servidor de inmediato usando el endpoint nativo POST /v1/memory/release (Splash 1.3.2+)
+    /// o deteniendo el servidor si no está respondiendo.
+    public func releaseMemoryNow() {
+        guard isRunning else { return }
+        memoryReliefNotice = "Memoria liberada manualmente por el usuario."
+        
+        let port = activePort
+        Task {
+            guard let url = URL(string: "http://127.0.0.1:\(port)/v1/memory/release") else {
+                await MainActor.run { self.stopServer() }
+                return
+            }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.timeoutInterval = 2.0
+            
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    await MainActor.run {
+                        self.memoryReliefNotice = "Pesos del modelo liberados de la memoria unificada (Caché preservada en Splash 1.3.2)."
+                    }
+                    return
+                }
+            } catch {
+                // Fallback a detención segura si el servidor no soporta el endpoint nativo
+            }
+            
+            await MainActor.run {
+                self.stopServer()
+            }
+        }
+    }
 }
+
+// MARK: - Centinela de Presión de Memoria del Kernel de macOS
+extension SplashService: SystemMemoryPressureSentinelDelegate {
+    public func memoryPressureDidChange(to level: SystemMemoryPressureLevel) {
+        self.systemMemoryPressure = level
+        
+        guard autoReleaseOnMemoryPressure else { return }
+        
+        if level == .critical && isRunning {
+            let queued = status?.scheduler?.queued ?? 0
+            let prefilling = status?.scheduler?.prefilling ?? 0
+            let decoding = status?.scheduler?.decoding ?? 0
+            let isBusy = (queued + prefilling + decoding) > 0
+            if !isBusy {
+                print("⚠️ [SplashService] Presión de memoria del sistema CRÍTICA detectada y servidor inactivo. Liberando memoria...")
+                self.memoryReliefNotice = "El motor Splash fue puesto en reposo para proteger la memoria del sistema macOS."
+                self.stopServer()
+            } else {
+                print("⚠️ [SplashService] Presión de memoria CRÍTICA detectada, pero hay operaciones en curso (prefilling: \(prefilling), decoding: \(decoding)).")
+            }
+        }
+    }
+}
+

@@ -11,6 +11,7 @@ final class AgentLaunchTests: XCTestCase {
         XCTAssertTrue(SplashService.supportedAgents.contains("hermes"))
         XCTAssertTrue(SplashService.supportedAgents.contains("chatgpt"), "supportedAgents debe incluir 'chatgpt'")
         XCTAssertTrue(SplashService.supportedAgents.contains("pi"), "supportedAgents debe incluir 'pi' (Splash 1.3.1)")
+        XCTAssertTrue(SplashService.supportedAgents.contains("dsh"), "supportedAgents debe incluir 'dsh' (DeepSeek Harness)")
     }
     
     @MainActor
@@ -35,6 +36,13 @@ final class AgentLaunchTests: XCTestCase {
     }
     
     @MainActor
+    func testAgentInstallURLForDeepSeekHarness() {
+        let service = SplashService()
+        let url = service.agentInstallURL(agent: "dsh")
+        XCTAssertEqual(url.absoluteString, "https://github.com/deepseek-ai/deepseek-harness")
+    }
+    
+    @MainActor
     func testIsAgentInstalledDoesNotCrashForClaudeCowork() {
         let service = SplashService()
         // No debe lanzar excepciones ni provocar cuelgues
@@ -45,5 +53,11 @@ final class AgentLaunchTests: XCTestCase {
     func testIsAgentInstalledDoesNotCrashForChatGPT() {
         let service = SplashService()
         _ = service.isAgentInstalled(agent: "chatgpt")
+    }
+    
+    @MainActor
+    func testIsAgentInstalledDoesNotCrashForDeepSeekHarness() {
+        let service = SplashService()
+        _ = service.isAgentInstalled(agent: "dsh")
     }
 }

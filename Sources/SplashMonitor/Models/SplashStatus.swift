@@ -141,6 +141,7 @@ public struct CacheMetrics: Codable {
     public let hitRate: Double?
     public let reusedTokens: Int64?
     public let kvHitTokens: Int64?
+    public let deduplicatedTokens: Int64?
     
     enum CodingKeys: String, CodingKey {
         case lookups, hits
@@ -148,6 +149,7 @@ public struct CacheMetrics: Codable {
         case hitRate = "hit_rate"
         case reusedTokens = "reused_tokens"
         case kvHitTokens = "kv_hit_tokens"
+        case deduplicatedTokens = "deduplicated_tokens"
     }
 }
 
@@ -253,7 +255,9 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
     
     public var isOfficial: Bool {
         if id.hasSuffix("-Splash") { return false }
-        return id.hasPrefix("mlx-community/Qwen3.8-27B") || id.hasPrefix("mlx-community/Qwen3.6-35B")
+        return id.hasPrefix("mlx-community/Qwen3.8-27B")
+            || id.hasPrefix("mlx-community/Qwen3.6-35B")
+            || id.hasPrefix("nvidia/Qwen3.8-27B")
     }
     
     public var displayName: String {
