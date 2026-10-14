@@ -27,7 +27,7 @@
 
 <div align="center">
   <img src="screenshots/module-server.png" width="760" alt="Splash Monitor Server and Agents Launcher" />
-  <p><b>🕹️ Servidor de Inferencia Local y Lanzadores de Agentes (Claude Cowork, Claude Code, OpenCode, Codex, Hermes)</b></p>
+  <p><b>🕹️ Servidor de Inferencia Local y Lanzadores de Agentes (Claude Cowork, Claude Code, OpenCode, Codex, Hermes, Pi, DeepSeek Harness)</b></p>
 </div>
 
 <br/>
@@ -79,7 +79,8 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 #### 💾 Monitor de Memoria Unified Metal
 - Barra de uso de memoria en tiempo real (ej. `23.7 GB / 55.6 GB`)
 - Detección automática del procesador Apple Silicon y cores GPU
-- Indicador de presión de memoria del sistema y estado de pesos en reposo
+- **Centinela de Presión de Memoria del Sistema** (`dispatch_source_t`) con alertas (`Normal`, `Warning`, `Critical`) y purga bajo demanda (`POST /v1/memory/release`)
+- Indicador de estado de pesos en reposo (`weights.released`) y ahorro de RAM
 
 </td>
 </tr>
@@ -87,9 +88,11 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 <td width="50%" valign="top">
 
 #### 📦 Gestor de Modelos
-- Catálogo de modelos locales instalados con espacio en disco
-- Explorador del catálogo en vivo de [Hugging Face](https://huggingface.co/incoai) y `mlx-community`
-- Instalación de modelos con un clic y salida de terminal en vivo
+- Catálogo de modelos locales instalados con cálculo de espacio en disco
+- Explorador del catálogo en vivo de [Hugging Face](https://huggingface.co/incoai), `mlx-community` y modelos oficiales **NVIDIA (NVFP4 / FP8)**
+- Telemetría en vivo de velocidad de descarga (`MB/s`), fases y barra de progreso continua
+- Detección y asistencia explicativa para repositorios protegidos (*403 Gated Models*)
+- Soporte para variantes GGUF y modo `--language-only`
 
 </td>
 <td width="50%" valign="top">
@@ -97,7 +100,8 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 #### 🕹️ Control del Servidor
 - Selector de modelo interactivo con cambio en caliente
 - Iniciar / detener el servidor en un clic
-- Lanzadores de agentes: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**, **Pi Agent** (`pi.dev`)
+- Lanzadores de agentes: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**, **Pi Agent** (`pi.dev`) y **DeepSeek Harness** (`dsh`)
+- Opciones avanzadas Splash 1.3.2: formato de estado GDN (`--state-format bf16`), presupuesto de razonamiento (`--thinking-token-budget`), caché SSD persistente (`--persistent-cache`)
 - Selección de puerto, enlace de red LAN (0.0.0.0 / 127.0.0.1), dominios o hosts permitidos (`--allowed-host`), límite de contexto (`--max-context`) y banderas CLI personalizadas
 - Copia de endpoint compatible con OpenAI
 
@@ -115,9 +119,9 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 <td width="50%" valign="top">
 
 #### 🍎 Experiencia Nativa de macOS
-- **Menu bar extra** con 4 modos de visualización
+- **Menu bar extra** con 4 modos de visualización y purga de memoria en 1 clic
 - Icono 3D gota líquida con transparencia alpha completa
-- `NavigationSplitView` con 6 secciones en la barra lateral
+- `NavigationSplitView` con **8 secciones** en la barra lateral
 - Compatibilidad con macOS 13.0+ en Apple Silicon
 
 </td>
@@ -132,21 +136,21 @@ Cada módulo de **Splash Monitor** está optimizado para la experiencia nativa d
 
 <div align="center">
 
-#### 1. 🕹️ Servidor y Lanzadores de Agentes (con Claude Cowork)
+#### 1. 🕹️ Servidor y Lanzadores de Agentes (con Claude Cowork y DeepSeek Harness)
 <img src="screenshots/module-server.png" width="850" alt="Servidor y Agentes de Código" />
-<p><b>Módulo de Control del Servidor:</b> Inicia y detiene el servidor Splash en un solo clic, cambia el modelo en caliente, configura el puerto y lanza agentes autónomos: <b>Claude Cowork</b> (activación de app nativa con aliases para evitar errores 404), <b>Claude Code CLI</b>, <b>OpenCode</b>, <b>Codex</b> y <b>Hermes</b>.</p>
+<p><b>Módulo de Control del Servidor:</b> Inicia y detiene el servidor Splash en un solo clic, cambia el modelo en caliente, configura el puerto, estado recurrente GDN en BF16 (-50% RAM), presupuesto de tokens de razonamiento, caché SSD persistente y lanza agentes autónomos: <b>Claude Cowork</b> (activación de app nativa con aliases para evitar errores 404), <b>Claude Code CLI</b>, <b>OpenCode</b>, <b>Codex</b>, <b>Hermes</b>, <b>Pi Agent</b> y <b>DeepSeek Harness (`dsh`)</b>.</p>
 
 <br/>
 
 #### 2. 📊 Dashboard de Tokens y Rendimiento Metal
 <img src="screenshots/module-dashboard.png" width="850" alt="Dashboard de Tokens y Rendimiento Metal" />
-<p><b>Módulo de Rendimiento en Tiempo Real:</b> Monitorea velocidades de generación de tokens (DECODE y PREFILL en tok/s), ratio de acierto y reutilización de KV Cache, aceptación especulativa DFlash 2, latencias TTFT/ITL y uso de memoria unificada Metal (M3/M4/M5).</p>
+<p><b>Módulo de Rendimiento en Tiempo Real:</b> Monitorea velocidades de generación de tokens (DECODE y PREFILL en tok/s), ratio de acierto y reutilización de KV Cache, deduplicación de tokens, aceptación especulativa DFlash 2, latencias TTFT/ITL y uso de memoria unificada Metal (M3/M4/M5).</p>
 
 <br/>
 
 #### 3. 🔌 Aplicaciones y Clientes Conectados
 <img src="screenshots/module-connectedApps.png" width="850" alt="Apps Conectadas y Clientes Activos" />
-<p><b>Módulo de Clientes Conectados:</b> Inspección automática de conexiones TCP activas contra el puerto de inferencia, reconociendo clientes como <b>Claude Desktop / Cowork</b>, Cursor IDE, VS Code y Chatbots con sus íconos nativos y estado de transmisión.</p>
+<p><b>Módulo de Clientes Conectados:</b> Inspección automática de conexiones TCP activas contra el puerto de inferencia, reconociendo clientes como <b>Claude Desktop / Cowork</b>, <b>DeepSeek Harness</b>, Cursor IDE, VS Code y Chatbots con sus íconos nativos y estado de transmisión.</p>
 
 <br/>
 
@@ -158,7 +162,7 @@ Cada módulo de **Splash Monitor** está optimizado para la experiencia nativa d
 
 #### 5. 📦 Gestor de Modelos y Telemetría de Descargas
 <img src="screenshots/module-models.png" width="850" alt="Gestor de Modelos de Hugging Face" />
-<p><b>Módulo de Modelos:</b> Control de modelos locales en disco con espacio utilizado, cambio en caliente y exploración del catálogo de Hugging Face con soporte para variantes GGUF y modo <code>--language-only</code> para modelos de código y texto.</p>
+<p><b>Módulo de Modelos:</b> Control de modelos locales en disco con espacio utilizado, cambio en caliente y exploración del catálogo de Hugging Face con soporte para cuantizaciones oficiales NVIDIA (NVFP4 / FP8), variantes GGUF, guía asistida para repositorios protegidos (403 Gated) y modo <code>--language-only</code> para modelos de código y texto.</p>
 
 <img src="screenshots/module-modelDownload.png" width="850" alt="Telemetría de Descarga en Vivo" />
 <p><b>Telemetría de Descarga en Tiempo Real:</b> Medición en vivo de la tasa de transferencia en MB/s (<code>⚡️ 34.8 MB/s</code>), barra de progreso continuo, contador exacto de GB descargados frente al total esperado y detección de fases (acelerador especulativo DFlash2, pesos del modelo y ensamblado Splash).</p>
@@ -300,9 +304,10 @@ open "Splash Monitor.app"
 #### 🧪 Pruebas
 
 ```bash
-swift test                                   # 64 pruebas
+swift test                                   # 113 pruebas (100% de éxito)
 swift test --filter PollingTests             # solo una suite
-swift test --filter VersionTests/testPatchTenIsNewerThanPatchTwo   # una prueba
+swift test --filter ServerOptionsTests       # opciones CLI y Splash 1.3.2
+swift test --filter SystemMemoryPressureTests # centinela de memoria macOS
 ```
 
 Las pruebas son herméticas por diseño: usan un transporte de estado simulado, un
@@ -321,6 +326,11 @@ ni escribe en tu `~/.zshrc`.** Cubren, entre otras cosas:
 | `PollingTests` | Que el panel siga detectando el motor tras detenerlo o arrancarlo tarde |
 | `ClientTerminationPolicyTests` | Que no se termine un PID reciclado ni la propia app |
 | `StatusModelTests` | Contrato real de `/status` del motor y tolerancia a claves nuevas |
+| `ServerCLIValidatorTests` | Validación y sanitización estricta de banderas CLI, estados GDN y presupuestos |
+| `ServerOptionsTests` | Generación de comandos con host LAN, variantes, estado GDN BF16 y flags 1.3.2 |
+| `AgentLaunchTests` | Detección e integración de lanzadores para Claude Cowork, Pi, Hermes y DeepSeek Harness |
+| `SystemMemoryPressureTests` | Notificaciones del centinela de memoria del kernel macOS y purga bajo demanda |
+| `ModelDiagnosticTests` | Batería de validación de endpoints y benchmarking de inferencia Metal |
 
 ---
 
@@ -339,7 +349,8 @@ SplashMonitor/
 │   └── AppIcon.iconset/             # Assets de icono estándar y Retina
 ├── scripts/
 │   ├── build_app.sh                 # Build Release + empaquetado .app
-│   └── create_dmg.sh                # Empaquetado DMG vía hdiutil
+│   ├── create_dmg.sh                # Empaquetado DMG vía hdiutil + SHA256SUMS
+│   └── install.sh                   # Instalador en 1 línea con verificación SHA-256
 └── Sources/
     └── SplashMonitor/
         ├── SplashMonitorApp.swift   # Entry point (WindowGroup + MenuBarExtra)
@@ -347,13 +358,22 @@ SplashMonitor/
         │   └── SplashStatus.swift   # Structs Codable para /status y HF API
         ├── Services/
         │   ├── SplashService.swift  # Singleton (polling, procesos, servidor)
-        │   └── LocalizationService.swift # Detección dinámica del idioma
+        │   ├── LocalizationService.swift # Detección dinámica del idioma
+        │   ├── SystemMemoryPressureSentinel.swift # Centinela de presión de RAM macOS
+        │   ├── ServerCLIValidator.swift  # Sanitización y validación de flags CLI
+        │   ├── ModelIDValidator.swift    # Validación estricta de IDs de modelos
+        │   ├── ModelBenchmarkRunner.swift # Benchmark de tokens y aceleración KV
+        │   └── Version.swift        # Fuente única de versión semántica (P-15)
         └── Views/
-            ├── MainWindowView.swift # NavigationSplitView de escritorio
+            ├── MainWindowView.swift # NavigationSplitView de escritorio (8 módulos)
             ├── MenuBarView.swift    # Popover interactivo del menú superior
             ├── TokenMetricsView.swift # Sparkline, tarjetas de velocidad, gauge
-            ├── ModelManagerView.swift # Modelos locales + catálogo HF
-            ├── ServerControlView.swift # Selector, controles, lanzadores
+            ├── ModelManagerView.swift # Modelos locales + catálogo HF + telemetría
+            ├── ServerControlView.swift # Selector, controles, lanzadores, flags 1.3.2
+            ├── ConnectedAppsView.swift # Apps conectadas + DeepSeek Harness
+            ├── ConnectedAppsGuideView.swift # Guía de integración de clientes
+            ├── ModelTestingView.swift  # Smoke testing + benchmarking + playground
+            ├── SettingsView.swift   # Ajustes de idioma, menú y sondeo
             ├── AboutView.swift      # Créditos e info de versión
             ├── AppIconView.swift    # Renderizado del icono de la app
             └── DominicanEmblem.swift # Emblema patrio dominicano
@@ -489,8 +509,9 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 
 #### 💾 Metal Unified Memory Gauge
 - Real-time memory usage bar (e.g. `23.7 GB / 55.6 GB`)
-- Automatic Apple Silicon GPU core detection
-- System memory pressure and weights idle status indicator
+- Automatic Apple Silicon chip and GPU core detection
+- **macOS Kernel Memory Pressure Sentinel** (`dispatch_source_t`) with preemptive alerts (`Normal`, `Warning`, `Critical`) and on-demand flush (`POST /v1/memory/release`)
+- Idle weights status indicator (`weights.released`) and RAM savings
 
 </td>
 </tr>
@@ -498,9 +519,11 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 <td width="50%" valign="top">
 
 #### 📦 Model Manager
-- Local installed models catalog with disk usage
-- Live [Hugging Face](https://huggingface.co/incoai) and `mlx-community` catalog explorer
-- One-click model installation with live terminal output
+- Local installed models catalog with disk footprint calculation
+- Live [Hugging Face](https://huggingface.co/incoai), `mlx-community`, and official **NVIDIA (NVFP4 / FP8)** catalog explorer
+- Real-time download transfer speed telemetry (`MB/s`), phases, and continuous progress bar
+- Explanatory guidance for protected repositories (*403 Gated Models*)
+- Support for quantized GGUF variants and `--language-only` mode
 
 </td>
 <td width="50%" valign="top">
@@ -508,7 +531,8 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 #### 🕹️ Server Controls
 - Interactive model selector with hot-swapping
 - Start / stop the server with one click
-- Code agent launchers: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**, **Pi Agent** (`pi.dev`)
+- Code agent launchers: **Claude Code**, **Claude Cowork**, **OpenCode**, **Codex**, **Hermes**, **Pi Agent** (`pi.dev`), and **DeepSeek Harness** (`dsh`)
+- Advanced Splash 1.3.2 options: GDN state format (`--state-format bf16`), reasoning token budget (`--thinking-token-budget`), persistent SSD prefix cache (`--persistent-cache`)
 - Port selection, LAN network bind (0.0.0.0 / 127.0.0.1), allowed domains or hosts (`--allowed-host`), context limit (`--max-context`), and custom CLI flags
 - One-click OpenAI-compatible API endpoint copying
 
@@ -526,9 +550,9 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 <td width="50%" valign="top">
 
 #### 🍎 Native macOS Experience
-- **Menu bar extra** with 4 display modes
+- **Menu bar extra** with 4 display modes and 1-click memory flush
 - 3D liquid droplet icon with full alpha transparency
-- `NavigationSplitView` with 6 sidebar sections
+- `NavigationSplitView` with **8 sidebar sections**
 - macOS 13.0+ compatibility on Apple Silicon
 
 </td>
@@ -543,21 +567,21 @@ Every module of **Splash Monitor** is designed and optimized for a native Apple 
 
 <div align="center">
 
-#### 1. 🕹️ Server Controls & Agent Launchers (with Claude Cowork)
+#### 1. 🕹️ Server Controls & Agent Launchers (with Claude Cowork & DeepSeek Harness)
 <img src="screenshots/module-server.png" width="850" alt="Server Controls and Code Agent Launchers" />
-<p><b>Server Control Module:</b> Start and stop the Splash server with one click, hot-swap models without restarting, configure custom listening ports, and launch autonomous coding agents: <b>Claude Cowork</b> (native AppKit launch with model aliases to prevent 404 errors), <b>Claude Code CLI</b>, <b>OpenCode</b>, <b>Codex</b>, and <b>Hermes</b>.</p>
+<p><b>Server Control Module:</b> Start and stop the Splash server with one click, hot-swap models without restarting, configure custom ports, GDN recurrent state format in BF16 (-50% RAM), reasoning token budget, persistent SSD prefix cache, and launch autonomous coding agents: <b>Claude Cowork</b> (native AppKit launch with model aliases to prevent 404 errors), <b>Claude Code CLI</b>, <b>OpenCode</b>, <b>Codex</b>, <b>Hermes</b>, <b>Pi Agent</b>, and <b>DeepSeek Harness (`dsh`)</b>.</p>
 
 <br/>
 
 #### 2. 📊 Real-Time Token & Metal Performance Dashboard
 <img src="screenshots/module-dashboard.png" width="850" alt="Real-Time Token & Metal Performance Dashboard" />
-<p><b>Real-Time Performance Module:</b> Live token generation speed telemetry (DECODE and PREFILL in tok/s), KV Cache hit ratio and token reuse, DFlash 2 speculative decoding acceptance rates, TTFT/ITL latencies, and Apple Silicon Metal unified memory usage (M3/M4/M5).</p>
+<p><b>Real-Time Performance Module:</b> Live token generation speed telemetry (DECODE and PREFILL in tok/s), KV Cache hit ratio and token reuse, token deduplication metrics, DFlash 2 speculative decoding acceptance rates, TTFT/ITL latencies, and Apple Silicon Metal unified memory usage (M3/M4/M5).</p>
 
 <br/>
 
 #### 3. 🔌 Connected Applications & Active TCP Clients
 <img src="screenshots/module-connectedApps.png" width="850" alt="Connected Applications and Active Clients" />
-<p><b>Connected Clients Module:</b> Automatic inspection of active TCP sockets against the inference port, recognizing clients such as <b>Claude Desktop / Cowork</b>, Cursor IDE, VS Code, and Chatbots with their native macOS application icons and stream state.</p>
+<p><b>Connected Clients Module:</b> Automatic inspection of active TCP sockets against the inference port, recognizing clients such as <b>Claude Desktop / Cowork</b>, <b>DeepSeek Harness</b>, Cursor IDE, VS Code, and Chatbots with their native macOS application icons and stream state.</p>
 
 <br/>
 
@@ -569,7 +593,7 @@ Every module of **Splash Monitor** is designed and optimized for a native Apple 
 
 #### 5. 📦 Hugging Face Model Manager & Download Telemetry
 <img src="screenshots/module-models.png" width="850" alt="Hugging Face Local Model Manager" />
-<p><b>Model Management Module:</b> Disk footprint inspection for local models, hot-swap deployment, and Hugging Face catalog exploration with support for GGUF variants and <code>--language-only</code> mode for Coder/text models.</p>
+<p><b>Model Management Module:</b> Disk footprint inspection for local models, hot-swap deployment, and Hugging Face catalog exploration with support for official NVIDIA quantized models (NVFP4 / FP8), GGUF variants, assisted guidance for protected repositories (403 Gated Models), and <code>--language-only</code> mode for Coder/text models.</p>
 
 <img src="screenshots/module-modelDownload.png" width="850" alt="Live Download Telemetry" />
 <p><b>Real-Time Download Telemetry:</b> Live transfer speed measurement in MB/s (<code>⚡️ 34.8 MB/s</code>), continuous progress bar, exact GB downloaded counter vs expected total, and phase detection (DFlash2 speculative accelerator, model weights, and Splash engine assembly).</p>
@@ -691,7 +715,7 @@ curl -fsSL https://raw.githubusercontent.com/hometrix/SplashMonitor/main/scripts
 gh repo clone hometrix/SplashMonitor
 cd SplashMonitor
 
-# 2. Run the test suite (64 tests, no network, no real engine)
+# 2. Run the test suite (113 tests, no network, no real engine)
 swift test
 
 # 3. Build the release binary and bundle .app
@@ -712,14 +736,32 @@ open "Splash Monitor.app"
 #### 🧪 Tests
 
 ```bash
-swift test                                   # 64 tests
+swift test                                   # 113 automated tests (100% pass)
 swift test --filter PollingTests             # one suite
-swift test --filter VersionTests/testPatchTenIsNewerThanPatchTwo   # one test
+swift test --filter ServerOptionsTests       # CLI options and Splash 1.3.2 flags
+swift test --filter SystemMemoryPressureTests # macOS kernel memory sentinel
 ```
 
 Tests are hermetic by design: a stub status transport, a recording process terminator,
 a private temp directory and `bootstrapNetwork: false` (no Hugging Face or GitHub
 traffic). **No test signals a real process or writes to your `~/.zshrc`.**
+
+| Suite | Purpose |
+|-------|---------|
+| `VersionTests` | Semantic version ordering and single-source versioning consistency |
+| `ModelIDValidatorTests` | Rejection of model identifiers with shell injection or traversal |
+| `ProcessIntrospectionTests` | Guarantees client processes are never signaled, only engine listeners |
+| `ServeLockTests` | Parsing `serve-<port>.lock`, empty, corrupted, and orphaned locks |
+| `ShellEnvironmentTests` | Environment sync, idempotent `~/.zshrc` mutation and revert |
+| `ModelSizeCacheTests` | Avoids re-scanning model directory trees on every polling tick |
+| `PollingTests` | Guarantees the dashboard re-detects the engine after restart |
+| `ClientTerminationPolicyTests` | Prevents terminating recycled PIDs or the monitor itself |
+| `StatusModelTests` | Engine `/status` contract conformity and forward-compatibility |
+| `ServerCLIValidatorTests` | Strict validation of CLI arguments, GDN formats, and token budgets |
+| `ServerOptionsTests` | Command generation with LAN host, variants, GDN BF16, and 1.3.2 flags |
+| `AgentLaunchTests` | Launchers and environment integration for Claude Cowork, Pi, Hermes, and DeepSeek Harness |
+| `SystemMemoryPressureTests` | Kernel memory pressure notifications and on-demand purge |
+| `ModelDiagnosticTests` | Comprehensive endpoint verification and Metal KV acceleration benchmark |
 
 ---
 
@@ -738,7 +780,8 @@ SplashMonitor/
 │   └── AppIcon.iconset/             # Standard & Retina icon assets
 ├── scripts/
 │   ├── build_app.sh                 # Release build + .app bundling
-│   └── create_dmg.sh                # DMG packaging via hdiutil
+│   ├── create_dmg.sh                # DMG packaging via hdiutil + SHA256SUMS
+│   └── install.sh                   # 1-line installer with SHA-256 verification
 └── Sources/
     └── SplashMonitor/
         ├── SplashMonitorApp.swift   # Entry point (WindowGroup + MenuBarExtra)
@@ -746,13 +789,22 @@ SplashMonitor/
         │   └── SplashStatus.swift   # Codable structs for /status & HF API
         ├── Services/
         │   ├── SplashService.swift  # Singleton (polling, processes, server)
-        │   └── LocalizationService.swift # Dynamic OS language detection
+        │   ├── LocalizationService.swift # Dynamic OS language detection
+        │   ├── SystemMemoryPressureSentinel.swift # macOS kernel RAM pressure sentinel
+        │   ├── ServerCLIValidator.swift  # CLI flags sanitization and validation
+        │   ├── ModelIDValidator.swift    # Strict model identifier validator
+        │   ├── ModelBenchmarkRunner.swift # Token benchmark and KV acceleration
+        │   └── Version.swift        # Single source of truth for version (P-15)
         └── Views/
-            ├── MainWindowView.swift # NavigationSplitView desktop window
+            ├── MainWindowView.swift # NavigationSplitView desktop window (8 modules)
             ├── MenuBarView.swift    # Interactive menu bar popover
             ├── TokenMetricsView.swift # Sparkline, speed cards, memory gauge
-            ├── ModelManagerView.swift # Local models + HF catalog explorer
-            ├── ServerControlView.swift # Selector, controls, agent launchers
+            ├── ModelManagerView.swift # Local models + HF catalog + telemetry
+            ├── ServerControlView.swift # Selector, controls, agent launchers, 1.3.2 flags
+            ├── ConnectedAppsView.swift # Connected apps + DeepSeek Harness
+            ├── ConnectedAppsGuideView.swift # Client integration guide
+            ├── ModelTestingView.swift  # Smoke testing + benchmarking + playground
+            ├── SettingsView.swift   # Language, menu bar, and polling preferences
             ├── AboutView.swift      # Author credits and version info
             ├── AppIconView.swift    # App icon rendering component
             └── DominicanEmblem.swift # Dominican Republic national emblem
