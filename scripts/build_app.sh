@@ -102,4 +102,17 @@ codesign --force --sign - "$APP_DIR"
 codesign --verify --strict --verbose=2 "$APP_DIR"
 
 echo "✅ App compilada con éxito en: $APP_DIR"
-echo "🚀 Puedes iniciarla ejecutando: open '$APP_DIR'"
+
+if [[ "${1:-}" == "--install-local" || "${1:-}" == "-i" ]]; then
+    echo "📲 Instalando en /Applications/$APP_NAME.app..."
+    rm -rf "/Applications/$APP_NAME.app"
+    cp -R "$APP_DIR" "/Applications/$APP_NAME.app"
+    if [ -f "$DIR/scripts/apply_local_profile.sh" ]; then
+        "$DIR/scripts/apply_local_profile.sh"
+    fi
+    echo "🎉 Instalación local completada con perfil de alto rendimiento M4 Max en /Applications."
+    echo "🚀 Puedes iniciarla ejecutando: open '/Applications/$APP_NAME.app'"
+else
+    echo "🚀 Puedes iniciarla ejecutando: open '$APP_DIR'"
+    echo "💡 Para instalar en /Applications con tu perfil M4 Max: ./scripts/build_app.sh --install-local"
+fi
