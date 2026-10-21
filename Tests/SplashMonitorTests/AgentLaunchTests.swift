@@ -60,4 +60,12 @@ final class AgentLaunchTests: XCTestCase {
         let service = SplashService()
         _ = service.isAgentInstalled(agent: "dsh")
     }
+    
+    @MainActor
+    func testIsAgentInstalledDetectsDeepSeekHarnessAppIfPresent() {
+        let service = SplashService()
+        if FileManager.default.fileExists(atPath: "/Applications/DeepSeek Harness.app") {
+            XCTAssertTrue(service.isAgentInstalled(agent: "dsh"), "Debe detectar /Applications/DeepSeek Harness.app cuando está instalada")
+        }
+    }
 }

@@ -5,6 +5,22 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.9-beta] - 2026-10-21
+
+Versión mayor de compatibilidad con **Splash 1.4.0**, soporte para arquitectura **Qwen3.8-Flash-Next**, contextos masivos de hasta **1M tokens (YaRN)**, streaming de expertos MoE desde SSD (`--expert-memory`), verificación especulativa de filas (`--verify-rows`) y nuevas métricas de telemetría de streaming y derrame KV.
+
+### 🚀 Novedades y Características
+
+- **Compatibilidad Integral con Splash 1.4.0:**
+  - **Contextos Extremos hasta 1M de Tokens (Static YaRN):** Selector de contexto máximo ampliado con soporte nativo para `512K` y `1M tokens` (`--max-context 1M`), permitiendo analizar bases de código completas en memoria local.
+  - **Streaming de Expertos MoE a SSD (`--expert-memory`):** Nuevo control para dosificar el presupuesto de RAM de expertos MoE (`Auto`, `off`, `4G`, `8G`, `12G`, `16G`, `24G`), manteniendo capas base y recurrentes en memoria unificada y descargando expertos inactivos en SSD.
+  - **Verificación Especulativa de Filas MoE (`--verify-rows`):** Selector interactivo en la barra de control y configuración avanzada para verificar filas de borradores especulativos (`auto` para aceleración de +13% a +42% en MoE, o `all` para reproducibilidad determinista).
+  - **Soporte para Arquitectura Qwen3.8-Flash-Next:** Detección oficial y soporte directo en el Gestor de Modelos para la nueva generación Flash-Next (`ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0`), aprovechando atención dispersa QSA y emparejamiento automático de drafts DFlash2.
+  - **Telemetría y Estado de Streaming en `/status`:** Estructuras de decodificación para métricas de streaming (`expert_memory_bytes`, `ple_memory_bytes`, `active_streams`) y gestión de derrame de caché KV (`spilled_tokens`, `spilled_bytes`, `hot_tokens`).
+  - **Actualización del Perfil Óptimo para Apple Silicon:** El botón "Restaurar Configuración Óptima" ahora también restablece `--verify-rows auto` y `--expert-memory auto` garantizando el máximo rendimiento en chips M-Series (M1 a M5 Max).
+
+---
+
 ## [1.0.8-beta] - 2026-10-14
 
 Versión mayor de compatibilidad con **Splash 1.3.2**, optimización de memoria recurrente GDN (BF16), liberación dinámica de RAM bajo presión (`POST /v1/memory/release`), control granular de *Thinking Token Budget*, persistencia de caché SSD y soporte de modelos NVIDIA NVFP4/FP8 y DeepSeek Harness.

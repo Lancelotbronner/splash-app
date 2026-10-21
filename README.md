@@ -17,8 +17,8 @@
 [![macOS 13.0+](https://img.shields.io/badge/macOS-13.0%2B%20%7C%20Apple%20Silicon-black?style=for-the-badge&logo=apple)](https://developer.apple.com/macos/)
 [![Swift 6](https://img.shields.io/badge/Swift-6.0-F05138?style=for-the-badge&logo=swift&logoColor=white)](https://www.swift.org/)
 [![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M3%20%7C%20M4%20%7C%20M5-0071e3?style=for-the-badge)](https://www.apple.com/silicon/)
-[![Version](https://img.shields.io/badge/Version-1.0.8--beta-orange?style=for-the-badge)](https://github.com/hometrix/SplashMonitor/releases/tag/v1.0.8-beta)
-[![Download DMG](https://img.shields.io/badge/Download-DMG%20Installer-success?style=for-the-badge&logo=apple)](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.8-beta/SplashMonitor-1.0.8-beta.dmg)
+[![Version](https://img.shields.io/badge/Version-1.0.9--beta-orange?style=for-the-badge)](https://github.com/hometrix/SplashMonitor/releases/tag/v1.0.9-beta)
+[![Download DMG](https://img.shields.io/badge/Download-DMG%20Installer-success?style=for-the-badge&logo=apple)](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.9-beta/SplashMonitor-1.0.9-beta.dmg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-JMGREP%20Developers%20%7C%20Joan%20Gregorio%20P%C3%A9rez-00205B?style=for-the-badge)](#-autor--author)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-yellow?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/hometrix9)
@@ -48,15 +48,15 @@ Hasta ahora, [Splash](https://inco.ai/blog/splash/) solo podía operarse desde l
 
 ---
 
-### 🚀 Novedades de la Versión 1.0.8-beta (Compatibilidad con Splash 1.3.2)
+### 🚀 Novedades de la Versión 1.0.9-beta (Compatibilidad con Splash 1.4.0)
 
-- ⚡️ **Compatibilidad Total con Splash 1.3.2**: Soporte de cuantizaciones MLX NVFP4 y FP8 (`nvidia/Qwen3.8-27B-NVFP4`, `mlx-community/Qwen3.6-35B-A3B-nvfp4`).
-- 🧬 **Optimización de Estado Recurrente GDN (`--state-format bf16`)**: Reduce a la mitad el almacenamiento de memoria RAM para estados recurrentes (ej. Qwen 27B pasa de 153 MB a 81 MB, un 47% menos de RAM por contexto).
-- 💾 **Caché SSD Persistente (`--persistent-cache`)**: Preserva la caché de prefijos entre reinicios del servidor sin requerir cuota fija.
-- 🧹 **Liberación Dinámica de RAM (`POST /v1/memory/release`)**: Descarga pesos del modelo en reposo sin perder la caché de prefijos en disco.
-- 🤔 **Control de Presupuesto de Razonamiento (`--thinking-token-budget`)**: Ajuste interactivo del límite de tokens para arquitecturas híbridas de pensamiento (`Auto`, `2K`, `4K`, `8K`, `16K`, `32K`, `Off`).
-- 🐉 **Integración con DeepSeek Harness (`dsh`)**: Lanzador nativo e integración con detección automática para el agente DeepSeek Harness.
-- 🛡️ **Centinela de Presión de Memoria del Sistema**: Notificaciones preventivas del kernel de macOS (`Normal`, `Warning`, `Critical`) con botón de purga rápida.
+- ⚡️ **Compatibilidad Total con Splash 1.4.0**: Soporte nativo para el motor Splash 1.4.0 en Apple Silicon.
+- 🧠 **Contexto Gigante hasta 1M Tokens (Static YaRN)**: Nuevo selector para `--max-context 512K` y `--max-context 1M`, permitiendo cargar repositorios enteros en contexto local sin OOM.
+- 💽 **Streaming de Expertos MoE a SSD (`--expert-memory`)**: Control de presupuesto de RAM de expertos (`Auto`, `off`, `4G`, `8G`, `12G`, `16G`, `24G`), dejando capas activas en memoria y transmitiendo el resto desde SSD.
+- 🎯 **Verificación Especulativa de Filas (`--verify-rows`)**: Modo interactivo para verificación de borradores especulativos en MoE (`auto` con +13% a +42% de ganancia en tok/s, o `all` para determinismo).
+- 🧬 **Soporte de Arquitectura Qwen3.8-Flash-Next**: Detección oficial y descargas optimizadas de modelos Flash-Next (`ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0`) con atención dispersa QSA y emparejamiento DFlash2.
+- 📊 **Telemetría de Streaming y Derrame KV en `/status`**: Monitoreo de memoria de expertos, streams activos y métricas de derrame de caché KV.
+- 🔄 **Restauración de Configuración Óptima Actualizada**: Restablece automáticamente `--verify-rows auto` y `--expert-memory auto`.
 
 ---
 
@@ -183,7 +183,7 @@ Cada módulo de **Splash Monitor** está optimizado para la experiencia nativa d
 
 #### 8. ℹ️ Acerca de Splash Monitor
 <img src="screenshots/module-about.png" width="850" alt="Acerca de Splash Monitor" />
-<p><b>Módulo Informativo:</b> Información de versión (v1.0.8-beta), arquitectura nativa en Swift 6 y Metal, licencia abierta MIT y créditos de autoría de Joan Gregorio Pérez (JMGREP Developers).</p>
+<p><b>Módulo Informativo:</b> Información de versión (v1.0.9-beta), arquitectura nativa en Swift 6 y Metal, licencia abierta MIT y créditos de autoría de Joan Gregorio Pérez (JMGREP Developers).</p>
 </div>
 
 ---
@@ -237,16 +237,16 @@ curl -fsSL https://raw.githubusercontent.com/hometrix/SplashMonitor/main/scripts
 > ⚡️ Este comando consulta la última publicación en GitHub, descarga el DMG oficial,
 > **verifica su suma SHA-256** contra el fichero `SHA256SUMS` publicado y aborta si no
 > coincide, lo monta, copia la app a `/Applications` y la abre automáticamente.
-> Fija una versión concreta con `SPLASH_MONITOR_TAG=v1.0.8-beta`.
+> Fija una versión concreta con `SPLASH_MONITOR_TAG=v1.0.9-beta`.
 
 ---
 
 #### Opción C — Descarga Manual del DMG
 
 1. **Descarga** el instalador oficial:
-   👉 [**SplashMonitor-1.0.8-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.8-beta/SplashMonitor-1.0.8-beta.dmg)
+   👉 [**SplashMonitor-1.0.9-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.9-beta/SplashMonitor-1.0.9-beta.dmg)
 
-   Y su suma de verificación: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.8-beta/SHA256SUMS)
+   Y su suma de verificación: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.9-beta/SHA256SUMS)
 
    ```bash
    shasum -a 256 -c SHA256SUMS   # debe imprimir "OK"
@@ -497,15 +497,15 @@ Until now, [Splash](https://inco.ai/blog/splash/) could only be operated from th
 
 ---
 
-### 🚀 What's New in Version 1.0.8-beta (Splash 1.3.2 Compatibility)
+### 🚀 What's New in Version 1.0.9-beta (Splash 1.4.0 Compatibility)
 
-- ⚡️ **Full Splash 1.3.2 Compatibility**: Support for MLX NVFP4 and FP8 quantized models (`nvidia/Qwen3.8-27B-NVFP4`, `mlx-community/Qwen3.6-35B-A3B-nvfp4`).
-- 🧬 **Recurrent GDN State Optimization (`--state-format bf16`)**: Cuts GDN state memory in half (e.g. Qwen 27B drops from 153 MB to 81 MB, -47% RAM per context).
-- 💾 **Persistent SSD Prefix Cache (`--persistent-cache`)**: Retains prompt prefix caches across server restarts without requiring a manual disk quota.
-- 🧹 **Dynamic Memory Release (`POST /v1/memory/release`)**: Frees idle model weights on demand while preserving the SSD prefix cache.
-- 🤔 **Thinking Token Budget Control (`--thinking-token-budget`)**: Interactive control over reasoning token budgets (`Auto`, `2K`, `4K`, `8K`, `16K`, `32K`, `Off`).
-- 🐉 **DeepSeek Harness (`dsh`) Agent Support**: One-click launch and configuration for the DeepSeek Harness coding agent.
-- 🛡️ **System Memory Pressure Sentinel**: Real-time macOS kernel dispatch notifications (`Normal`, `Warning`, `Critical`) with 1-click memory flush.
+- ⚡️ **Full Splash 1.4.0 Compatibility**: Native support for the Splash 1.4.0 inference engine on Apple Silicon.
+- 🧠 **Massive Context up to 1M Tokens (Static YaRN)**: New interactive picker options for `--max-context 512K` and `--max-context 1M`, enabling entire codebases to fit into local memory.
+- 💽 **MoE Expert SSD Streaming (`--expert-memory`)**: Configurable RAM budget for MoE experts (`Auto`, `off`, `4G`, `8G`, `12G`, `16G`, `24G`), keeping critical layers in unified memory while streaming dormant experts from SSD.
+- 🎯 **MoE Speculative Draft Verification (`--verify-rows`)**: Direct switch between `auto` mode (+13% to +42% throughput gain on MoE) and `all` mode (deterministic consistency).
+- 🧬 **Qwen3.8-Flash-Next Architecture**: First-class detection and model management for Flash-Next series (`ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0`) with QSA sparse attention and automatic DFlash2 draft selection.
+- 📊 **Streaming & KV Spill Telemetry in `/status`**: Parsed telemetry for expert memory usage, active streams, and spilled KV token tracking.
+- 🔄 **Updated Optimal Profile**: One-click "Restore Optimal Configuration" automatically aligns `--verify-rows auto` and `--expert-memory auto` for maximum throughput.
 
 ---
 
@@ -632,7 +632,7 @@ Every module of **Splash Monitor** is designed and optimized for a native Apple 
 
 #### 8. ℹ️ About Splash Monitor
 <img src="screenshots/module-about.png" width="850" alt="About Splash Monitor" />
-<p><b>About Module:</b> Version information (v1.0.8-beta), native Swift 6 and Metal architecture details, MIT open-source license, and author credits for Joan Gregorio Pérez (JMGREP Developers).</p>
+<p><b>About Module:</b> Version information (v1.0.9-beta), native Swift 6 and Metal architecture details, MIT open-source license, and author credits for Joan Gregorio Pérez (JMGREP Developers).</p>
 
 </div>
 
@@ -687,16 +687,16 @@ curl -fsSL https://raw.githubusercontent.com/hometrix/SplashMonitor/main/scripts
 > ⚡️ This script resolves the latest release, downloads the official DMG, **verifies its
 > SHA-256 checksum** against the published `SHA256SUMS` file (aborting on mismatch),
 > mounts it, installs to `/Applications`, and opens the app automatically.
-> Pin a specific version with `SPLASH_MONITOR_TAG=v1.0.8-beta`.
+> Pin a specific version with `SPLASH_MONITOR_TAG=v1.0.9-beta`.
 
 ---
 
 #### Option C — Manual DMG Download
 
 1. **Download** the official installer:
-   👉 [**SplashMonitor-1.0.8-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.8-beta/SplashMonitor-1.0.8-beta.dmg)
+   👉 [**SplashMonitor-1.0.9-beta.dmg**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.9-beta/SplashMonitor-1.0.9-beta.dmg)
 
-   And its checksum file: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.8-beta/SHA256SUMS)
+   And its checksum file: [**SHA256SUMS**](https://github.com/hometrix/SplashMonitor/releases/download/v1.0.9-beta/SHA256SUMS)
 
    ```bash
    shasum -a 256 -c SHA256SUMS   # must print "OK"

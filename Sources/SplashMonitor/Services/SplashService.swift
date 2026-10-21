@@ -97,6 +97,7 @@ public class SplashService: ObservableObject {
     @AppStorage("maxMemory") public var maxMemory: String = "auto"
     @AppStorage("autoReleaseOnMemoryPressure") public var autoReleaseOnMemoryPressure: Bool = true
     @AppStorage("allowedHosts") public var allowedHosts: String = ""
+    @AppStorage("allowedOrigins") public var allowedOrigins: String = "*"
     @AppStorage("languageOnly") public var languageOnly: Bool = false
     @AppStorage("customServerFlags") public var customServerFlags: String = ""
     
@@ -104,6 +105,60 @@ public class SplashService: ObservableObject {
     @AppStorage("stateFormat") public var stateFormat: String = "fp32" // "fp32" | "bf16"
     @AppStorage("thinkingTokenBudget") public var thinkingTokenBudget: String = "auto" // "auto", "2K", "4K", "8K", "16K", "32K", "off" (-1)
     @AppStorage("persistentCache") public var persistentCache: Bool = false
+    
+    // Splash 1.4.0+ Settings
+    @AppStorage("verifyRows") public var verifyRows: String = "auto" // "auto" | "all"
+    @AppStorage("expertMemory") public var expertMemory: String = "auto" // "auto", "off", "4G", "8G", "12G", "16G", "24G"
+    
+    // MARK: - Perfil de Configuración Óptima (Apple Silicon M4 Max / 64 GB)
+    
+    /// Restaura la configuración óptima de alto rendimiento para Apple Silicon M4 Max (64 GB de RAM)
+    /// alineada con scripts/apply_local_profile.sh.
+    public func restoreOptimalProfile() {
+        objectWillChange.send()
+        
+        // 1. Motor de Inferencia y Splash 1.3.2
+        self.stateFormat = "bf16"
+        self.thinkingTokenBudget = "8K"
+        self.persistentCache = true
+        self.maxContext = "128K"
+        self.idleRelease = "off"
+        self.languageOnly = true
+        self.maxMemory = "auto"
+        self.verifyRows = "auto"
+        self.expertMemory = "auto"
+        
+        // 2. Red, Puerto y Dominios
+        self.lastUsedPort = 8005
+        self.listenOnAllInterfaces = true
+        self.allowedHosts = "jmgrepdevsrl.duckdns.org"
+        self.allowedOrigins = "*"
+        
+        // 3. Monitor y Sistema
+        self.autoReleaseOnMemoryPressure = true
+        self.refreshInterval = 1.5
+        self.runInBackground = true
+        
+        // Persistir directamente en UserDefaults para sincronización con scripts y reinicios
+        let defaults = UserDefaults.standard
+        defaults.set("bf16", forKey: "stateFormat")
+        defaults.set("8K", forKey: "thinkingTokenBudget")
+        defaults.set(true, forKey: "persistentCache")
+        defaults.set("128K", forKey: "maxContext")
+        defaults.set("off", forKey: "idleRelease")
+        defaults.set(true, forKey: "languageOnly")
+        defaults.set("auto", forKey: "maxMemory")
+        defaults.set("auto", forKey: "verifyRows")
+        defaults.set("auto", forKey: "expertMemory")
+        defaults.set(8005, forKey: "lastUsedPort")
+        defaults.set(true, forKey: "listenOnAllInterfaces")
+        defaults.set("jmgrepdevsrl.duckdns.org", forKey: "allowedHosts")
+        defaults.set("*", forKey: "allowedOrigins")
+        defaults.set(true, forKey: "showMenuBarIcon")
+        defaults.set(true, forKey: "autoReleaseOnMemoryPressure")
+        defaults.set(1.5, forKey: "refreshInterval")
+        defaults.set(true, forKey: "runInBackground")
+    }
     
     /// Nivel actual de presión de memoria del sistema macOS.
     @Published public var systemMemoryPressure: SystemMemoryPressureLevel = .normal
@@ -982,6 +1037,19 @@ public class SplashService: ObservableObject {
             }
         }
         
+        // 4. Fetch Flash-Next models (Splash 1.4.0+)
+        if let flashNextUrl = URL(string: "https://huggingface.co/api/models?search=Flash-Next&sort=downloads") {
+            if let (data, _) = try? await URLSession.shared.data(from: flashNextUrl),
+               let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
+                for item in items {
+                    let lower = item.id.lowercased()
+                    if lower.contains("flash-next") {
+                        allItems[item.id] = item
+                    }
+                }
+            }
+        }
+        
         // Sort: Official first, then likes/name
         let sorted = allItems.values.sorted { m1, m2 in
             if m1.isOfficial != m2.isOfficial {
@@ -1549,6 +1617,11 @@ public class SplashService: ObservableObject {
                 "mlx-community/Qwen3.8-27B-8bit",
                 "Qwen3.8-27B-4bit",
                 "Qwen3.6-35B-A3B-4bit",
+                // Familia Splash 1.4.0 (Qwen3.8-Flash-Next)
+                "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0",
+                "ISTA-DASLab/Qwen3.8-Flash-Next",
+                "Qwen3.8-Flash-Next",
+                "Qwen3.8-Flash-Next-GGUF",
                 // Familia IncoAI / Splash (resuelve clientes configurados con modelos nativos de Splash heredados)
                 "incoai/Qwen3.6-35B-A3B-Splash",
                 "incoai/Qwen3.8-27B-Splash",
@@ -1648,6 +1721,32 @@ public class SplashService: ObservableObject {
                 }
             }
             
+            // Orígenes permitidos (CORS para extensiones de Chrome, web local y webviews: --allowed-origin "*")
+            var allowedOriginFlags = ""
+            let trimmedOrigin = self.allowedOrigins.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedOrigin.isEmpty {
+                if trimmedOrigin == "*" {
+                    allowedOriginFlags = "--allowed-origin \"*\""
+                } else {
+                    let originTokens = trimmedOrigin
+                        .components(separatedBy: CharacterSet(charactersIn: ",; \n\t"))
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                    let originAllowedChars = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:/-_*")
+                    var validOrigins: [String] = []
+                    for origin in originTokens where origin.unicodeScalars.allSatisfy({ originAllowedChars.contains($0) }) {
+                        if !validOrigins.contains(origin) {
+                            validOrigins.append(origin)
+                        }
+                    }
+                    if !validOrigins.isEmpty {
+                        allowedOriginFlags = validOrigins.map { "--allowed-origin \"\($0)\"" }.joined(separator: " ")
+                    }
+                }
+            } else {
+                allowedOriginFlags = "--allowed-origin \"*\""
+            }
+            
             var contextFlag = ""
             let trimmedContext = self.maxContext.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedContext.isEmpty && trimmedContext.lowercased() != "auto" {
@@ -1694,6 +1793,20 @@ public class SplashService: ObservableObject {
             
             let persistentCacheFlag = self.persistentCache ? "--persistent-cache" : ""
             
+            var verifyRowsFlag = ""
+            let trimmedVerifyRows = self.verifyRows.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if trimmedVerifyRows == "all" {
+                verifyRowsFlag = "--verify-rows \"all\""
+            }
+            
+            var expertMemoryFlag = ""
+            let trimmedExpertMem = self.expertMemory.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !trimmedExpertMem.isEmpty && trimmedExpertMem != "auto" {
+                if trimmedExpertMem == "off" || ServerCLIValidator.validateMaxMemory(trimmedExpertMem.uppercased()) != nil {
+                    expertMemoryFlag = "--expert-memory \"\(trimmedExpertMem)\""
+                }
+            }
+            
             // Flags CLI adicionales proporcionados por el usuario (ej. --no-webui --max-cache-disk 50GB)
             let (customTokens, customError) = ServerCLIValidator.validateAndTokenize(self.customServerFlags)
             if let err = customError {
@@ -1702,7 +1815,7 @@ public class SplashService: ObservableObject {
             let customFlagsString = customTokens.joined(separator: " ")
             let customFlagsEcho = customTokens.isEmpty ? "" : "\necho \"🛠️ Flags CLI:  \(customFlagsString)\""
             
-            let extraOptions = [hostFlag, allowedHostFlags, contextFlag, idleReleaseFlag, maxMemoryFlag, languageFlag, stateFormatFlag, thinkingBudgetFlag, persistentCacheFlag, customFlagsString].filter { !$0.isEmpty }.joined(separator: " ")
+            let extraOptions = [hostFlag, allowedHostFlags, allowedOriginFlags, contextFlag, idleReleaseFlag, maxMemoryFlag, languageFlag, stateFormatFlag, thinkingBudgetFlag, persistentCacheFlag, verifyRowsFlag, expertMemoryFlag, customFlagsString].filter { !$0.isEmpty }.joined(separator: " ")
             let runCmd = "\"\(splashPath)\" serve --model \"\(validatedModel)\" --port \"\(port)\" \(extraOptions) \(aliasFlags)"
             
             let hostLabel = self.listenOnAllInterfaces ? "0.0.0.0 (Toda la red local / LAN)" : "127.0.0.1 (Solo localhost)"
@@ -1711,20 +1824,23 @@ public class SplashService: ObservableObject {
             let memoryLabel = (trimmedMaxMem.isEmpty || trimmedMaxMem.lowercased() == "auto") ? "Automático (sin límite)" : trimmedMaxMem.uppercased()
             let modalityLabel = self.languageOnly ? "Solo Texto / Código (--language-only)" : "Multimodal (Texto y Visión)"
             let allowedHostsEcho = parsedAllowedHosts.isEmpty ? "" : "\necho \"🛡️ Dominios: \(parsedAllowedHosts.joined(separator: ", "))\""
+            let originEcho = !allowedOriginFlags.isEmpty ? "\necho \"🌍 Orígenes:  \(trimmedOrigin.isEmpty ? "*" : trimmedOrigin) (--allowed-origin)\"" : ""
             let stateEcho = (trimmedState == "bf16") ? "\necho \"⚡️ Estado GDN: BF16 (-50% RAM)\"" : ""
             let thinkingEcho = (trimmedThinking != "auto" && !trimmedThinking.isEmpty) ? "\necho \"💭 Thinking:  \(self.thinkingTokenBudget)\"" : ""
             let cacheEcho = self.persistentCache ? "\necho \"💾 Caché SSD:  Persistente activada\"" : ""
+            let verifyEcho = (trimmedVerifyRows == "all") ? "\necho \"🎯 Verificación: Todas las filas (--verify-rows all)\"" : ""
+            let expertMemEcho = (!expertMemoryFlag.isEmpty) ? "\necho \"🧠 Memoria Expertos MoE: \(trimmedExpertMem)\"" : ""
             
             let cmd = """
             echo "🌊 ==============================================="
             echo "🚀 Iniciando Servidor Splash..."
             echo "📦 Modelo:   \(validatedModel)"
             echo "🔌 Puerto:   \(port)"
-            echo "🌐 Red/Host: \(hostLabel)"\(allowedHostsEcho)
+            echo "🌐 Red/Host: \(hostLabel)"\(allowedHostsEcho)\(originEcho)
             echo "🧠 Contexto: \(contextLabel)"
             echo "⏳ Inactividad: \(idleLabel)"
             echo "💾 Límite RAM: \(memoryLabel)"
-            echo "👁️ Modalidad: \(modalityLabel)"\(stateEcho)\(thinkingEcho)\(cacheEcho)\(customFlagsEcho)
+            echo "👁️ Modalidad: \(modalityLabel)"\(stateEcho)\(thinkingEcho)\(cacheEcho)\(verifyEcho)\(expertMemEcho)\(customFlagsEcho)
             echo "⚡️ Motor:    \(splashPath)"
             echo "==============================================="
             echo "Presiona Ctrl+C en esta ventana para detener el servidor."
@@ -1949,6 +2065,10 @@ public class SplashService: ObservableObject {
         if agent == "dsh" {
             let home = FileManager.default.homeDirectoryForCurrentUser.path
             return installedAgents.contains("dsh")
+                || FileManager.default.fileExists(atPath: "/Applications/DeepSeek Harness.app")
+                || FileManager.default.fileExists(atPath: "\(home)/Applications/DeepSeek Harness.app")
+                || FileManager.default.fileExists(atPath: "/Applications/DeepSeekHarness.app")
+                || FileManager.default.fileExists(atPath: "\(home)/Applications/DeepSeekHarness.app")
                 || FileManager.default.isExecutableFile(atPath: "/opt/homebrew/bin/dsh")
                 || FileManager.default.isExecutableFile(atPath: "/usr/local/bin/dsh")
                 || FileManager.default.isExecutableFile(atPath: "\(home)/.npm-global/bin/dsh")
@@ -1986,6 +2106,13 @@ public class SplashService: ObservableObject {
             if FileManager.default.fileExists(atPath: "/Applications/ChatGPT.app") ||
                FileManager.default.fileExists(atPath: "\(home)/Applications/ChatGPT.app") {
                 found.insert("chatgpt")
+            }
+            // Detección de DeepSeek Harness App en macOS
+            if FileManager.default.fileExists(atPath: "/Applications/DeepSeek Harness.app") ||
+               FileManager.default.fileExists(atPath: "\(home)/Applications/DeepSeek Harness.app") ||
+               FileManager.default.fileExists(atPath: "/Applications/DeepSeekHarness.app") ||
+               FileManager.default.fileExists(atPath: "\(home)/Applications/DeepSeekHarness.app") {
+                found.insert("dsh")
             }
             let result = found
             await MainActor.run {
@@ -2082,10 +2209,38 @@ public class SplashService: ObservableObject {
             return
         }
         
-        // Manejo específico para DeepSeek Harness (dsh)
+        // Manejo específico para DeepSeek Harness (dsh / DeepSeek Harness.app)
         if agent == "dsh" {
             let port = self.activePort
             let home = FileManager.default.homeDirectoryForCurrentUser.path
+            let appURL = [
+                URL(fileURLWithPath: "/Applications/DeepSeek Harness.app"),
+                URL(fileURLWithPath: "\(home)/Applications/DeepSeek Harness.app"),
+                URL(fileURLWithPath: "/Applications/DeepSeekHarness.app"),
+                URL(fileURLWithPath: "\(home)/Applications/DeepSeekHarness.app")
+            ].first(where: { FileManager.default.fileExists(atPath: $0.path) })
+            
+            if let targetURL = appURL {
+                let config = NSWorkspace.OpenConfiguration()
+                config.activates = true
+                config.environment = [
+                    "SPLASH_PORT": "\(port)",
+                    "OPENAI_BASE_URL": "http://127.0.0.1:\(port)/v1",
+                    "OPENAI_API_KEY": "splash",
+                    "DEEPSEEK_BASE_URL": "http://127.0.0.1:\(port)/v1",
+                    "DSH_BASE_URL": "http://127.0.0.1:\(port)/v1"
+                ]
+                NSWorkspace.shared.openApplication(at: targetURL, configuration: config) { _, error in
+                    if let error = error {
+                        Task { @MainActor in
+                            self.lastError = "Error al abrir DeepSeek Harness: \(error.localizedDescription)"
+                        }
+                    }
+                }
+                return
+            }
+            
+            // Fallback a CLI / entorno web en Terminal si la app nativa no está presente
             let dshCandidates = [
                 "/opt/homebrew/bin/dsh",
                 "/usr/local/bin/dsh",
@@ -2318,6 +2473,9 @@ public class SplashService: ObservableObject {
                 category = .codingAgent
             } else if bundleId == "com.openai.codex" || bundleId == "com.openai.chat" || lowerName == "chatgpt" || execPath?.contains("ChatGPT.app") == true {
                 appName = "ChatGPT Desktop (Codex)"
+                category = .codingAgent
+            } else if bundleId == "com.deepseek.dsh" || (lowerName.contains("deepseek") && execPath?.contains("DeepSeek Harness.app") == true) {
+                appName = "DeepSeek Harness"
                 category = .codingAgent
             } else if lowerName.contains("cursor") || lowerName.contains("code") || lowerName.contains("xcode") || lowerName.contains("zed") || lowerName.contains("studio") || lowerName.contains("intellij") || lowerName.contains("pycharm") {
                 category = .ide

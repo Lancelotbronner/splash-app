@@ -8,6 +8,7 @@ public struct ServerControlView: View {
     @State private var isCustomModel: Bool = false
     @State private var customModelText: String = ""
     @State private var copiedMessage: String? = nil
+    @State private var showOptimalAppliedBanner: Bool = false
     
     // Agent alert state
     @State private var showingAgentOfflineAlert: Bool = false
@@ -86,15 +87,15 @@ public struct ServerControlView: View {
                 let url = service.agentInstallURL(agent: pendingAgentCommand)
                 NSWorkspace.shared.open(url)
             }
-            Button(tr(es: pendingAgentCommand == "claude-cowork" ? "Abrir Claude de Todos Modos" : (pendingAgentCommand == "chatgpt" ? "Abrir ChatGPT de Todos Modos" : (pendingAgentCommand == "dsh" ? "Lanzar vía npx de Todos Modos" : "Lanzar en Terminal de Todos Modos")),
-                      en: pendingAgentCommand == "claude-cowork" ? "Open Claude Anyway" : (pendingAgentCommand == "chatgpt" ? "Open ChatGPT Anyway" : (pendingAgentCommand == "dsh" ? "Launch via npx Anyway" : "Launch in Terminal Anyway")))) {
+            Button(tr(es: pendingAgentCommand == "claude-cowork" ? "Abrir Claude de Todos Modos" : (pendingAgentCommand == "chatgpt" ? "Abrir ChatGPT de Todos Modos" : (pendingAgentCommand == "dsh" ? "Abrir DeepSeek Harness de Todos Modos" : "Lanzar en Terminal de Todos Modos")),
+                      en: pendingAgentCommand == "claude-cowork" ? "Open Claude Anyway" : (pendingAgentCommand == "chatgpt" ? "Open ChatGPT Anyway" : (pendingAgentCommand == "dsh" ? "Open DeepSeek Harness Anyway" : "Launch in Terminal Anyway")))) {
                 service.launchAgent(agent: pendingAgentCommand)
             }
             Button(tr(es: "Cancelar", en: "Cancel"), role: .cancel) {}
         } message: {
             Text(tr(
-                es: pendingAgentCommand == "claude-cowork" ? "No se detectó la aplicación Claude for Mac en tu sistema (/Applications/Claude.app). Puedes descargarla desde la web oficial de Claude." : (pendingAgentCommand == "chatgpt" ? "No se detectó la aplicación ChatGPT for Mac en tu sistema (/Applications/ChatGPT.app). Puedes descargarla desde la web oficial de OpenAI." : (pendingAgentCommand == "dsh" ? "No se detectó el binario 'dsh' en tu PATH. Puedes instalarlo con 'npm i -g @deepseek-ai/dsh' o lanzarlo automáticamente vía npx." : "No se detectó el comando '\(pendingAgentCommand)' en tu sistema. Puedes instalarlo siguiendo la guía oficial.")),
-                en: pendingAgentCommand == "claude-cowork" ? "Claude for Mac application was not detected on your system (/Applications/Claude.app). You can download it from the official Claude website." : (pendingAgentCommand == "chatgpt" ? "ChatGPT for Mac application was not detected on your system (/Applications/ChatGPT.app). You can download it from the official OpenAI website." : (pendingAgentCommand == "dsh" ? "Binary 'dsh' was not detected in your PATH. You can install it via 'npm i -g @deepseek-ai/dsh' or run automatically via npx." : "Command '\(pendingAgentCommand)' was not detected on your system. You can install it following the official guide."))
+                es: pendingAgentCommand == "claude-cowork" ? "No se detectó la aplicación Claude for Mac en tu sistema (/Applications/Claude.app). Puedes descargarla desde la web oficial de Claude." : (pendingAgentCommand == "chatgpt" ? "No se detectó la aplicación ChatGPT for Mac en tu sistema (/Applications/ChatGPT.app). Puedes descargarla desde la web oficial de OpenAI." : (pendingAgentCommand == "dsh" ? "No se detectó la aplicación DeepSeek Harness (/Applications/DeepSeek Harness.app) ni el binario 'dsh' en tu sistema. Puedes descargar la app oficial o instalar el CLI con 'npm i -g @deepseek-ai/dsh'." : "No se detectó el comando '\(pendingAgentCommand)' en tu sistema. Puedes instalarlo siguiendo la guía oficial.")),
+                en: pendingAgentCommand == "claude-cowork" ? "Claude for Mac application was not detected on your system (/Applications/Claude.app). You can download it from the official Claude website." : (pendingAgentCommand == "chatgpt" ? "ChatGPT for Mac application was not detected on your system (/Applications/ChatGPT.app). You can download it from the official OpenAI website." : (pendingAgentCommand == "dsh" ? "DeepSeek Harness app (/Applications/DeepSeek Harness.app) or binary 'dsh' was not detected on your system. You can download the official app or install the CLI via 'npm i -g @deepseek-ai/dsh'." : "Command '\(pendingAgentCommand)' was not detected on your system. You can install it following the official guide."))
             ))
         }
         .alert(
@@ -311,9 +312,54 @@ public struct ServerControlView: View {
                 
                 Spacer()
                 
+                Button {
+                    service.restoreOptimalProfile()
+                    portString = "\(service.lastUsedPort)"
+                    withAnimation {
+                        showOptimalAppliedBanner = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                        withAnimation {
+                            showOptimalAppliedBanner = false
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.orange)
+                        Text(tr(es: "Perfil Óptimo", en: "Optimal Profile"))
+                    }
+                    .font(.system(size: 10, weight: .semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help(tr(
+                    es: "Restaura la configuración recomendada de alto rendimiento para Apple M4 Max (64 GB): GDN BF16, Thinking 8K, Caché SSD, Contexto 128K, Puerto 8005 y LAN 0.0.0.0.",
+                    en: "Restores high-performance recommended configuration for Apple M4 Max (64 GB): GDN BF16, Thinking 8K, SSD Cache, Context 128K, Port 8005, and LAN 0.0.0.0."
+                ))
+                
                 Toggle(tr(es: "Personalizado", en: "Custom"), isOn: $isCustomModel)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 10))
+            }
+            
+            if showOptimalAppliedBanner {
+                HStack(spacing: 5) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.system(size: 11))
+                    Text(tr(
+                        es: "¡Perfil óptimo M4 Max (64 GB) restaurado: Puerto 8005, GDN BF16, Thinking 8K, Ctx 128K, Caché SSD!",
+                        en: "Optimal M4 Max (64 GB) profile restored: Port 8005, GDN BF16, Thinking 8K, Ctx 128K, SSD Cache!"
+                    ))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.green)
+                    Spacer()
+                }
+                .padding(6)
+                .background(Color.green.opacity(0.12))
+                .cornerRadius(6)
+                .transition(.opacity)
             }
             
             if isCustomModel {
@@ -504,12 +550,12 @@ public struct ServerControlView: View {
                             }
                         }
                         Divider()
-                        ForEach(["16K", "32K", "64K", "128K", "256K"], id: \.self) { ctx in
+                        ForEach(["16K", "32K", "64K", "128K", "256K", "512K", "1M"], id: \.self) { ctx in
                             Button {
                                 service.maxContext = ctx
                             } label: {
                                 HStack {
-                                    Text("\(ctx) tokens")
+                                    Text(ctx == "1M" ? "1M tokens (YaRN)" : "\(ctx) tokens")
                                     if service.maxContext == ctx {
                                         Image(systemName: "checkmark")
                                     }
@@ -859,8 +905,54 @@ public struct ServerControlView: View {
                 }
                 .toggleStyle(.checkbox)
                 .help(tr(
-                    es: "Mantiene la caché de prefijos en SSD a través de reinicios (--persistent-cache). En Splash 1.3.2 la caché SSD viene activada en modo 'auto' y se adapta al disco.",
-                    en: "Keeps prefix cache on SSD across restarts (--persistent-cache). In Splash 1.3.2 SSD cache is on by default in 'auto' mode and adjusts to disk space."
+                    es: "Mantiene la caché de prefijos en SSD a través de reinicios (--persistent-cache). En Splash 1.3.2+ la caché SSD viene activada en modo 'auto' y se adapta al disco.",
+                    en: "Keeps prefix cache on SSD across restarts (--persistent-cache). In Splash 1.3.2+ SSD cache is on by default in 'auto' mode and adjusts to disk space."
+                ))
+                
+                Divider()
+                    .frame(height: 14)
+                
+                // Selector de Verificación de Borrador MoE (--verify-rows)
+                Menu {
+                    Button {
+                        service.verifyRows = "auto"
+                    } label: {
+                        HStack {
+                            Text(tr(es: "Auto (Adaptativa, +13–42% vel)", en: "Auto (Adaptive, +13–42% speed)"))
+                            if service.verifyRows == "auto" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    Button {
+                        service.verifyRows = "all"
+                    } label: {
+                        HStack {
+                            Text(tr(es: "All (Todas las filas, Determinista)", en: "All (All rows, Deterministic)"))
+                            if service.verifyRows == "all" {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "gauge.with.needle")
+                            .font(.system(size: 10))
+                            .foregroundColor(.indigo)
+                        Text(service.verifyRows == "all" ? "Verify: All" : "Verify: Auto")
+                            .font(.system(size: 10, design: .monospaced))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.secondary.opacity(0.08))
+                    .cornerRadius(5)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help(tr(
+                    es: "Verificación de tokens de borrador especulativos (--verify-rows). 'auto' adapta la verificación aumentando la velocidad de decodificación. 'all' verifica todas las filas para determinismo.",
+                    en: "Speculative draft verification mode (--verify-rows). 'auto' adapts verification boosting decode speed. 'all' verifies all rows for determinism."
                 ))
                 
                 Spacer()
@@ -1036,7 +1128,7 @@ public struct ServerControlView: View {
                     name: "DeepSeek Harness",
                     icon: "cpu.fill",
                     command: "dsh",
-                    subtitle: "dsh web (DeepSeek AI)",
+                    subtitle: "App / dsh (DeepSeek AI)",
                     isInstalled: service.isAgentInstalled(agent: "dsh"),
                     isServerRunning: service.isRunning
                 ) {

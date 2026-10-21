@@ -19,6 +19,10 @@ public struct SplashStatus: Codable {
     public let thermalState: String?
     public let aneFfn: AneFfnMetrics?
     public let weights: WeightsStatus?
+    // Splash 1.4.0+ Telemetry
+    public let streaming: StreamingStatus?
+    public let kvSpill: KvSpillStatus?
+    public let verificationMode: String?
     
     enum CodingKeys: String, CodingKey {
         case ready
@@ -37,6 +41,9 @@ public struct SplashStatus: Codable {
         case thermalState = "thermal_state"
         case aneFfn = "ane_ffn"
         case weights
+        case streaming
+        case kvSpill = "kv_spill"
+        case verificationMode = "verification_mode"
     }
 }
 
@@ -229,6 +236,36 @@ public struct WeightsStatus: Codable {
     }
 }
 
+// MARK: - Splash 1.4.0+ Streaming & KV Spill Models
+
+public struct StreamingStatus: Codable {
+    public let enabled: Bool?
+    public let expertMemoryBytes: Int64?
+    public let pleMemoryBytes: Int64?
+    public let activeStreams: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case enabled
+        case expertMemoryBytes = "expert_memory_bytes"
+        case pleMemoryBytes = "ple_memory_bytes"
+        case activeStreams = "active_streams"
+    }
+}
+
+public struct KvSpillStatus: Codable {
+    public let active: Bool?
+    public let spilledTokens: Int?
+    public let spilledBytes: Int64?
+    public let hotTokens: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case active
+        case spilledTokens = "spilled_tokens"
+        case spilledBytes = "spilled_bytes"
+        case hotTokens = "hot_tokens"
+    }
+}
+
 // MARK: - Lock file model
 
 public struct ServeLock: Codable {
@@ -258,6 +295,8 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
         return id.hasPrefix("mlx-community/Qwen3.8-27B")
             || id.hasPrefix("mlx-community/Qwen3.6-35B")
             || id.hasPrefix("nvidia/Qwen3.8-27B")
+            || id.hasPrefix("ISTA-DASLab/Qwen3.8-Flash-Next")
+            || id.contains("Flash-Next")
     }
     
     public var displayName: String {

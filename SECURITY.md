@@ -10,7 +10,8 @@
 
 | Versión | Soporte |
 |---------|---------|
-| 1.0.8-beta | ✅ Activo |
+| 1.0.9-beta | ✅ Activo |
+| 1.0.8-beta | ⚠️ Mantenimiento |
 
 Solo se brinda soporte de seguridad para las versiones listadas. Si utiliza una versión no soportada, actualice a la última versión estable antes de reportar vulnerabilidades.
 
@@ -57,7 +58,8 @@ Para poder evaluar y resolver el problema eficientemente, incluya:
 
 | Version | Support |
 |---------|---------|
-| 1.0.8-beta | ✅ Active |
+| 1.0.9-beta | ✅ Active |
+| 1.0.8-beta | ⚠️ Maintenance |
 
 Security support is only provided for the listed versions. If you are using an unsupported version, please upgrade to the latest stable release before reporting vulnerabilities.
 

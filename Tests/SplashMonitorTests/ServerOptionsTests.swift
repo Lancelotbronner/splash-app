@@ -22,6 +22,14 @@ final class ServerOptionsTests: XCTestCase {
         return (service, capturedCommand)
     }
     
+    private func waitForCommand(_ box: Box<String?>, attempts: Int = 30) async throws -> String? {
+        for _ in 0..<attempts {
+            if let val = box.value { return val }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return box.value
+    }
+    
     func testDefaultServerLaunchBindsToLocalhostAndOmitsMaxContext() async throws {
         let dir = try TempDirectory()
         let (service, capturedCommand) = makeService(directory: dir.url)
@@ -153,6 +161,22 @@ final class ServerOptionsTests: XCTestCase {
         XCTAssertTrue(cmd.contains("--allowed-host \"mimac.local\""), "Debe inyectar mimac.local: \(cmd)")
         XCTAssertTrue(cmd.contains("--allowed-host \"test.com\""), "Debe inyectar test.com: \(cmd)")
         XCTAssertTrue(cmd.contains("🛡️ Dominios:"), "El banner debe incluir la sección de dominios: \(cmd)")
+    }
+    
+    func testServerLaunchInjectsAllowedOriginFlags() async throws {
+        let dir = try TempDirectory()
+        let (service, capturedCommand) = makeService(directory: dir.url)
+        service.allowedOrigins = "*"
+        
+        service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
+        
+        guard let cmd = try await waitForCommand(capturedCommand) else {
+            XCTFail("No command captured")
+            return
+        }
+        
+        XCTAssertTrue(cmd.contains("--allowed-origin \"*\""), "Debe inyectar --allowed-origin \"*\": \(cmd)")
+        XCTAssertTrue(cmd.contains("🌍 Orígenes:"), "El banner debe incluir la sección de orígenes: \(cmd)")
     }
     
     func testServerLaunchInjectsClaudeCodeAndCoworkModelAliases() async throws {
@@ -302,6 +326,88 @@ final class ServerOptionsTests: XCTestCase {
         XCTAssertTrue(cmd.contains("⚡️ Estado GDN: BF16 (-50% RAM)"), "El banner debe incluir el estado GDN: \(cmd)")
         XCTAssertTrue(cmd.contains("💭 Thinking:  8K"), "El banner debe incluir el thinking token budget: \(cmd)")
         XCTAssertTrue(cmd.contains("💾 Caché SSD:  Persistente activada"), "El banner debe indicar caché persistente: \(cmd)")
+    }
+    
+    func testRestoreOptimalProfileSetsAllParametersAndPersistsToUserDefaults() async throws {
+        let dir = try TempDirectory()
+        let (service, _) = makeService(directory: dir.url)
+        
+        // Mutar a valores distintos para comprobar la restauración
+        service.stateFormat = "fp32"
+        service.thinkingTokenBudget = "auto"
+        service.persistentCache = false
+        service.maxContext = "16K"
+        service.idleRelease = "1m"
+        service.languageOnly = false
+        service.maxMemory = "16G"
+        service.lastUsedPort = 9999
+        service.listenOnAllInterfaces = false
+        service.allowedHosts = "otro.dominio.org"
+        service.allowedOrigins = "http://localhost:3000"
+        service.autoReleaseOnMemoryPressure = false
+        service.refreshInterval = 4.0
+        service.runInBackground = false
+        
+        service.restoreOptimalProfile()
+        
+        // Validar propiedades en SplashService
+        XCTAssertEqual(service.stateFormat, "bf16")
+        XCTAssertEqual(service.thinkingTokenBudget, "8K")
+        XCTAssertTrue(service.persistentCache)
+        XCTAssertEqual(service.maxContext, "128K")
+        XCTAssertEqual(service.idleRelease, "off")
+        XCTAssertTrue(service.languageOnly)
+        XCTAssertEqual(service.maxMemory, "auto")
+        XCTAssertEqual(service.verifyRows, "auto")
+        XCTAssertEqual(service.expertMemory, "auto")
+        XCTAssertEqual(service.lastUsedPort, 8005)
+        XCTAssertTrue(service.listenOnAllInterfaces)
+        XCTAssertEqual(service.allowedHosts, "jmgrepdevsrl.duckdns.org")
+        XCTAssertEqual(service.allowedOrigins, "*")
+        XCTAssertTrue(service.autoReleaseOnMemoryPressure)
+        XCTAssertEqual(service.refreshInterval, 1.5)
+        XCTAssertTrue(service.runInBackground)
+        
+        // Validar persistencia en UserDefaults
+        let defaults = UserDefaults.standard
+        XCTAssertEqual(defaults.string(forKey: "stateFormat"), "bf16")
+        XCTAssertEqual(defaults.string(forKey: "thinkingTokenBudget"), "8K")
+        XCTAssertTrue(defaults.bool(forKey: "persistentCache"))
+        XCTAssertEqual(defaults.string(forKey: "maxContext"), "128K")
+        XCTAssertEqual(defaults.string(forKey: "idleRelease"), "off")
+        XCTAssertTrue(defaults.bool(forKey: "languageOnly"))
+        XCTAssertEqual(defaults.string(forKey: "maxMemory"), "auto")
+        XCTAssertEqual(defaults.string(forKey: "verifyRows"), "auto")
+        XCTAssertEqual(defaults.string(forKey: "expertMemory"), "auto")
+        XCTAssertEqual(defaults.integer(forKey: "lastUsedPort"), 8005)
+        XCTAssertTrue(defaults.bool(forKey: "listenOnAllInterfaces"))
+        XCTAssertEqual(defaults.string(forKey: "allowedHosts"), "jmgrepdevsrl.duckdns.org")
+        XCTAssertEqual(defaults.string(forKey: "allowedOrigins"), "*")
+        XCTAssertTrue(defaults.bool(forKey: "showMenuBarIcon"))
+        XCTAssertTrue(defaults.bool(forKey: "autoReleaseOnMemoryPressure"))
+        XCTAssertEqual(defaults.double(forKey: "refreshInterval"), 1.5)
+        XCTAssertTrue(defaults.bool(forKey: "runInBackground"))
+    }
+    
+    func testServerLaunchWithSplash140Features() async throws {
+        let dir = try TempDirectory()
+        let (service, capturedCommand) = makeService(directory: dir.url)
+        service.maxContext = "1M"
+        service.verifyRows = "all"
+        service.expertMemory = "12G"
+        
+        service.startServer(model: "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0", port: testPort)
+        
+        guard let cmd = try await waitForCommand(capturedCommand) else {
+            XCTFail("No command captured")
+            return
+        }
+        
+        XCTAssertTrue(cmd.contains("--max-context \"1M\""), "Debe inyectar --max-context 1M: \(cmd)")
+        XCTAssertTrue(cmd.contains("--verify-rows \"all\""), "Debe inyectar --verify-rows all: \(cmd)")
+        XCTAssertTrue(cmd.contains("--expert-memory \"12g\""), "Debe inyectar --expert-memory 12g: \(cmd)")
+        XCTAssertTrue(cmd.contains("🎯 Verificación: Todas las filas (--verify-rows all)"), "El banner debe incluir la verificación: \(cmd)")
+        XCTAssertTrue(cmd.contains("🧠 Memoria Expertos MoE: 12g"), "El banner debe incluir la memoria de expertos: \(cmd)")
     }
 }
 

@@ -7,6 +7,7 @@ public struct MainWindowView: View {
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon: Bool = true
     @AppStorage("hasAskedAboutMenuBar") private var hasAskedAboutMenuBar: Bool = false
     @State private var selectedSidebarItem: SidebarItem = .dashboard
+    @State private var showOptimalAppliedFeedback: Bool = false
     
     public enum SidebarItem: String, CaseIterable, Identifiable {
         case dashboard
@@ -412,6 +413,85 @@ public struct MainWindowView: View {
             
             Divider()
             
+            // Perfil de Rendimiento Óptimo (Apple Silicon M4 Max / 64 GB)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.orange)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(loc.isSpanish ? "Perfil de Rendimiento Óptimo" : "Optimal Performance Profile")
+                                .font(.system(size: 13, weight: .bold))
+                            
+                            Text("M4 MAX / 64 GB")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.blue)
+                                .cornerRadius(3)
+                        }
+                        
+                        Text(loc.isSpanish
+                             ? "Restablece los parámetros de máxima velocidad y capacidad recomendados para tu Apple Silicon: GDN BF16 (-50% RAM), Thinking Budget 8K, Caché SSD persistente, Contexto 128K, Inactividad off (Siempre en RAM), Puerto 8005, Red LAN 0.0.0.0 y CORS abierto (*)."
+                             : "Restores recommended high-speed and capacity settings for Apple Silicon: GDN BF16 (-50% RAM), Thinking Budget 8K, Persistent SSD cache, Context 128K, Idle off (Always in RAM), Port 8005, LAN 0.0.0.0, and open CORS (*).")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        service.restoreOptimalProfile()
+                        showMenuBarIcon = true
+                        withAnimation {
+                            showOptimalAppliedFeedback = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                            withAnimation {
+                                showOptimalAppliedFeedback = false
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "sparkles")
+                            Text(loc.isSpanish ? "Restaurar Configuración Óptima" : "Restore Optimal Configuration")
+                        }
+                        .font(.system(size: 11, weight: .semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                    .controlSize(.regular)
+                }
+                
+                if showOptimalAppliedFeedback {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 12))
+                        Text(loc.isSpanish
+                             ? "¡Configuración óptima restaurada y guardada con éxito en UserDefaults (M4 Max / 64 GB)!"
+                             : "Optimal configuration restored and saved successfully in UserDefaults (M4 Max / 64 GB)!")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.green)
+                        Spacer()
+                    }
+                    .padding(8)
+                    .background(Color.green.opacity(0.12))
+                    .cornerRadius(6)
+                    .transition(.opacity)
+                }
+            }
+            .padding(14)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+            )
+            
             // Language Settings
             VStack(alignment: .leading, spacing: 8) {
                 Text(loc.isSpanish ? "Idioma de la Aplicación" : "Application Language")
@@ -556,6 +636,22 @@ public struct MainWindowView: View {
                     .padding(.top, 4)
                 }
                 
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(loc.isSpanish ? "Orígenes Web y Extensiones (--allowed-origin):" : "Allowed Web Origins & Extensions (--allowed-origin):")
+                        .font(.system(size: 11, weight: .medium))
+                    
+                    TextField(loc.isSpanish ? "ej. * (para extensión de Chrome y web local)" : "e.g. * (for Chrome extension and local web)", text: $service.allowedOrigins)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, design: .monospaced))
+                    
+                    Text(loc.isSpanish
+                         ? "Permite que extensiones de navegador (Chrome, Arc, Brave), aplicaciones Web locales y Tauri interactúen con Splash vía CORS. Por defecto '*' permite cualquier origen local o extensión."
+                         : "Allows browser extensions (Chrome, Arc, Brave), local web apps, and Tauri to interact with Splash via CORS. Default '*' allows any local origin or extension.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 4)
+                
                 Divider()
                 
                 HStack {
@@ -571,14 +667,16 @@ public struct MainWindowView: View {
                         Text("64K (65,536 tokens)").tag("64K")
                         Text("128K (131,072 tokens)").tag("128K")
                         Text("256K (262,144 tokens)").tag("256K")
+                        Text("512K (524,288 tokens)").tag("512K")
+                        Text(loc.isSpanish ? "1M (1,000,000 tokens · YaRN)" : "1M (1,000,000 tokens · YaRN)").tag("1M")
                     }
                     .labelsHidden()
-                    .frame(width: 220)
+                    .frame(width: 250)
                 }
                 
                 Text(loc.isSpanish
-                     ? "Configura el parámetro --max-context para limitar o expandir la memoria reservada para el historial de tokens."
-                     : "Configures the --max-context flag to limit or expand memory reserved for token history.")
+                     ? "Configura el parámetro --max-context para limitar o expandir la memoria reservada para el historial de tokens (Splash 1.4.0+ soporta hasta 1M con YaRN)."
+                     : "Configures the --max-context flag to limit or expand memory reserved for token history (Splash 1.4.0+ supports up to 1M with YaRN).")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
@@ -597,7 +695,7 @@ public struct MainWindowView: View {
                         Text(loc.isSpanish ? "Desactivado (Siempre en RAM)" : "Disabled (Always in RAM)").tag("off")
                     }
                     .labelsHidden()
-                    .frame(width: 220)
+                    .frame(width: 250)
                 }
                 
                 Text(loc.isSpanish
@@ -623,7 +721,7 @@ public struct MainWindowView: View {
                         Text("64 GB").tag("64G")
                     }
                     .labelsHidden()
-                    .frame(width: 220)
+                    .frame(width: 250)
                 }
                 
                 Text(loc.isSpanish
@@ -657,6 +755,51 @@ public struct MainWindowView: View {
                 Text(loc.isSpanish
                      ? "Desactiva la carga del proyector de visión (mmproj). Requerido para modelos de código GGUF (como Tiel-Coder, Qwopus, Cyber-Tiel) que no incluyen pesos de imágenes."
                      : "Disables vision projector (mmproj) loading. Required for GGUF coder models (like Tiel-Coder, Qwopus, Cyber-Tiel) that lack image weights.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                
+                Divider()
+                
+                HStack {
+                    Text(loc.isSpanish ? "Verificación de Borrador MoE (--verify-rows):" : "MoE Draft Verification (--verify-rows):")
+                        .font(.system(size: 12))
+                    Spacer()
+                    Picker("", selection: $service.verifyRows) {
+                        Text(loc.isSpanish ? "Auto (Adaptativa, +13–42% vel)" : "Auto (Adaptive, +13–42% speed)").tag("auto")
+                        Text(loc.isSpanish ? "All (Todas las filas, Determinista)" : "All (All rows, Deterministic)").tag("all")
+                    }
+                    .labelsHidden()
+                    .frame(width: 250)
+                }
+                
+                Text(loc.isSpanish
+                     ? "Parámetro --verify-rows (Splash 1.4.0+): 'auto' adapta la verificación de tokens de borrador aumentando la velocidad de decodificación. 'all' garantiza reproducibilidad exacta de salidas."
+                     : "Flag --verify-rows (Splash 1.4.0+): 'auto' adapts speculative draft token verification for faster decode. 'all' ensures deterministic output reproducibility.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                
+                Divider()
+                
+                HStack {
+                    Text(loc.isSpanish ? "Memoria en RAM para Expertos MoE (--expert-memory):" : "MoE Experts RAM Budget (--expert-memory):")
+                        .font(.system(size: 12))
+                    Spacer()
+                    Picker("", selection: $service.expertMemory) {
+                        Text(loc.isSpanish ? "Automático (gestión de Splash)" : "Automatic (managed by Splash)").tag("auto")
+                        Text(loc.isSpanish ? "Desactivado (Todos en RAM)" : "Disabled (All resident in RAM)").tag("off")
+                        Text("4 GB (Streaming SSD)").tag("4G")
+                        Text("8 GB (Streaming SSD)").tag("8G")
+                        Text("12 GB (Streaming SSD)").tag("12G")
+                        Text("16 GB (Streaming SSD)").tag("16G")
+                        Text("24 GB (Streaming SSD)").tag("24G")
+                    }
+                    .labelsHidden()
+                    .frame(width: 250)
+                }
+                
+                Text(loc.isSpanish
+                     ? "Parámetro --expert-memory (Splash 1.4.0+): permite mantener expertos MoE en RAM y transmitir los restantes en streaming desde el SSD ultrarrápido sin saturar la memoria."
+                     : "Flag --expert-memory (Splash 1.4.0+): retains active MoE experts in RAM and streams the rest on-the-fly from the high-speed SSD.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
