@@ -296,7 +296,6 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
             || id.hasPrefix("mlx-community/Qwen3.6-35B")
             || id.hasPrefix("nvidia/Qwen3.8-27B")
             || id.hasPrefix("ISTA-DASLab/Qwen3.8-Flash-Next")
-            || id.contains("Flash-Next")
     }
     
     public var displayName: String {

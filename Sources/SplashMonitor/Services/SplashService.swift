@@ -1038,12 +1038,37 @@ public class SplashService: ObservableObject {
         }
         
         // 4. Fetch Flash-Next models (Splash 1.4.0+)
+        // En Splash 1.4.0, Flash-Next solo puede cargarse desde GGUF (con tag de cuantización :VARIANT).
+        let officialFlashNextQ2 = HuggingFaceModelItem(
+            id: "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0",
+            likes: 999,
+            downloads: 50000,
+            tags: ["splash", "flash-next", "gguf", "q2_0"],
+            pipelineTag: "text-generation",
+            createdAt: "2026-10-18T00:00:00.000Z"
+        )
+        allItems[officialFlashNextQ2.id] = officialFlashNextQ2
+
+        let officialFlashNextIQ3 = HuggingFaceModelItem(
+            id: "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:IQ3_S",
+            likes: 850,
+            downloads: 32000,
+            tags: ["splash", "flash-next", "gguf", "iq3_s"],
+            pipelineTag: "text-generation",
+            createdAt: "2026-10-18T00:00:00.000Z"
+        )
+        allItems[officialFlashNextIQ3.id] = officialFlashNextIQ3
+
         if let flashNextUrl = URL(string: "https://huggingface.co/api/models?search=Flash-Next&sort=downloads") {
             if let (data, _) = try? await URLSession.shared.data(from: flashNextUrl),
                let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
                 for item in items {
                     let lower = item.id.lowercased()
-                    if lower.contains("flash-next") {
+                    // Descartar repositorio base de pesos crudos que Splash rechaza explícitamente ("loads from a GGUF only")
+                    if lower == "qwen/qwen3.8-flash-next" {
+                        continue
+                    }
+                    if lower.contains("flash-next") && (lower.contains("gguf") || lower.contains("gsq")) {
                         allItems[item.id] = item
                     }
                 }
@@ -1062,17 +1087,26 @@ public class SplashService: ObservableObject {
         self.isLoadingOnlineModels = false
     }
     
-    // MARK: - Model Installation
-    
     public func installModel(repoId: String, languageOnly: Bool? = nil) {
         guard !isInstalling else { return }
         guard ModelIDValidator.isValid(repoId) else {
             self.lastError = ModelIDValidator.rejectionReason(repoId) ?? "Identificador de modelo no válido."
             return
         }
+        
+        // Soporte y mapeo de Flash-Next: Splash 1.4.0 solo permite cargar Flash-Next desde GGUF con variante (e.g. :Q2_0).
+        // Si el usuario solicita el repositorio base de pesos crudos 'Qwen/Qwen3.8-Flash-Next', mapear a la cuantización GGUF oficial.
+        let effectiveRepoId: String
+        let trimmedRepo = repoId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedRepo.lowercased() == "qwen/qwen3.8-flash-next" || trimmedRepo.lowercased() == "qwen3.8-flash-next" {
+            effectiveRepoId = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0"
+        } else {
+            effectiveRepoId = trimmedRepo
+        }
+        
         isInstalling = true
         isInstallCancelled = false
-        installingModelId = repoId
+        installingModelId = effectiveRepoId
         downloadSpeedMBs = 0.0
         downloadedBytes = 0
         totalExpectedBytes = 0
@@ -1080,10 +1114,18 @@ public class SplashService: ObservableObject {
         downloadPhase = "Iniciando descarga y preparación..."
         
         let textOnlyKeywords = ["coder", "code", "uncensored", "optiq", "mtp", "instruct", "chat", "deepseek", "base"]
-        let autoLangOnly = textOnlyKeywords.contains { repoId.lowercased().contains($0) }
+        let autoLangOnly = textOnlyKeywords.contains { effectiveRepoId.lowercased().contains($0) }
         let initialLangOnly = languageOnly ?? autoLangOnly
         
-        installLogs = ["Iniciando descarga y preparación para \(repoId)..."]
+        if effectiveRepoId != repoId {
+            installLogs = [
+                "Iniciando descarga y preparación para \(effectiveRepoId)...",
+                "ℹ️ Qwen3.8-Flash-Next requiere formato GGUF en Splash 1.4.0.",
+                "🔄 Mapeando automáticamente a la versión oficial cuantizada: \(effectiveRepoId)"
+            ]
+        } else {
+            installLogs = ["Iniciando descarga y preparación para \(repoId)..."]
+        }
         if initialLangOnly {
             installLogs.append("ℹ️ Modo solo lenguaje (--language-only) activado.")
         }
@@ -1109,7 +1151,7 @@ public class SplashService: ObservableObject {
             func runPrepareProcess(withLanguageOnly: Bool) -> (success: Bool, logs: [String]) {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: pythonPath)
-                var args = ["-u", scriptPath, "--models", modelsPath, "--model", repoId]
+                var args = ["-u", scriptPath, "--models", modelsPath, "--model", effectiveRepoId]
                 if withLanguageOnly {
                     args.append("--language-only")
                 }
@@ -1313,17 +1355,24 @@ public class SplashService: ObservableObject {
                 if finalSuccess {
                     self.downloadProgressFraction = 1.0
                     self.downloadPhase = "Instalación completada con éxito"
-                    self.installLogs.append("✅ Instalación y verificación de \(repoId) completada con éxito.")
+                    self.installLogs.append("✅ Instalación y verificación de \(effectiveRepoId) completada con éxito.")
                     self.refreshInstalledModels()
                 } else {
                     self.downloadPhase = "Fallo en la instalación"
-                    self.installLogs.append("❌ Error al instalar \(repoId).")
-                    if self.installLogs.contains(where: { $0.contains("gated repo") || $0.contains("Access to model") || $0.contains("403") }) {
+                    self.installLogs.append("❌ Error al instalar \(effectiveRepoId).")
+                    if self.installLogs.contains(where: { $0.contains("loads from a GGUF only") }) {
+                        self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                        self.installLogs.append("💡 La arquitectura Qwen3.8-Flash-Next en Splash requiere formato GGUF.")
+                        self.installLogs.append("👉 El repositorio base 'Qwen/Qwen3.8-Flash-Next' contiene pesos safetensors incompatibles con Splash.")
+                        self.installLogs.append("👉 Instala la cuantización oficial compatible con Splash:")
+                        self.installLogs.append("   ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0")
+                        self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                    } else if self.installLogs.contains(where: { $0.contains("gated repo") || $0.contains("Access to model") || $0.contains("403") }) {
                         self.installLogs.append("🔒 Este modelo tiene acceso restringido ('Gated') en Hugging Face.")
                         self.installLogs.append("💡 Muchos modelos protegidos tienen aprobación instantánea ('auto').")
                         self.installLogs.append("👉 Pasos para habilitar la descarga:")
                         self.installLogs.append("   1. Inicia sesión en Hugging Face con tu cuenta.")
-                        self.installLogs.append("   2. Visita: https://huggingface.co/\(repoId)")
+                        self.installLogs.append("   2. Visita: https://huggingface.co/\(effectiveRepoId)")
                         self.installLogs.append("   3. Pulsa 'Agree and access repository' (o Aceptar términos).")
                         self.installLogs.append("   4. Regresa a Splash Monitor y haz clic nuevamente en Descargar.")
                     } else if self.installLogs.contains(where: { $0.contains("HTTP Error 500") || $0.contains("Error 502") || $0.contains("Error 503") || $0.contains("Error 504") || $0.contains("check your connection") }) {
@@ -1816,7 +1865,14 @@ public class SplashService: ObservableObject {
             let customFlagsEcho = customTokens.isEmpty ? "" : "\necho \"🛠️ Flags CLI:  \(customFlagsString)\""
             
             let extraOptions = [hostFlag, allowedHostFlags, allowedOriginFlags, contextFlag, idleReleaseFlag, maxMemoryFlag, languageFlag, stateFormatFlag, thinkingBudgetFlag, persistentCacheFlag, verifyRowsFlag, expertMemoryFlag, customFlagsString].filter { !$0.isEmpty }.joined(separator: " ")
-            let runCmd = "\"\(splashPath)\" serve --model \"\(validatedModel)\" --port \"\(port)\" \(extraOptions) \(aliasFlags)"
+            let trimmedStartModel = validatedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+            let effectiveLaunchModel: String
+            if trimmedStartModel.lowercased() == "qwen/qwen3.8-flash-next" || trimmedStartModel.lowercased() == "qwen3.8-flash-next" {
+                effectiveLaunchModel = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0"
+            } else {
+                effectiveLaunchModel = trimmedStartModel
+            }
+            let runCmd = "\"\(splashPath)\" serve --model \"\(effectiveLaunchModel)\" --port \"\(port)\" \(extraOptions) \(aliasFlags)"
             
             let hostLabel = self.listenOnAllInterfaces ? "0.0.0.0 (Toda la red local / LAN)" : "127.0.0.1 (Solo localhost)"
             let contextLabel = (trimmedContext.isEmpty || trimmedContext.lowercased() == "auto") ? "Automático (por memoria)" : trimmedContext.uppercased()
