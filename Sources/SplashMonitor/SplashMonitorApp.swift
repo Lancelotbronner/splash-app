@@ -2,9 +2,12 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    
+    /// Tracks whether we are in the process of a real quit (force quit) or
+    /// just hiding the window when menuBarOnlyMode is active.
+    var isReallyQuitting = false
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
-        
         // Desactivar agrupación automática en pestañas para evitar pestañas duplicadas al reabrir
         NSWindow.allowsAutomaticWindowTabbing = false
         
@@ -13,12 +16,65 @@ class AppDelegate: NSObject, NSApplicationDelegate {
            let iconImage = NSImage(contentsOf: iconURL) {
             NSApp.applicationIconImage = iconImage
         }
+        
+        // Apply initial activation policy based on saved preference
+        applyActivationPolicy()
+    }
+    
+    /// Applies the correct NSApplication activation policy based on current settings.
+    /// - `.accessory`: No Dock icon, no task switcher entry — menu bar only.
+    /// - `.regular`: Normal app with Dock icon and task switcher entry.
+    func applyActivationPolicy() {
+        let menuBarOnly = UserDefaults.standard.bool(forKey: "menuBarOnlyMode")
+        let showMenuBar  = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
+        
+        if menuBarOnly && showMenuBar {
+            NSApp.setActivationPolicy(.accessory)
+        } else {
+            NSApp.setActivationPolicy(.regular)
+            // Re-attach Dock icon so it re-appears correctly
+            if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+               let iconImage = NSImage(contentsOf: iconURL) {
+                NSApp.applicationIconImage = iconImage
+            }
+        }
+    }
+    
+    // MARK: - Cmd+Q interception for Menu Bar Only Mode
+    
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let menuBarOnly = UserDefaults.standard.bool(forKey: "menuBarOnlyMode")
+        let showMenuBar  = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
+        
+        // If the user triggered a "real" quit via the menu bar item, let it through
+        if isReallyQuitting {
+            return .terminateNow
+        }
+        
+        if menuBarOnly && showMenuBar {
+            // Instead of quitting, hide all windows and switch to accessory mode
+            NSApp.setActivationPolicy(.accessory)
+            for window in sender.windows {
+                window.orderOut(nil)
+            }
+            return .terminateCancel
+        }
+        
+        return .terminateNow
     }
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        let menuBarOnly = UserDefaults.standard.bool(forKey: "menuBarOnlyMode")
+        
+        // When clicked in Dock (if visible) or relaunched, restore the window
         if !flag {
+            // Switch back to regular so Dock icon appears
+            if !menuBarOnly {
+                NSApp.setActivationPolicy(.regular)
+            }
             for window in sender.windows where window.canBecomeMain && !(window is NSPanel) {
                 window.makeKeyAndOrderFront(self)
+                NSApp.activate(ignoringOtherApps: true)
                 return true
             }
         }
@@ -33,8 +89,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        let showMenuBar  = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
+        let menuBarOnly  = UserDefaults.standard.bool(forKey: "menuBarOnlyMode")
+        
+        if menuBarOnly && showMenuBar {
+            // Switch to accessory (hide Dock icon) instead of quitting
+            NSApp.setActivationPolicy(.accessory)
+            return false
+        }
+        
         // If menu bar icon is active, keep app running when window is closed
-        let showMenuBar = UserDefaults.standard.bool(forKey: "showMenuBarIcon")
         return !showMenuBar
     }
 }
@@ -45,11 +109,15 @@ struct SplashMonitorApp: App {
     @StateObject private var service = SplashService.shared
     @StateObject private var loc = Localization.shared
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon: Bool = true
+    @AppStorage("menuBarOnlyMode") private var menuBarOnlyMode: Bool = false
     
     var body: some Scene {
         WindowGroup("Splash Monitor", id: "main") {
             MainWindowView(service: service)
                 .frame(minWidth: 850, minHeight: 600)
+                .onChange(of: menuBarOnlyMode) { _ in
+                    appDelegate.applyActivationPolicy()
+                }
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
@@ -61,6 +129,31 @@ struct SplashMonitorApp: App {
                     for window in NSApp.windows where window.canBecomeMain {
                         window.makeKeyAndOrderFront(nil)
                     }
+                }
+            }
+            // Override the standard Quit menu item to support Menu Bar Only mode
+            CommandGroup(replacing: .appTermination) {
+                Button(loc.isSpanish ? "Salir de Splash Monitor" : "Quit Splash Monitor") {
+                    if menuBarOnlyMode && showMenuBarIcon {
+                        // Hide to menu bar instead of quitting
+                        NSApp.setActivationPolicy(.accessory)
+                        for window in NSApp.windows {
+                            window.orderOut(nil)
+                        }
+                    } else {
+                        appDelegate.isReallyQuitting = true
+                        NSApp.terminate(nil)
+                    }
+                }
+                .keyboardShortcut("q", modifiers: .command)
+                
+                if menuBarOnlyMode && showMenuBarIcon {
+                    Divider()
+                    Button(loc.isSpanish ? "Salir completamente" : "Quit Completely") {
+                        appDelegate.isReallyQuitting = true
+                        NSApp.terminate(nil)
+                    }
+                    .keyboardShortcut("q", modifiers: [.command, .shift])
                 }
             }
         }

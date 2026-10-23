@@ -6,8 +6,10 @@ public struct MainWindowView: View {
     @ObservedObject var loc = Localization.shared
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon: Bool = true
     @AppStorage("hasAskedAboutMenuBar") private var hasAskedAboutMenuBar: Bool = false
+    @AppStorage("menuBarOnlyMode") private var menuBarOnlyMode: Bool = false
     @State private var selectedSidebarItem: SidebarItem = .dashboard
     @State private var showOptimalAppliedFeedback: Bool = false
+
     
     public enum SidebarItem: String, CaseIterable, Identifiable {
         case dashboard
@@ -535,6 +537,23 @@ public struct MainWindowView: View {
                     }
                     .pickerStyle(.radioGroup)
                     .font(.system(size: 11))
+                    
+                    Divider()
+                        .padding(.vertical, 4)
+                    
+                    // Modo Solo Barra de Menú
+                    Toggle(isOn: $menuBarOnlyMode) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(loc.isSpanish ? "Modo Solo Barra de Menú" : "Menu Bar Only Mode")
+                                .font(.system(size: 12))
+                            Text(loc.isSpanish
+                                 ? "Cmd+Q oculta la app del Dock y del listado de tareas en lugar de cerrarla. Usa Cmd+Shift+Q para salir completamente."
+                                 : "Cmd+Q hides the app from the Dock and task list instead of quitting. Use Cmd+Shift+Q to quit completely.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .font(.system(size: 12))
                 }
             }
             .padding(14)
