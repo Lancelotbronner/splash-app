@@ -1074,6 +1074,53 @@ public class SplashService: ObservableObject {
                 }
             }
         }
+
+        // 5. Modelos Splash 1.4.1: Ornith-1.5-122B y Flint
+        let ornithGGUF = HuggingFaceModelItem(
+            id: "unsloth/Ornith-1.5-122B-GGUF:UD-Q4_K_XL",
+            likes: 1200,
+            downloads: 60000,
+            tags: ["splash", "ornith", "gguf", "vision", "q4_k_xl"],
+            pipelineTag: "text-generation",
+            createdAt: "2026-10-26T00:00:00.000Z"
+        )
+        allItems[ornithGGUF.id] = ornithGGUF
+
+        let ornithMLX = HuggingFaceModelItem(
+            id: "ornith-ai/Ornith-1.5-122B-MLX-4bit",
+            likes: 900,
+            downloads: 40000,
+            tags: ["splash", "ornith", "mlx", "vision", "4bit"],
+            pipelineTag: "text-generation",
+            createdAt: "2026-10-26T00:00:00.000Z"
+        )
+        allItems[ornithMLX.id] = ornithMLX
+
+        let flintGGUF = HuggingFaceModelItem(
+            id: "unsloth/flint-GGUF:UD-Q4_K_XL",
+            likes: 800,
+            downloads: 35000,
+            tags: ["splash", "flint", "gguf", "moe", "q4_k_xl"],
+            pipelineTag: "text-generation",
+            createdAt: "2026-10-26T00:00:00.000Z"
+        )
+        allItems[flintGGUF.id] = flintGGUF
+
+        // Fetch dinámico de Ornith y Flint desde HuggingFace
+        for searchTerm in ["Ornith-1.5-122B", "flint-GGUF"] {
+            let encoded = searchTerm.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? searchTerm
+            if let url = URL(string: "https://huggingface.co/api/models?search=\(encoded)&sort=downloads") {
+                if let (data, _) = try? await URLSession.shared.data(from: url),
+                   let items = try? JSONDecoder().decode([HuggingFaceModelItem].self, from: data) {
+                    for item in items {
+                        let lower = item.id.lowercased()
+                        if lower.contains("ornith") || lower.contains("flint") {
+                            allItems[item.id] = item
+                        }
+                    }
+                }
+            }
+        }
         
         // Sort: Official first, then likes/name
         let sorted = allItems.values.sorted { m1, m2 in
@@ -1671,6 +1718,15 @@ public class SplashService: ObservableObject {
                 "ISTA-DASLab/Qwen3.8-Flash-Next",
                 "Qwen3.8-Flash-Next",
                 "Qwen3.8-Flash-Next-GGUF",
+                // Familia Splash 1.4.1 — Ornith-1.5-122B (GGUF con visión + MLX)
+                "unsloth/Ornith-1.5-122B-GGUF:UD-Q4_K_XL",
+                "ornith-ai/Ornith-1.5-122B-MLX-4bit",
+                "Ornith-1.5-122B",
+                // Familia Splash 1.4.1 — Flint 40B-A2.5B MoE (GGUF, 262K tokens)
+                "unsloth/flint-GGUF:UD-Q4_K_XL",
+                "incoai/Flint-DFlash2",
+                "RecursiveSI/Flint",
+                "Flint",
                 // Familia IncoAI / Splash (resuelve clientes configurados con modelos nativos de Splash heredados)
                 "incoai/Qwen3.6-35B-A3B-Splash",
                 "incoai/Qwen3.8-27B-Splash",

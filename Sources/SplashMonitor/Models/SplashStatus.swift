@@ -292,10 +292,21 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
     
     public var isOfficial: Bool {
         if id.hasSuffix("-Splash") { return false }
-        return id.hasPrefix("mlx-community/Qwen3.8-27B")
-            || id.hasPrefix("mlx-community/Qwen3.6-35B")
-            || id.hasPrefix("nvidia/Qwen3.8-27B")
-            || id.hasPrefix("ISTA-DASLab/Qwen3.8-Flash-Next")
+        // Splash 1.3.x — Qwen3 base family
+        if id.hasPrefix("mlx-community/Qwen3.8-27B") { return true }
+        if id.hasPrefix("mlx-community/Qwen3.6-35B") { return true }
+        if id.hasPrefix("nvidia/Qwen3.8-27B") { return true }
+        // Splash 1.4.0 — Qwen3.8-Flash-Next (GGUF only)
+        if id.hasPrefix("ISTA-DASLab/Qwen3.8-Flash-Next") { return true }
+        // Splash 1.4.1 — Ornith-1.5-122B (GGUF + MLX con visión)
+        if id.hasPrefix("unsloth/Ornith-1.5-122B") { return true }
+        if id.hasPrefix("ornith-ai/Ornith-1.5-122B") { return true }
+        // Splash 1.4.1 — Flint 40B-A2.5B MoE (GGUF, 262K contexto)
+        if id.hasPrefix("unsloth/flint-GGUF") { return true }
+        if id.hasPrefix("unsloth/Flint") { return true }
+        if id.hasPrefix("incoai/Flint") { return true }
+        if id.hasPrefix("RecursiveSI/Flint") { return true }
+        return false
     }
     
     public var displayName: String {
