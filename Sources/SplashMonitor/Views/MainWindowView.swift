@@ -400,12 +400,99 @@ public struct MainWindowView: View {
                 }
             }
             
+            // MARK: Modelo activo
+            activeModelCard
+            
             Divider()
             
             // Embed the token metrics view
             TokenMetricsView(service: service)
         }
     }
+    
+    /// Tarjeta compacta que muestra el modelo en ejecución, puerto y versión de Splash.
+    @ViewBuilder
+    private var activeModelCard: some View {
+        let isRunning = service.isRunning
+        let modelRaw  = service.activeModel
+        let modelShort = modelRaw.components(separatedBy: "/").last ?? modelRaw
+        let modelClean = modelShort
+            .replacingOccurrences(of: "-Splash", with: "")
+            .replacingOccurrences(of: "-GGUF", with: "")
+        
+        HStack(spacing: 12) {
+            // Estado indicator
+            Circle()
+                .fill(isRunning ? Color.green : Color.secondary.opacity(0.4))
+                .frame(width: 10, height: 10)
+                .shadow(color: isRunning ? .green.opacity(0.6) : .clear, radius: 4)
+            
+            // Nombre del modelo
+            VStack(alignment: .leading, spacing: 2) {
+                Text(loc.isSpanish ? "Modelo en ejecución" : "Running model")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                
+                if isRunning {
+                    Text(modelClean)
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    
+                    Text(modelRaw)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                } else {
+                    Text(loc.isSpanish ? "Servidor detenido" : "Server stopped")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Puerto y versión Splash
+            VStack(alignment: .trailing, spacing: 4) {
+                if isRunning {
+                    HStack(spacing: 4) {
+                        Image(systemName: "network")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text(":\(service.activePort)")
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    }
+                }
+                
+                if let splashVer = service.splashVersion {
+                    HStack(spacing: 4) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text("Splash \(splashVer)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(
+                            isRunning ? Color.green.opacity(0.35) : Color.secondary.opacity(0.15),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+
     
     // MARK: - Settings Detail View
     private var settingsDetailView: some View {
