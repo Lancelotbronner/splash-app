@@ -23,10 +23,10 @@ public struct ModelTestingView: View {
             headerView
             
             // Segmented Selector
-            Picker("", selection: $selectedSubTab) {
-                Label("Smoke Test" /*FIXME: "Smoke Test" */, systemImage: "stethoscope").tag(0)
-                Label("Benchmark & Cache" /*FIXME: "Benchmark & Caché" */, systemImage: "bolt.fill").tag(1)
-                Label("Playground" /*FIXME: "Playground" */, systemImage: "terminal.fill").tag(2)
+            Picker("empty", selection: $selectedSubTab) {
+                Label("Smoke Test", systemImage: "stethoscope").tag(0)
+                Label("Benchmark & Cache", systemImage: "bolt.fill").tag(1)
+                Label("Playground", systemImage: "terminal.fill").tag(2)
             }
             .pickerStyle(.segmented)
             
@@ -35,7 +35,7 @@ public struct ModelTestingView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
-                    Text("Splash server is offline. Start the server from 'Server & Agents' tab to run diagnostics." /*FIXME: "El servidor Splash no está activo. Inicia el servidor desde la pestaña 'Servidor y Agentes' para ejecutar pruebas." */)
+                    Text("Splash server is offline. Start the server from 'Server & Agents' tab to run diagnostics.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                 }
@@ -68,10 +68,10 @@ public struct ModelTestingView: View {
                     Image(systemName: "testtube.2")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.purple)
-                    Text("Model Lab & Diagnostics" /*FIXME: "Test y Diagnóstico de Modelos" */)
+                    Text("Model Lab & Diagnostics")
                         .font(.system(size: 16, weight: .bold))
                 }
-                Text("Integrity tests, API compatibility suites (OpenAI/Anthropic), and real-time Metal performance benchmarking." /*FIXME: "Pruebas de integridad, compatibilidad de APIs (OpenAI/Anthropic) y rendimiento Metal en tiempo real." */)
+                Text("Integrity tests, API compatibility suites (OpenAI/Anthropic), and real-time Metal performance benchmarking.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             }
@@ -83,7 +83,7 @@ public struct ModelTestingView: View {
                 Circle()
                     .fill(SplashService.shared.isRunning ? Color.green : Color.red)
                     .frame(width: 8, height: 8)
-                Text(SplashService.shared.isRunning ? "\(SplashService.shared.activeModel) (:\(SplashService.shared.activePort))" : "Offline" /*FIXME: "Desconectado" */)
+                Text("\(SplashService.shared.activeModel) (:\(SplashService.shared.activePort))")
                     .font(.system(size: 11, design: .monospaced))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -113,10 +113,10 @@ public struct ModelTestingView: View {
                         if diagnosticService.isRunningSmokeTest {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Running diagnostics..." /*FIXME: "Ejecutando diagnóstico..." */)
+                            Text("Running diagnostics...")
                         } else {
                             Image(systemName: "play.circle.fill")
-                            Text("Run Full Smoke Test" /*FIXME: "Ejecutar Smoke Test Completo" */)
+                            Text("Run Full Smoke Test")
                         }
                     }
                     .font(.system(size: 11, weight: .semibold))
@@ -130,7 +130,7 @@ public struct ModelTestingView: View {
                 Button {
                     copySmokeReportToClipboard()
                 } label: {
-                    Label("Copy Report" /*FIXME: "Copiar Informe" */, systemImage: "doc.on.doc")
+                    Label("Copy Report", systemImage: "doc.on.doc")
                         .font(.system(size: 10))
                 }
                 .buttonStyle(.borderless)
@@ -152,11 +152,11 @@ public struct ModelTestingView: View {
                             
                             switch test.status {
                             case .idle:
-                                Text("Pending" /*FIXME: "Pendiente" */)
+                                Text("Pending")
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                             case .running:
-                                Text("Probing endpoint..." /*FIXME: "Comprobando endpoint..." */)
+                                Text("Probing endpoint...")
                                     .font(.system(size: 10))
                                     .foregroundColor(.orange)
                             case .passed(let details, _):
@@ -238,7 +238,7 @@ public struct ModelTestingView: View {
         VStack(alignment: .leading, spacing: 14) {
             // Options Row
             HStack(spacing: 12) {
-                Picker("Output tokens:" /*FIXME: "Longitud de salida:" */, selection: $benchmarkTokens) {
+                Picker("Output tokens:", selection: $benchmarkTokens) {
                     Text("64 tokens").tag(64)
                     Text("128 tokens").tag(128)
                     Text("256 tokens").tag(256)
@@ -259,10 +259,10 @@ public struct ModelTestingView: View {
                         if diagnosticService.isRunningBenchmark {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Benchmarking..." /*FIXME: "Midiendo..." */)
+                            Text("Benchmarking...")
                         } else {
                             Image(systemName: "speedometer")
-                            Text("Start Benchmark" /*FIXME: "Iniciar Benchmark" */)
+                            Text("Start Benchmark")
                         }
                     }
                 }
@@ -289,48 +289,48 @@ public struct ModelTestingView: View {
             // Results Gauges / Cards
             if let bench = diagnosticService.latestBenchmark {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Metal Performance Results" /*FIXME: "Resultados de Rendimiento Metal" */)
+                    Text("Metal Performance Results")
                         .font(.system(size: 13, weight: .semibold))
                     
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                         // Card 1: Cold Decode Speed
                         metricCard(
-                            title: "Cold Decode Speed" /*FIXME: "Decodificación en Frío" */,
-                            value: "\(String(format: "%.1f", bench.coldDecodeTokPerSec)) tok/s",
+                            title: LocalizedStringResource("Cold Decode Speed"),
+                            value: LocalizedStringResource("\(String(format: "%.1f", bench.coldDecodeTokPerSec)) tok/s"),
                             icon: "snowflake",
                             color: .cyan,
-                            subtitle: "First pass without prior cache" /*FIXME: "Primera pasada sin caché previa" */
+                            subtitle: LocalizedStringResource("First pass without prior cache")
                         )
                         
                         // Card 2: Warm Cached Speed
                         metricCard(
-                            title: "Warm Decode Speed" /*FIXME: "Decodificación con Caché" */,
-                            value: "\(String(format: "%.1f", bench.warmDecodeTokPerSec)) tok/s",
+                            title: LocalizedStringResource("Warm Decode Speed"),
+                            value: LocalizedStringResource("\(String(format: "%.1f", bench.warmDecodeTokPerSec)) tok/s"),
                             icon: "flame.fill",
                             color: .orange,
-                            subtitle: "Replay with indexed prefix" /*FIXME: "Replay con prefijo indexado" */
+                            subtitle: LocalizedStringResource("Replay with indexed prefix")
                         )
                         
                         // Card 3: Cold TTFT
                         metricCard(
-                            title: "Cold TTFT (1st Token)" /*FIXME: "TTFT en Frío (1er Token)" */,
-                            value: "\(String(format: "%.0f", bench.coldTTFTMs)) ms",
+                            title: LocalizedStringResource("Cold TTFT (1st Token)"),
+                            value: LocalizedStringResource("\(String(format: "%.0f", bench.coldTTFTMs)) ms"),
                             icon: "timer",
                             color: .purple,
-                            subtitle: "Initial prefill latency" /*FIXME: "Tiempo de prefill inicial" */
+                            subtitle: LocalizedStringResource("Initial prefill latency")
                         )
                         
                         // Card 4: Cache Speedup Multiplier
                         metricCard(
-                            title: "KV Cache Speedup" /*FIXME: "Aceleración por Caché" */,
+                            title: LocalizedStringResource("KV Cache Speedup"),
                             value: "\(String(format: "%.1fx", bench.cacheSpeedupMultiplier))",
                             icon: "arrow.up.right.circle.fill",
                             color: .green,
-                            subtitle: "Splash prefix efficiency factor" /*FIXME: "Factor de eficiencia de Splash" */
+                            subtitle: LocalizedStringResource("Splash prefix efficiency factor")
                         )
                     }
                     
-                    Text("Based on Splash's SPEED-Bench methodology: DFlash 2 speculative decoding and optimized Metal kernels." /*FIXME: "Basado en la metodología de Splash (SPEED-Bench): DFlash 2 especulativo y kernels optimizados Metal." */)
+                    Text("Based on Splash's SPEED-Bench methodology: DFlash 2 speculative decoding and optimized Metal kernels.")
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                 }
@@ -341,7 +341,7 @@ public struct ModelTestingView: View {
         }
     }
     
-    private func metricCard(title: String, value: String, icon: String, color: Color, subtitle: String) -> some View {
+    private func metricCard(title: LocalizedStringResource, value: LocalizedStringResource, icon: String, color: Color, subtitle: LocalizedStringResource) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: icon)
@@ -370,7 +370,7 @@ public struct ModelTestingView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Protocol Selector & Sliders
             HStack(spacing: 12) {
-                Picker("API:" /*FIXME: "API:" */, selection: $playgroundProtocol) {
+                Picker("API:", selection: $playgroundProtocol) {
                     Text("OpenAI Chat Completions").tag("openai")
                     Text("Anthropic Messages").tag("anthropic")
                 }
@@ -389,17 +389,17 @@ public struct ModelTestingView: View {
             
             // System Prompt (Optional)
             VStack(alignment: .leading, spacing: 3) {
-                Text("System Prompt (Optional):" /*FIXME: "Prompt de Sistema (Opcional):" */)
+                Text("System Prompt (Optional):")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.secondary)
-                TextField("E.g. You are an expert software engineering assistant." /*FIXME: "Ej. Eres un asistente experto en ingeniería de software." */, text: $playgroundSystemPrompt)
+                TextField("E.g. You are an expert software engineering assistant.", text: $playgroundSystemPrompt)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 11))
             }
             
             // User Prompt
             VStack(alignment: .leading, spacing: 3) {
-                Text("Input Prompt (User):" /*FIXME: "Mensaje de Entrada (User):" */)
+                Text("Input Prompt (User):")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.secondary)
                 TextEditor(text: $playgroundUserPrompt)
@@ -429,10 +429,10 @@ public struct ModelTestingView: View {
                         if diagnosticService.isGeneratingPlayground {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Generating..." /*FIXME: "Generando..." */)
+                            Text("Generating...")
                         } else {
                             Image(systemName: "paperplane.fill")
-                            Text("Send Prompt" /*FIXME: "Enviar Consulta" */)
+                            Text("Send Prompt")
                         }
                     }
                 }
@@ -444,7 +444,7 @@ public struct ModelTestingView: View {
                 
                 if !diagnosticService.playgroundRawResponse.isEmpty {
                     Toggle(isOn: $showingRawJSON) {
-                        Text("Raw JSON" /*FIXME: "Ver JSON Crudo" */)
+                        Text("Raw JSON")
                             .font(.system(size: 10))
                     }
                     .toggleStyle(.checkbox)
@@ -467,7 +467,7 @@ public struct ModelTestingView: View {
             } else if !diagnosticService.playgroundOutput.isEmpty || !diagnosticService.playgroundRawResponse.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text(showingRawJSON ? "JSON Response:" : "Model Response:" /*FIXME: "Respuesta del Modelo:" */)
+                        Text("Model Response:")
                             .font(.system(size: 11, weight: .semibold))
                         
                         Spacer()
@@ -475,9 +475,9 @@ public struct ModelTestingView: View {
                         if diagnosticService.playgroundTokensGenerated > 0 {
                             HStack(spacing: 8) {
                                 Text("\(diagnosticService.playgroundTokensGenerated) tokens")
-                                Text("•")
+                                Text(verbatim: "•")
                                 Text("\(String(format: "%.1f", diagnosticService.playgroundTokPerSec)) tok/s")
-                                Text("•")
+                                Text(verbatim: "•")
                                 Text("TTFT: \(String(format: "%.0f", diagnosticService.playgroundTTFTMs)) ms")
                             }
                             .font(.system(size: 10, weight: .medium, design: .monospaced))

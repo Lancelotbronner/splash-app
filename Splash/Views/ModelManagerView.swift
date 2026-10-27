@@ -15,10 +15,10 @@ public struct ModelManagerView: View {
     public var body: some View {
         VStack(spacing: 12) {
             // Segmented Picker
-            Picker("", selection: $selectedTab) {
-                Text("\("Installed" /*FIXME: "Instalados" */) (\(SplashService.shared.installedModels.count))").tag(0)
+            Picker("empty", selection: $selectedTab) {
+                Text("Installed Models (\(SplashService.shared.installedModels.count))").tag(0)
                 Text("Hugging Face").tag(1)
-                Text("Install" /*FIXME: "Instalar" */).tag(2)
+                Text("Install").tag(2)
             }
             .pickerStyle(.segmented)
             
@@ -40,27 +40,27 @@ public struct ModelManagerView: View {
             }
         }
         .alert(
-            "Delete Model?" /*FIXME: "¿Eliminar Modelo?" */,
+            "Delete Model?",
             isPresented: $showingDeleteAlert,
             presenting: modelToDelete
         ) { model in
-            Button("Delete from Splash" /*FIXME: "Eliminar de Splash" */, role: .destructive) {
+            Button("Delete from Splash", role: .destructive) {
                 SplashService.shared.deleteModel(repoId: model.repoId)
             }
-            Button("Cancel" /*FIXME: "Cancelar" */, role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: { model in
-            Text("Are you sure you want to delete '\(model.shortName)'? It will be unlinked from the Splash engine to free up disk space (\(model.formattedSize))." /*FIXME: "¿Estás seguro de que deseas eliminar '\(model.shortName)'? Se desvinculará del motor Splash y liberará espacio en disco (\(model.formattedSize))." */)
+            Text("Are you sure you want to delete '\(model.shortName)'? It will be unlinked from the Splash engine to free up disk space (\(model.formattedSize)).")
         }
         .alert(
             item: SplashService.$shared.portConflict
         ) { conflict in
             Alert(
-                title: Text("⚠️ Port \(conflict.port) In Use" /*FIXME: "⚠️ Puerto \(conflict.port) en Uso" */),
-                message: Text("Process '\(conflict.processName)' (PID \(conflict.pid)) is currently using port \(conflict.port).\n\nWould you like to switch to suggested free port \(conflict.suggestedPort) or free port \(conflict.port)?" /*FIXME: "El proceso '\(conflict.processName)' (PID \(conflict.pid)) está utilizando el puerto \(conflict.port).\n\n¿Deseas cambiar al puerto libre sugerido \(conflict.suggestedPort) o liberar el puerto \(conflict.port)?" */),
-                primaryButton: .default(Text("Use port \(conflict.suggestedPort)" /*FIXME: "Usar puerto \(conflict.suggestedPort)" */)) {
+                title: Text("⚠️ Port \(conflict.port) In Use"),
+                message: Text("Process '\(conflict.processName)' (PID \(conflict.pid)) is currently using port \(conflict.port).\n\nWould you like to switch to suggested free port \(conflict.suggestedPort) or free port \(conflict.port)?"),
+                primaryButton: .default(Text("Use port \(conflict.suggestedPort)")) {
                     SplashService.shared.useSuggestedPort(conflict.suggestedPort)
                 },
-                secondaryButton: .destructive(Text("Free port \(conflict.port)" /*FIXME: "Liberar puerto \(conflict.port)" */)) {
+                secondaryButton: .destructive(Text("Free port \(conflict.port)")) {
                     SplashService.shared.resolvePortConflict(killProcess: true)
                 }
             )
@@ -75,10 +75,10 @@ public struct ModelManagerView: View {
                     Image(systemName: "shippingbox")
                         .font(.system(size: 24))
                         .foregroundColor(.secondary)
-                    Text("No models installed in Splash yet." /*FIXME: "No hay modelos instalados en Splash aún." */)
+                    Text("No models installed in Splash yet.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
-                    Text("Browse the Hugging Face catalog to download your first model." /*FIXME: "Explora el catálogo de Hugging Face para descargar el primer modelo." */)
+                    Text("Browse the Hugging Face catalog to download your first model.")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
@@ -98,7 +98,7 @@ public struct ModelManagerView: View {
                                             .font(.system(size: 12, weight: .semibold))
                                             .lineLimit(1)
                                         if model.isCurrentlyActive {
-                                            Text("ACTIVE" /*FIXME: "ACTIVO" */)
+                                            Text("ACTIVE")
                                                 .font(.system(size: 9, weight: .bold))
                                                 .padding(.horizontal, 5)
                                                 .padding(.vertical, 1)
@@ -116,7 +116,7 @@ public struct ModelManagerView: View {
                                                 .cornerRadius(4)
                                         }
                                         if model.isCoderFineTune {
-                                            Text("CODER" /*FIXME: "CODER" */)
+                                            Text("CODER")
                                                 .font(.system(size: 8, weight: .bold))
                                                 .padding(.horizontal, 4)
                                                 .padding(.vertical, 1)
@@ -130,7 +130,7 @@ public struct ModelManagerView: View {
                                         Text(model.repoId)
                                             .font(.system(size: 10))
                                             .foregroundColor(.secondary)
-                                        Text("·")
+                                        Text(verbatim: "·")
                                             .foregroundColor(.secondary)
                                         Text(model.formattedSize)
                                             .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -149,7 +149,7 @@ public struct ModelManagerView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 .buttonStyle(.borderless)
-                                .help("Reveal folder in Finder" /*FIXME: "Mostrar carpeta en el Finder" */)
+                                .help("Reveal folder in Finder")
                                 
                                 // Delete Model button
                                 Button {
@@ -161,7 +161,7 @@ public struct ModelManagerView: View {
                                         .foregroundColor(.red.opacity(0.8))
                                 }
                                 .buttonStyle(.borderless)
-                                .help("Delete model to free up space" /*FIXME: "Eliminar modelo para liberar espacio" */)
+                                .help("Delete model to free up space")
                                 
                                 if !model.isCurrentlyActive {
                                     Button {
@@ -171,12 +171,12 @@ public struct ModelManagerView: View {
                                             HStack(spacing: 5) {
                                                 ProgressView()
                                                     .controlSize(.mini)
-                                                Text(SplashService.shared.isRunning ? "Switching..." /*FIXME: "Cambiando..." */ : "Starting..." /*FIXME: "Iniciando..." */)
+                                                Text("Switching...")
                                                     .font(.system(size: 10, weight: .semibold))
                                             }
                                         } else {
                                             Label(
-                                                SplashService.shared.isRunning ? "Switch" /*FIXME: "Cambiar" */ : "Start" /*FIXME: "Arrancar" */,
+                                                SplashService.shared.isRunning ? LocalizedStringResource("Switch") : LocalizedStringResource("Start"),
                                                 systemImage: SplashService.shared.isRunning ? "arrow.triangle.2.circlepath" : "play.fill"
                                             )
                                             .font(.system(size: 10, weight: .semibold))
@@ -207,7 +207,7 @@ public struct ModelManagerView: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
                         .font(.system(size: 11))
-                    TextField("Search models..." /*FIXME: "Buscar modelos..." */, text: $searchText)
+                    TextField("Search models...", text: $searchText)
                         .textFieldStyle(.plain)
                         .font(.system(size: 11))
                 }
@@ -231,7 +231,7 @@ public struct ModelManagerView: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.7)
-                    Text("Loading Hugging Face catalog..." /*FIXME: "Cargando catálogo de Hugging Face..." */)
+                    Text("Loading Hugging Face catalog...")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -257,7 +257,7 @@ public struct ModelManagerView: View {
                                             .font(.system(size: 11, weight: .semibold))
                                             .lineLimit(1)
                                         if item.isOfficial {
-                                            Text("OFFICIAL" /*FIXME: "OFICIAL" */)
+                                            Text("OFFICIAL")
                                                 .font(.system(size: 8, weight: .bold))
                                                 .padding(.horizontal, 4)
                                                 .padding(.vertical, 1)
@@ -265,7 +265,7 @@ public struct ModelManagerView: View {
                                                 .foregroundColor(.blue)
                                                 .cornerRadius(3)
                                         } else if item.id.hasSuffix("-Splash") {
-                                            Text("DEPRECATED" /*FIXME: "DESCONTINUADO" */)
+                                            Text("DEPRECATED")
                                                 .font(.system(size: 8, weight: .bold))
                                                 .padding(.horizontal, 4)
                                                 .padding(.vertical, 1)
@@ -283,7 +283,7 @@ public struct ModelManagerView: View {
                                 Spacer()
                                 
                                 if isInstalled {
-                                    Text("Installed" /*FIXME: "Instalado" */)
+                                    Text("Installed")
                                         .font(.system(size: 10, weight: .medium))
                                         .foregroundColor(.green)
                                         .padding(.horizontal, 6)
@@ -294,7 +294,7 @@ public struct ModelManagerView: View {
                                     Button {
                                         SplashService.shared.installModel(repoId: item.id)
                                     } label: {
-                                        Label("Install" /*FIXME: "Instalar" */, systemImage: "arrow.down.circle")
+                                        Label("Install", systemImage: "arrow.down.circle")
                                             .font(.system(size: 10))
                                     }
                                     .buttonStyle(.bordered)
@@ -316,15 +316,15 @@ public struct ModelManagerView: View {
     // MARK: - Custom Install Tab
     private var customInstallView: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Install model from Hugging Face" /*FIXME: "Instalar modelo desde Hugging Face" */)
+            Text("Install model from Hugging Face")
                 .font(.system(size: 12, weight: .semibold))
             
-            Text("Enter the Hugging Face repository (e.g. mlx-community/Qwen3.8-27B-4bit) or GGUF fine-tune with variant (e.g. peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL)." /*FIXME: "Introduce el identificador de repositorio en Hugging Face (ej. mlx-community/Qwen3.8-27B-4bit) o fine-tune GGUF con variante (ej. peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL)." */)
+            Text("Enter the Hugging Face repository (e.g. mlx-community/Qwen3.8-27B-4bit) or GGUF fine-tune with variant (e.g. peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL).")
             .font(.system(size: 10))
             .foregroundColor(.secondary)
             
             HStack {
-                TextField("owner/repo[:variant] (e.g. mlx-community/Qwen3.8-27B-4bit)" /*FIXME: "propietario/modelo[:variante] (ej. mlx-community/Qwen3.8-27B-4bit)" */, text: $customRepoId)
+                TextField("owner/repo[:variant] (e.g. mlx-community/Qwen3.8-27B-4bit)", text: $customRepoId)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 11, design: .monospaced))
                     .onChange(of: customRepoId) { _, newVal in
@@ -339,7 +339,7 @@ public struct ModelManagerView: View {
                     guard !trimmed.isEmpty else { return }
                     SplashService.shared.installModel(repoId: trimmed, languageOnly: customModelLanguageOnly)
                 } label: {
-                    Text("Download" /*FIXME: "Descargar" */)
+                    Text("Download")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.regular)
@@ -351,7 +351,7 @@ public struct ModelManagerView: View {
                     Image(systemName: "doc.text")
                         .font(.system(size: 10))
                         .foregroundColor(.orange)
-                    Text("Text/code-only mode (--language-only, required for Coder models without mmproj)" /*FIXME: "Modo solo texto / código (--language-only, requerido para modelos Coder sin mmproj)" */)
+                    Text("Text/code-only mode (--language-only, required for Coder models without mmproj)")
                     .font(.system(size: 10))
                 }
             }
@@ -361,7 +361,7 @@ public struct ModelManagerView: View {
                 Image(systemName: "info.circle")
                     .foregroundColor(.secondary)
                     .font(.system(size: 10))
-                Text("Weights download directly to the Hugging Face cache and configure with precompiled Metal kernels." /*FIXME: "Los pesos se descargan en el caché de Hugging Face y se optimizan con kernels Metal precompilados." */)
+                Text("Weights download directly to the Hugging Face cache and configure with precompiled Metal kernels.")
                 .font(.system(size: 9))
                 .foregroundColor(.secondary)
             }
@@ -378,19 +378,19 @@ public struct ModelManagerView: View {
                 if SplashService.shared.isInstalling {
                     ProgressView()
                         .scaleEffect(0.6)
-                    Text("\("Installing" /*FIXME: "Instalando" */): \(SplashService.shared.installingModelId ?? "")...")
+                    Text("Installing: \(SplashService.shared.installingModelId ?? "")...")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.orange)
                 } else if SplashService.shared.installSuccess == true {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text("Installation completed" /*FIXME: "Instalación completada" */)
+                    Text("Installation completed")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.green)
                 } else if SplashService.shared.installSuccess == false {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
-                    Text("Installation failed" /*FIXME: "Fallo en la instalación" */)
+                    Text("Installation failed")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.red)
                 }
@@ -409,7 +409,7 @@ public struct ModelManagerView: View {
                     } label: {
                         HStack(spacing: 3) {
                             Image(systemName: copiedLogs ? "checkmark" : "doc.on.doc")
-                            Text(copiedLogs ? "Copied!" /*FIXME: "¡Copiado!" */ : "Copy Logs" /*FIXME: "Copiar Logs" */)
+                            Text("Copy Logs")
                         }
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(copiedLogs ? .green : .cyan)
@@ -421,13 +421,13 @@ public struct ModelManagerView: View {
                     Button(role: .destructive) {
                         SplashService.shared.cancelModelInstall()
                     } label: {
-                        Text("Cancel Download" /*FIXME: "Cancelar Descarga" */)
+                        Text("Cancel Download")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.red)
                     }
                     .buttonStyle(.borderless)
                 } else {
-                    Button("Close" /*FIXME: "Cerrar" */) {
+                    Button("Close") {
                         SplashService.shared.installLogs.removeAll()
                         SplashService.shared.installSuccess = nil
                     }
@@ -450,7 +450,7 @@ public struct ModelManagerView: View {
                             Image(systemName: "arrow.down.circle.fill")
                                 .foregroundColor(.cyan)
                                 .font(.system(size: 11))
-                            Text(SplashService.shared.downloadPhase.isEmpty ? "Downloading components..." /*FIXME: "Descargando componentes..." */ : SplashService.shared.downloadPhase)
+                            Text(SplashService.shared.downloadPhase.isEmpty ? String(localized: "Downloading components...") : SplashService.shared.downloadPhase)
                                 .font(.system(size: 10, weight: .semibold))
                                 .foregroundColor(.white.opacity(0.95))
                                 .lineLimit(1)
@@ -570,11 +570,11 @@ public struct ModelManagerView: View {
                     .font(.system(size: 18))
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Restricted Access Model ('Gated')" /*FIXME: "Modelo con acceso restringido ('Gated')" */)
+                    Text("Restricted Access Model ('Gated')")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
                     
-                    Text("Hugging Face requires you to authorize access with your account before downloading." /*FIXME: "Hugging Face requiere que autorices el acceso con tu cuenta antes de descargar." */)
+                    Text("Hugging Face requires you to authorize access with your account before downloading.")
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.85))
                 }
@@ -588,7 +588,7 @@ public struct ModelManagerView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "safari")
-                            Text("Request Access on HF" /*FIXME: "Solicitar Acceso en HF" */)
+                            Text("Request Access on HF")
                         }
                         .font(.system(size: 10, weight: .semibold))
                     }
@@ -604,7 +604,7 @@ public struct ModelManagerView: View {
                     .font(.system(size: 10))
                     .padding(.top, 1)
                 
-                Text("Most of these models have instant approval ('auto'). Once you click 'Agree and access repository' in your browser, your account is enabled and you can click 'Download' again." /*FIXME: "La mayoría de estos modelos tienen aprobación instantánea ('auto'). Al pulsar 'Agree and access repository' en tu navegador, tu cuenta quedará habilitada y podrás volver a pulsar 'Descargar'." */)
+                Text("Most of these models have instant approval ('auto'). Once you click 'Agree and access repository' in your browser, your account is enabled and you can click 'Download' again.")
                 .font(.system(size: 9.5))
                 .foregroundColor(.white.opacity(0.92))
                 .fixedSize(horizontal: false, vertical: true)

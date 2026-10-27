@@ -13,8 +13,8 @@ public struct ConnectedAppsView: View {
         
         public var title: LocalizedStringResource {
             switch self {
-            case .detected: return "Detected Apps" /*FIXME: "Apps Detectadas" */
-            case .quickConnect: return "Integration Guide" /*FIXME: "Guía de Integración" */
+            case .detected: return LocalizedStringResource("Detected Apps")
+            case .quickConnect: return LocalizedStringResource("Integration Guide")
             }
         }
     }
@@ -32,7 +32,7 @@ public struct ConnectedAppsView: View {
             metricsSummaryRow
             
             // Tab Picker
-            Picker("", selection: $selectedTab) {
+            Picker("empty", selection: $selectedTab) {
                 ForEach(ConnectedAppsTab.allCases) { tab in
                     Text(tab.title).tag(tab)
                 }
@@ -54,7 +54,7 @@ public struct ConnectedAppsView: View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
-                    Text("Connected Applications & Clients" /*FIXME: "Aplicaciones y Clientes Conectados" */)
+                    Text("Connected Applications & Clients")
                         .font(.system(size: 20, weight: .bold))
                     
                     if SplashService.shared.isRunning {
@@ -62,7 +62,7 @@ public struct ConnectedAppsView: View {
                             Circle()
                                 .fill(Color.green)
                                 .frame(width: 7, height: 7)
-                            Text("Port \(SplashService.shared.activePort)" /*FIXME: "Puerto \(SplashService.shared.activePort)" */)
+                            Text("Port \(SplashService.shared.activePort)")
                                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                 .foregroundColor(.green)
                         }
@@ -73,7 +73,7 @@ public struct ConnectedAppsView: View {
                     }
                 }
                 
-                Text("Real-time monitoring of editors, autonomous agents, and processes consuming the Splash engine" /*FIXME: "Monitoreo en tiempo real de editores, agentes autónomos y procesos consumiendo el motor Splash" */)
+                Text("Real-time monitoring of editors, autonomous agents, and processes consuming the Splash engine")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
             }
@@ -85,7 +85,7 @@ public struct ConnectedAppsView: View {
                     await SplashService.shared.scanConnectedClients()
                 }
             } label: {
-                Label("Scan Now" /*FIXME: "Escanear" */, systemImage: "arrow.clockwise")
+                Label("Scan Now", systemImage: "arrow.clockwise")
                     .font(.system(size: 11))
             }
             .buttonStyle(.bordered)
@@ -100,37 +100,37 @@ public struct ConnectedAppsView: View {
             let totalSockets = SplashService.shared.connectedApps.reduce(0) { $0 + $1.connectionCount }
             
             StatBadgeCard(
-                title: "Connected Apps" /*FIXME: "Apps Conectadas" */,
-                value: "\(activeCount)",
-                subtitle: "\(SplashService.shared.connectedApps.count) this session" /*FIXME: "\(SplashService.shared.connectedApps.count) en esta sesión" */,
+                title: LocalizedStringResource("Connected Apps:"),
+                value: LocalizedStringResource("\(activeCount)"),
+                subtitle: LocalizedStringResource("\(SplashService.shared.connectedApps.count) this session"),
                 icon: "app.connected.to.app.below.fill",
                 color: activeCount > 0 ? .green : .secondary
             )
             
-            let hostSubtitle: String = {
+            let hostSubtitle: LocalizedStringResource = {
                 if Preferences.listenOnAllInterfaces {
                     if let ip = SplashService.shared.localNetworkIP {
-                        return "LAN (\(ip))" /*FIXME: "Conexiones LAN (\(ip))" */
+                        return LocalizedStringResource("LAN (\(ip))")
                     } else {
-                        return "LAN Connections (0.0.0.0)" /*FIXME: "Conexiones Red LAN (0.0.0.0)" */
+                        return LocalizedStringResource("LAN Connections (0.0.0.0)")
                     }
                 } else {
-                    return "127.0.0.1 connections" /*FIXME: "Conexiones 127.0.0.1" */
+                    return LocalizedStringResource("127.0.0.1 connections")
                 }
             }()
             
             StatBadgeCard(
-                title: "Active TCP Sockets" /*FIXME: "Sockets TCP Activos" */,
-                value: "\(totalSockets)",
+                title: LocalizedStringResource("Active TCP Sockets"),
+                value: LocalizedStringResource("\(totalSockets)"),
                 subtitle: hostSubtitle,
                 icon: "network",
                 color: totalSockets > 0 ? .blue : .secondary
             )
             
             StatBadgeCard(
-                title: "Running Engine" /*FIXME: "Motor en Ejecución" */,
-                value: SplashService.shared.isRunning ? SplashService.shared.activeModel.components(separatedBy: "/").last ?? SplashService.shared.activeModel : "Offline" /*FIXME: "Apagado" */,
-                subtitle: SplashService.shared.isRunning ? "Ready for inference" /*FIXME: "Listo para inferencia" */ : "Start the server" /*FIXME: "Inicia el servidor" */,
+                title: LocalizedStringResource("Running Engine"),
+                value: SplashService.shared.isRunning ? "\(SplashService.shared.activeModel.components(separatedBy: "/").last ?? SplashService.shared.activeModel)" : LocalizedStringResource("Powered Off"),
+                subtitle: SplashService.shared.isRunning ? LocalizedStringResource("Ready for inference") : LocalizedStringResource("Start the server"),
                 icon: "cpu.fill",
                 color: SplashService.shared.isRunning ? .purple : .red
             )
@@ -161,10 +161,10 @@ public struct ConnectedAppsView: View {
                 .font(.system(size: 36))
                 .foregroundColor(.secondary.opacity(0.6))
             
-            Text("Splash server is offline" /*FIXME: "El servidor Splash está detenido" */)
+            Text("Splash server is offline")
                 .font(.system(size: 14, weight: .bold))
             
-            Text("To see which applications and agents are consuming the engine, first start the server from the 'Server & Agents' tab." /*FIXME: "Para ver qué aplicaciones y agentes están consumiendo el motor, primero arranca el servidor desde la pestaña 'Servidor y Agentes'." */)
+            Text("To see which applications and agents are consuming the engine, first start the server from the 'Server & Agents' tab.")
             .font(.system(size: 11))
             .foregroundColor(.secondary)
             .multilineTextAlignment(.center)
@@ -173,7 +173,7 @@ public struct ConnectedAppsView: View {
             Button {
                 SplashService.shared.startServer(model: SplashService.shared.selectedModelForLaunch, port: SplashService.shared.activePort)
             } label: {
-                Label("Start Server Now" /*FIXME: "Arrancar Servidor Ahora" */, systemImage: "play.fill")
+                Label("Start Server Now", systemImage: "play.fill")
                     .font(.system(size: 11, weight: .semibold))
             }
             .buttonStyle(.borderedProminent)
@@ -194,10 +194,10 @@ public struct ConnectedAppsView: View {
                 .font(.system(size: 34))
                 .foregroundColor(.accentColor.opacity(0.8))
             
-            Text("Listening for incoming connections..." /*FIXME: "Escuchando conexiones entrantes..." */)
+            Text("Listening for incoming connections...")
                 .font(.system(size: 14, weight: .semibold))
             
-            Text("No clients connected to port \(SplashService.shared.activePort) yet.\nYou can connect Cursor, VS Code, Claude Code, Claude Cowork, DeepSeek Harness, OpenCode, Hermes, or any OpenAI API compatible app." /*FIXME: "Aún no hay clientes conectados al puerto \(SplashService.shared.activePort).\nPuedes conectar Cursor, VS Code, Claude Code, Claude Cowork, DeepSeek Harness, OpenCode, Hermes o cualquier app compatible con la API de OpenAI." */)
+            Text("No clients connected to port \(SplashService.shared.activePort) yet.\nYou can connect Cursor, VS Code, Claude Code, Claude Cowork, DeepSeek Harness, OpenCode, Hermes, or any OpenAI API compatible app.")
             .font(.system(size: 11))
             .foregroundColor(.secondary)
             .multilineTextAlignment(.center)
@@ -207,9 +207,9 @@ public struct ConnectedAppsView: View {
                 Button {
                     let host = SplashService.shared.preferredHostOrIP
                     copyToClipboard("http://\(host):\(SplashService.shared.activePort)/v1")
-                    showCopied("URL Copied!" /*FIXME: "¡URL Copiada!" */)
+                    showCopied("URL Copied!")
                 } label: {
-                    Label("Copy OpenAI Base URL" /*FIXME: "Copiar OpenAI Base URL" */, systemImage: "doc.on.doc")
+                    Label("Copy OpenAI Base URL", systemImage: "doc.on.doc")
                         .font(.system(size: 11))
                 }
                 .buttonStyle(.bordered)
@@ -218,7 +218,7 @@ public struct ConnectedAppsView: View {
                 Button {
                     selectedTab = .quickConnect
                 } label: {
-                    Label("View Connection Guide" /*FIXME: "Ver Guía de Conexión" */, systemImage: "book.fill")
+                    Label("View Connection Guide", systemImage: "book.fill")
                         .font(.system(size: 11))
                 }
                 .buttonStyle(.borderedProminent)
@@ -244,168 +244,163 @@ public struct ConnectedAppsView: View {
         let host = SplashService.shared.preferredHostOrIP
         
         return VStack(alignment: .leading, spacing: 14) {
-            Text("Connect Your Favorite Apps & IDEs" /*FIXME: "Conectar tus Aplicaciones e IDEs Favoritos" */)
+            Text("Connect Your Favorite Apps & IDEs")
                 .font(.system(size: 14, weight: .bold))
             
             Text(Preferences.listenOnAllInterfaces
                  ? "Splash exposes a 100% OpenAI & Anthropic compatible API accessible on your LAN (\(host)):"
-                 : "Splash exposes a 100% OpenAI & Anthropic compatible API on your local machine:"
-                 /*FIXME:
-                    "Splash expone una API compatible al 100% con OpenAI y Anthropic accesible en tu LAN (\(host)):"
-                    "Splash expone una API compatible al 100% con OpenAI y Anthropic en tu máquina local:"
-                  */
-            )
+                 : "Splash exposes a 100% OpenAI & Anthropic compatible API on your local machine:")
             .font(.system(size: 11))
             .foregroundColor(.secondary)
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 IntegrationGuideCard(
-                    title: "Cursor IDE",
-                    subtitle: "Native AI Code Editor" /*FIXME: "Editor AI nativo" */,
+                    title: LocalizedStringResource("Cursor IDE"),
+                    subtitle: LocalizedStringResource("Native AI Code Editor"),
                     icon: "chevron.left.forwardslash.chevron.right",
-                    badge: "OpenAI API",
+                    badge: LocalizedStringResource("OpenAI API"),
                     color: .purple,
                     steps: [
-                        "1. Go to Settings → Models in Cursor" /*FIXME: "1. Ve a Settings → Models en Cursor" */,
-                        "2. Enable 'OpenAI API Key' (enter any text, e.g. 'splash')" /*FIXME: "2. Activa 'OpenAI API Key' (ingresa cualquier texto, ej. 'splash')" */,
-                        "3. In 'Override OpenAI Base URL', enter:" /*FIXME: "3. En 'Override OpenAI Base URL', coloca:" */,
-                        "http://\(host):\(SplashService.shared.activePort)/v1"
+                        LocalizedStringResource("1. Go to Settings → Models in Cursor"),
+                        LocalizedStringResource("2. Enable 'OpenAI API Key' (enter any text, e.g. 'splash')"),
+                        LocalizedStringResource("3. In 'Override OpenAI Base URL', enter:"),
+                        LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)/v1")
                     ],
                     copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
                 )
                 
                 IntegrationGuideCard(
-                    title: "VS Code (Continue / Cline)",
-                    subtitle: "AI Coding Extensions" /*FIXME: "Extensiones de Inteligencia Artificial" */,
+                    title: LocalizedStringResource("VS Code (Continue / Cline)"),
+                    subtitle: LocalizedStringResource("AI Coding Extensions"),
                     icon: "sidebar.squares.trailing",
-                    badge: "OpenAI Compatible",
+                    badge: LocalizedStringResource("OpenAI Compatible"),
                     color: .blue,
                     steps: [
-                        "1. In Continue/Cline extension, add a new model" /*FIXME: "1. En la extensión Continue/Cline, añade un nuevo modelo" */,
-                        "2. Select provider 'OpenAI' or 'Custom'" /*FIXME: "2. Selecciona proveedor 'OpenAI' o 'Custom'" */,
-                        "3. Set apiBase in config.json:" /*FIXME: "3. Configura el apiBase en config.json:" */,
-                        "http://\(host):\(SplashService.shared.activePort)/v1"
+                        LocalizedStringResource("1. In Continue/Cline extension, add a new model"),
+                        LocalizedStringResource("2. Select provider 'OpenAI' or 'Custom'"),
+                        LocalizedStringResource("3. Set apiBase in config.json:"),
+                        LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)/v1")
                     ],
                     copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
                 )
                 
                 IntegrationGuideCard(
-                    title: "Claude Code CLI",
-                    subtitle: "Anthropic terminal agent" /*FIXME: "Agente terminal de Anthropic" */,
+                    title: LocalizedStringResource("Claude Code CLI"),
+                    subtitle: LocalizedStringResource("Anthropic terminal agent"),
                     icon: "brain.head.profile",
-                    badge: "Anthropic API",
+                    badge: LocalizedStringResource("Anthropic API"),
                     color: .orange,
                     steps: [
-                        "1. Export Splash environment variable:" /*FIXME: "1. Exporta la variable de entorno de Splash:" */,
-                        "export ANTHROPIC_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)\"",
-                        "2. Launch Claude Code in your terminal:" /*FIXME: "2. Lanza Claude Code en tu terminal:" */,
-                        "splash claude"
+                        LocalizedStringResource("1. Export Splash environment variable:"),
+                        LocalizedStringResource("export ANTHROPIC_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)\""),
+                        LocalizedStringResource("2. Launch Claude Code in your terminal:"),
+                        LocalizedStringResource("splash claude")
                     ],
                     copyText: "export ANTHROPIC_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)\"\nsplash claude"
                 )
                 
                 IntegrationGuideCard(
-                    title: "Claude Desktop / Cowork",
-                    subtitle: "macOS native App with Local Gateway" /*FIXME: "App nativa con Gateway local" */,
+                    title: LocalizedStringResource("Claude Desktop / Cowork"),
+                    subtitle: LocalizedStringResource("macOS native App with Local Gateway"),
                     icon: "person.2.badge.gearshape.fill",
-                    badge: "Anthropic / Cowork",
+                    badge: LocalizedStringResource("Anthropic / Cowork"),
                     color: .orange,
                     steps: [
-                        "1. In Claude for Mac, select your local Gateway" /*FIXME: "1. En Claude for Mac, selecciona tu Gateway local" */,
-                        "2. Host / Endpoint URL:" /*FIXME: "2. Host / Endpoint URL:" */,
-                        "http://\(host):\(SplashService.shared.activePort)",
-                        "3. Splash responds to claude-haiku-4-5 & sonnet probes" /*FIXME: "3. Splash responderá a sondeos de claude-haiku-4-5 y sonnet" */
+                        LocalizedStringResource("1. In Claude for Mac, select your local Gateway"),
+                        LocalizedStringResource("2. Host / Endpoint URL:"),
+                        LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)"),
+                        LocalizedStringResource("3. Splash responds to claude-haiku-4-5 & sonnet probes")
                     ],
                     copyText: "http://\(host):\(SplashService.shared.activePort)"
                 )
                 
                 IntegrationGuideCard(
-                    title: "ChatGPT Desktop / Codex",
-                    subtitle: "OpenAI macOS native App" /*FIXME: "App nativa OpenAI para macOS" */,
+                    title: LocalizedStringResource("ChatGPT Desktop / Codex"),
+                    subtitle: LocalizedStringResource("OpenAI macOS native App"),
                     icon: "sparkles",
-                    badge: "OpenAI / Codex",
+                    badge: LocalizedStringResource("OpenAI / Codex"),
                     color: .teal,
                     steps: [
-                        "1. In ChatGPT for Mac or Codex scripts, point to your endpoint:" /*FIXME: "1. En ChatGPT for Mac o scripts Codex, apunta a tu endpoint:" */,
-                        "http://\(host):\(SplashService.shared.activePort)/v1",
-                        "2. Active model in Splash:" /*FIXME: "2. Modelo activo en Splash:" */,
-                        SplashService.shared.activeModel.isEmpty ? "mlx-community/Qwen3.8-27B-4bit" : SplashService.shared.activeModel,
-                        "3. API Key: 'splash' (bypass token)" /*FIXME: "3. API Key: 'splash' (token de bypass)" */
+                        LocalizedStringResource("1. In ChatGPT for Mac or Codex scripts, point to your endpoint:"),
+                        LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)/v1"),
+                        LocalizedStringResource("2. Active model in Splash:"),
+                        SplashService.shared.activeModel.isEmpty ? LocalizedStringResource("mlx-community/Qwen3.8-27B-4bit") : "\(SplashService.shared.activeModel)",
+                        LocalizedStringResource("3. API Key: 'splash' (bypass token)")
                     ],
                     copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
                 )
                 
                 IntegrationGuideCard(
-                    title: "Chatbox / NextChat / WebUI",
-                    subtitle: "macOS Chatbot Interfaces" /*FIXME: "Interfaces de Chatbot para macOS" */,
+                    title: LocalizedStringResource("Chatbox / NextChat / WebUI"),
+                    subtitle: LocalizedStringResource("macOS Chatbot Interfaces"),
                     icon: "bubble.left.and.bubble.right.fill",
-                    badge: "OpenAI Format",
+                    badge: LocalizedStringResource("OpenAI Format"),
                     color: .green,
                     steps: [
-                        "1. In Chatbot Settings, choose 'OpenAI API'" /*FIXME: "1. En Ajustes del Chatbot, elige 'OpenAI API'" */,
-                        "2. Host / API Host:" /*FIXME: "2. Host / API Host:" */,
-                        "http://\(host):\(SplashService.shared.activePort)",
-                        "3. API Key: 'splash' (any string)" /*FIXME: "3. API Key: 'splash' (no requerida pero obligatoria en algunas UIs)" */
+                        LocalizedStringResource("1. In Chatbot Settings, choose 'OpenAI API'"),
+                        LocalizedStringResource("2. Host / API Host:"),
+                        LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)"),
+                        LocalizedStringResource("3. API Key: 'splash' (any string)")
                     ],
                     copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
                 )
                 
                 IntegrationGuideCard(
-                    title: "Python (OpenAI / LangChain)",
-                    subtitle: "Scripts and pipelines" /*FIXME: "Scripts y automatizaciones" */,
+                    title: LocalizedStringResource("Python (OpenAI / LangChain)"),
+                    subtitle: LocalizedStringResource("Scripts and pipelines"),
                     icon: "terminal.fill",
-                    badge: "Python SDK",
+                    badge: LocalizedStringResource("Python SDK"),
                     color: .cyan,
                     steps: [
-                        "from openai import OpenAI",
-                        "client = OpenAI(base_url='http://\(host):\(SplashService.shared.activePort)/v1', api_key='splash')",
-                        "resp = client.chat.completions.create(model='\(SplashService.shared.activeModel)', messages=[...])"
+                        LocalizedStringResource("from openai import OpenAI"),
+                        LocalizedStringResource("client = OpenAI(base_url='http://\(host):\(SplashService.shared.activePort)/v1', api_key='splash')"),
+                        LocalizedStringResource("resp = client.chat.completions.create(model='\(SplashService.shared.activeModel)', messages=[...])")
                     ],
                     copyText: "from openai import OpenAI\nclient = OpenAI(base_url='http://\(host):\(SplashService.shared.activePort)/v1', api_key='splash')"
                 )
                 
                 IntegrationGuideCard(
-                    title: "cURL / Terminal Directo",
-                    subtitle: "Direct HTTP requests" /*FIXME: "Peticiones HTTP directas" */,
+                    title: LocalizedStringResource("cURL / Terminal Directo"),
+                    subtitle: LocalizedStringResource("Direct HTTP requests"),
                     icon: "network",
-                    badge: "REST HTTP",
+                    badge: LocalizedStringResource("REST HTTP"),
                     color: .indigo,
                     steps: [
-                        "curl http://\(host):\(SplashService.shared.activePort)/v1/chat/completions \\",
-                        "  -H 'Content-Type: application/json' \\",
-                        "  -d '{\"model\": \"\(SplashService.shared.activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola!\"}]}'"
+                        LocalizedStringResource("curl http://\(host):\(SplashService.shared.activePort)/v1/chat/completions \\"),
+                        LocalizedStringResource("  -H 'Content-Type: application/json' \\"),
+                        LocalizedStringResource("  -d '{\"model\": \"\(SplashService.shared.activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola!\"}]}'")
                     ],
                     copyText: "curl http://\(host):\(SplashService.shared.activePort)/v1/chat/completions -H 'Content-Type: application/json' -d '{\"model\": \"\(SplashService.shared.activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola\"}]}'"
                 )
                 
                 IntegrationGuideCard(
-                    title: "DeepSeek Harness (dsh)",
-                    subtitle: "DeepSeek autonomous coding agent" /*FIXME: "Agente autónomo de DeepSeek" */,
+                    title: LocalizedStringResource("DeepSeek Harness (dsh)"),
+                    subtitle: LocalizedStringResource("DeepSeek autonomous coding agent"),
                     icon: "cpu.fill",
-                    badge: "OpenAI Protocol",
+                    badge: LocalizedStringResource("OpenAI Protocol"),
                     color: .blue,
                     steps: [
-                        "1. Launch DeepSeek Harness web runtime:" /*FIXME: "1. Lanza el entorno web de DeepSeek Harness:" */,
-                        "npx @deepseek-ai/dsh web",
-                        "2. In Settings → Models → Custom model API:" /*FIXME: "2. En Settings → Models → Custom model API:" */,
-                        "Base URL: http://\(host):\(SplashService.shared.activePort)/v1",
-                        "3. Protocol: openai-completions | API Key: splash" /*FIXME: "3. Protocol: openai-completions | API Key: splash" */
+                        LocalizedStringResource("1. Launch DeepSeek Harness web runtime:"),
+                        LocalizedStringResource("npx @deepseek-ai/dsh web"),
+                        LocalizedStringResource("2. In Settings → Models → Custom model API:"),
+                        LocalizedStringResource("Base URL: http://\(host):\(SplashService.shared.activePort)/v1"),
+                        LocalizedStringResource("3. Protocol: openai-completions | API Key: splash")
                     ],
                     copyText: "export OPENAI_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)/v1\"\nexport OPENAI_API_KEY=\"splash\"\nnpx @deepseek-ai/dsh web"
                 )
                 
                 IntegrationGuideCard(
-                    title: "Hermes Agent",
-                    subtitle: "Nous Research coding agent" /*FIXME: "Agente de Nous Research" */,
+                    title: LocalizedStringResource("Hermes Agent"),
+                    subtitle: LocalizedStringResource("Nous Research coding agent"),
                     icon: "bolt.horizontal.fill",
-                    badge: "OpenAI Compatible",
+                    badge: LocalizedStringResource("OpenAI Compatible"),
                     color: .orange,
                     steps: [
-                        "1. In your Hermes .env or configuration:" /*FIXME: "1. En tu archivo .env o configuración de Hermes:" */,
-                        "OPENAI_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)/v1\"",
-                        "OPENAI_API_KEY=\"splash\"",
-                        "2. Active model in Splash:" /*FIXME: "2. Modelo activo en Splash:" */,
-                        SplashService.shared.activeModel.isEmpty ? "mlx-community/Qwen3.8-27B-4bit" : SplashService.shared.activeModel
+                        LocalizedStringResource("1. In your Hermes .env or configuration:"),
+                        LocalizedStringResource("OPENAI_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)/v1\""),
+                        LocalizedStringResource("OPENAI_API_KEY=\"splash\""),
+                        LocalizedStringResource("2. Active model in Splash:"),
+                        "\(SplashService.shared.activeModel.isEmpty ? "mlx-community/Qwen3.8-27B-4bit" : SplashService.shared.activeModel)"
                     ],
                     copyText: "export OPENAI_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)/v1\"\nexport OPENAI_API_KEY=\"splash\""
                 )
@@ -419,7 +414,8 @@ public struct ConnectedAppsView: View {
         pasteboard.setString(string, forType: .string)
     }
     
-    private func showCopied(_ message: String) {
+    private func showCopied(_ message: LocalizedStringResource) {
+        let message = String(localized: message)
         withAnimation {
             copiedMessage = message
         }
@@ -499,7 +495,7 @@ struct ConnectedAppCard: View {
                         Text("PID:")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
-                        Text("\(app.pid)")
+                        Text(app.pid, format: .number.grouping(.never))
                             .font(.system(size: 10, weight: .medium, design: .monospaced))
                     }
                     
@@ -507,7 +503,7 @@ struct ConnectedAppCard: View {
                         Image(systemName: "network")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary)
-                        Text("\(app.connectionCount) \(app.connectionCount == 1 ? "socket" : "sockets" /*FIXME: "conexión"  "conexiones" */)")
+                        Text("\(app.connectionCount) sockets")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
@@ -521,7 +517,7 @@ struct ConnectedAppCard: View {
                     
                     Spacer()
                     
-                    Text("\("Last seen:" /*FIXME: "Visto:" */) \(formattedTime(app.lastSeen))")
+                    Text("Last seen: \(formattedTime(app.lastSeen))")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
@@ -538,7 +534,7 @@ struct ConnectedAppCard: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Bring app to front" /*FIXME: "Traer app al frente" */)
+                    .help("Bring app to front")
                     
                     Button {
                         SplashService.shared.revealAppInFinder(app: app)
@@ -548,7 +544,7 @@ struct ConnectedAppCard: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Reveal in Finder" /*FIXME: "Ver en Finder" */)
+                    .help("Reveal in Finder")
                     
                     Button(role: .destructive) {
                         confirmingTermination = true
@@ -558,14 +554,14 @@ struct ConnectedAppCard: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Terminate client process" /*FIXME: "Terminar proceso cliente" */)
+                    .help("Terminate client process")
                 }
             } else {
                 HStack(spacing: 4) {
                     Image(systemName: "globe")
                         .font(.system(size: 10))
                         .foregroundColor(.indigo)
-                    Text("LAN Network" /*FIXME: "Red LAN" */)
+                    Text("LAN Network")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
                 }
@@ -585,17 +581,17 @@ struct ConnectedAppCard: View {
         // P-04 / H-05: antes el botón «Terminar» enviaba SIGTERM al primer clic y sin
         // confirmación. Un clic accidental cerraba el cliente del usuario.
         .confirmationDialog(
-            "Terminate \(app.name)?" /*FIXME: "¿Terminar \(app.name)?" */,
+            "Terminate \(app.name)?",
             isPresented: $confirmingTermination,
             titleVisibility: .visible
         ) {
-            Button("Terminate process (PID \(app.pid))" /*FIXME: "Terminar proceso (PID \(app.pid))" */,
+            Button("Terminate process (PID \(app.pid))",
                    role: .destructive) {
                 SplashService.shared.terminateApp(app: app)
             }
-            Button("Cancel" /*FIXME: "Cancelar" */, role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("A shutdown request will be sent to \(app.name) (PID \(app.pid)). Save its work before continuing. The application decides how to close." /*FIXME: "Se enviará una orden de cierre a \(app.name) (PID \(app.pid)). Guarda su trabajo antes de continuar. La aplicación decidirá cómo cerrarse." */)
+            Text("A shutdown request will be sent to \(app.name) (PID \(app.pid)). Save its work before continuing. The application decides how to close.")
         }
     }
     
@@ -626,9 +622,9 @@ struct ConnectedAppCard: View {
 }
 
 struct StatBadgeCard: View {
-    let title: String
-    let value: String
-    let subtitle: String
+    let title: LocalizedStringResource
+    let value: LocalizedStringResource
+    let subtitle: LocalizedStringResource
     let icon: String
     let color: Color
     
@@ -665,12 +661,12 @@ struct StatBadgeCard: View {
 }
 
 struct IntegrationGuideCard: View {
-    let title: String
-    let subtitle: String
+    let title: LocalizedStringResource
+    let subtitle: LocalizedStringResource
     let icon: String
-    let badge: String
+    let badge: LocalizedStringResource
     let color: Color
-    let steps: [String]
+    let steps: [LocalizedStringResource]
     let copyText: String
     @State private var isCopied: Bool = false
     
@@ -703,8 +699,8 @@ struct IntegrationGuideCard: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 3) {
-                ForEach(steps, id: \.self) { step in
-                    if step.hasPrefix("http") || step.hasPrefix("export") || step.hasPrefix("curl") || step.hasPrefix("from") || step.hasPrefix("client") || step.hasPrefix("splash") {
+                ForEach(steps, id: \.key) { step in
+                    if step.key.hasPrefix("http") || step.key.hasPrefix("export") || step.key.hasPrefix("curl") || step.key.hasPrefix("from") || step.key.hasPrefix("client") || step.key.hasPrefix("splash") {
                         Text(step)
                             .font(.system(size: 9, design: .monospaced))
                             .foregroundColor(.accentColor)
@@ -730,7 +726,7 @@ struct IntegrationGuideCard: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                    Text(isCopied ? "¡Copiado!" : "Copiar Configuración")
+                    Text(isCopied ? "Copied!" : "Copiar Configuración")
                 }
                 .font(.system(size: 10, weight: .medium))
                 .frame(maxWidth: .infinity)

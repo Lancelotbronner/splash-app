@@ -19,7 +19,7 @@ public struct DependencyInstallView: View {
                 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 8) {
-                        Text("Required Dependency: Splash Engine" /*FIXME: "Dependencia Requerida: Motor Splash" */)
+                        Text("Required Dependency: Splash Engine")
                             .font(.system(size: 16, weight: .bold))
                         
                         Text("brew")
@@ -30,7 +30,7 @@ public struct DependencyInstallView: View {
                             .cornerRadius(4)
                     }
                     
-                    Text("Splash Monitor requires the official Splash CLI installed on your Mac to manage servers, monitor tokens, and serve models." /*FIXME: "Splash Monitor requiere tener instalado el CLI oficial de Splash en tu Mac para controlar servidores, monitorizar tokens y cargar modelos." */)
+                    Text("Splash Monitor requires the official Splash CLI installed on your Mac to manage servers, monitor tokens, and serve models.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .lineLimit(2)
@@ -42,7 +42,7 @@ public struct DependencyInstallView: View {
             // Command snippet card
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Official Installation Command:" /*FIXME: "Comando de Instalación Oficial:" */)
+                    Text("Official Installation Command:")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -67,7 +67,7 @@ public struct DependencyInstallView: View {
                         pb.clearContents()
                         pb.setString("brew install incoai/tap/splash", forType: .string)
                     } label: {
-                        Label("Copy" /*FIXME: "Copiar" */, systemImage: "doc.on.doc")
+                        Label("Copy", systemImage: "doc.on.doc")
                             .font(.system(size: 10))
                     }
                     .buttonStyle(.bordered)
@@ -84,22 +84,22 @@ public struct DependencyInstallView: View {
             // System Diagnostics
             HStack(spacing: 12) {
                 DiagnosticBadge(
-                    title: "Homebrew",
-                    status: SplashService.shared.hasHomebrew ? "Detected" /*FIXME: "Detectado" */ : "Not found" /*FIXME: "No encontrado" */,
+                    title: LocalizedStringResource("Homebrew"),
+                    status: SplashService.shared.hasHomebrew ? LocalizedStringResource("Detected") : LocalizedStringResource("Not found"),
                     icon: SplashService.shared.hasHomebrew ? "checkmark.circle.fill" : "xmark.circle.fill",
                     isSuccess: SplashService.shared.hasHomebrew
                 )
                 
                 DiagnosticBadge(
-                    title: "Apple Silicon",
-                    status: isAppleSilicon ? "ARM64 Metal" : "Intel (No compatible)",
+                    title: LocalizedStringResource("Apple Silicon"),
+                    status: isAppleSilicon ? LocalizedStringResource("ARM64 Metal") : LocalizedStringResource("Intel (No compatible)"),
                     icon: isAppleSilicon ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
                     isSuccess: isAppleSilicon
                 )
                 
                 DiagnosticBadge(
-                    title: "Splash CLI",
-                    status: SplashService.shared.isSplashInstalled ? (SplashService.shared.splashVersion ?? "Instalado") : "Not installed" /*FIXME: "No instalado" */,
+                    title: LocalizedStringResource("Splash CLI"),
+                    status: SplashService.shared.isSplashInstalled ? (SplashService.shared.splashVersion.map { "\($0)" } ?? LocalizedStringResource("Instalado")) : LocalizedStringResource("Not installed"),
                     icon: SplashService.shared.isSplashInstalled ? "checkmark.circle.fill" : "clock.arrow.circlepath",
                     isSuccess: SplashService.shared.isSplashInstalled
                 )
@@ -111,7 +111,7 @@ public struct DependencyInstallView: View {
                     Button(role: .destructive) {
                         SplashService.shared.cancelDependencyInstall()
                     } label: {
-                        Label("Cancel Installation" /*FIXME: "Cancelar Instalación" */, systemImage: "xmark.circle")
+                        Label("Cancel Installation", systemImage: "xmark.circle")
                             .font(.system(size: 11, weight: .semibold))
                     }
                     .buttonStyle(.bordered)
@@ -122,7 +122,7 @@ public struct DependencyInstallView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.down.circle.fill")
-                            Text("Install Splash Automatically" /*FIXME: "Instalar Splash Automáticamente" */)
+                            Text("Install Splash Automatically")
                         }
                         .font(.system(size: 11, weight: .bold))
                     }
@@ -135,7 +135,7 @@ public struct DependencyInstallView: View {
                 Button {
                     SplashService.shared.installSplashInTerminal()
                 } label: {
-                    Label("Install in Terminal" /*FIXME: "Instalar en Terminal" */, systemImage: "terminal")
+                    Label("Install in Terminal", systemImage: "terminal")
                         .font(.system(size: 11))
                 }
                 .buttonStyle(.bordered)
@@ -146,7 +146,7 @@ public struct DependencyInstallView: View {
                 Button {
                     SplashService.shared.checkDependencies()
                 } label: {
-                    Label("Verify" /*FIXME: "Verificar" */, systemImage: "arrow.clockwise")
+                    Label("Verify", systemImage: "arrow.clockwise")
                         .font(.system(size: 11))
                 }
                 .buttonStyle(.bordered)
@@ -160,19 +160,19 @@ public struct DependencyInstallView: View {
                         if SplashService.shared.isInstallingDependency {
                             ProgressView()
                                 .scaleEffect(0.6)
-                            Text("Installing Splash..." /*FIXME: "Instalando Splash..." */)
+                            Text("Installing Splash...")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.orange)
                         } else if SplashService.shared.dependencyInstallSuccess == true {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("Installation completed successfully!" /*FIXME: "¡Instalación completada con éxito!" */)
+                            Text("Installation completed successfully!")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.green)
                         } else if SplashService.shared.dependencyInstallSuccess == false {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.red)
-                            Text("Installation error" /*FIXME: "Error durante la instalación" */)
+                            Text("Installation error")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.red)
                         }
@@ -180,7 +180,7 @@ public struct DependencyInstallView: View {
                         Spacer()
                         
                         if !SplashService.shared.isInstallingDependency {
-                            Button("Clear" /*FIXME: "Limpiar" */) {
+                            Button("Clear") {
                                 SplashService.shared.dependencyInstallLogs.removeAll()
                                 SplashService.shared.dependencyInstallSuccess = nil
                             }
@@ -233,8 +233,8 @@ public struct DependencyInstallView: View {
 }
 
 struct DiagnosticBadge: View {
-    let title: String
-    let status: String
+    let title: LocalizedStringResource
+    let status: LocalizedStringResource
     let icon: String
     let isSuccess: Bool
     

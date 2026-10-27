@@ -21,13 +21,13 @@ public struct MainWindowView: View {
         
         public var title: LocalizedStringResource {
             switch self {
-            case .dashboard: return "Token Dashboard" /*FIXME: "Dashboard de Tokens" */
-            case .connectedApps: return "Connected Apps" /*FIXME: "Apps Conectadas" */
-            case .models: return "Model Manager" /*FIXME: "Gestor de Modelos" */
-            case .server: return "Server & Agents" /*FIXME: "Servidor y Agentes" */
-            case .modelTesting: return "Model Testing" /*FIXME: "Test de Modelos" */
-            case .settings: return "Settings" /*FIXME: "Configuración" */
-            case .about: return "About" /*FIXME: "Acerca de" */
+            case .dashboard: return LocalizedStringResource("Token Dashboard")
+            case .connectedApps: return LocalizedStringResource("Connected Apps")
+            case .models: return LocalizedStringResource("Model Manager")
+            case .server: return LocalizedStringResource("Server & Agents")
+            case .modelTesting: return LocalizedStringResource("Model Testing")
+            case .settings: return LocalizedStringResource("Configuration")
+            case .about: return LocalizedStringResource("About")
             }
         }
         
@@ -74,7 +74,7 @@ public struct MainWindowView: View {
                             Circle()
                                 .fill(SplashService.shared.isRunning ? Color.green : Color.red)
                                 .frame(width: 7, height: 7)
-                            Text(SplashService.shared.isRunning ? ("Online" /*FIXME: "Activo" */) : ("Stopped" /*FIXME: "Detenido" */))
+                            Text(SplashService.shared.isRunning ? (LocalizedStringResource("Online")) : (LocalizedStringResource("Stopped")))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
@@ -146,12 +146,12 @@ public struct MainWindowView: View {
                         HStack(spacing: 4) {
                             Image(systemName: Preferences.showMenuBarIcon ? "menubar.rectangle" : "rectangle.slash")
                                 .foregroundColor(Preferences.showMenuBarIcon ? .accentColor : .secondary)
-                            Text(Preferences.showMenuBarIcon ? ("Menu: ON" /*FIXME: "Barra: ON" */) : ("Menu: OFF" /*FIXME: "Barra: OFF" */))
+                            Text(Preferences.showMenuBarIcon ? (LocalizedStringResource("Menu: ON")) : (LocalizedStringResource("Menu: OFF")))
                                 .font(.system(size: 10, weight: .medium))
                         }
                     }
                     .buttonStyle(.borderless)
-                    .help("Toggle icon in top menu bar" /*FIXME: "Activar/Desactivar ícono en la barra de menú superior" */)
+                    .help("Toggle icon in top menu bar")
                 }
                 .padding(12)
             }
@@ -218,10 +218,9 @@ public struct MainWindowView: View {
                 .foregroundColor(.orange)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text("New Splash engine version available" /*FIXME: "Nueva versión del motor Splash disponible" */)
+                Text("New Splash engine version available")
                     .font(.system(size: 12, weight: .semibold))
-                Text("Splash CLI \(SplashService.shared.latestSplashCliVersion.isEmpty ? "new version" : SplashService.shared.latestSplashCliVersion) is available (installed: \(SplashService.shared.installedSplashCliVersion.isEmpty ? "unknown" : SplashService.shared.installedSplashCliVersion))."
-                    /*FIXME: "Splash CLI \(SplashService.shared.latestSplashCliVersion.isEmpty ? "nueva versión" : SplashService.shared.latestSplashCliVersion) está disponible (instalada: \(SplashService.shared.installedSplashCliVersion.isEmpty ? "desconocida" : SplashService.shared.installedSplashCliVersion))." */
+                Text("Splash CLI \(SplashService.shared.latestSplashCliVersion.isEmpty ? String(localized: "new version") : SplashService.shared.latestSplashCliVersion) is available (installed: \(SplashService.shared.installedSplashCliVersion.isEmpty ? String(localized: "unknown") : SplashService.shared.installedSplashCliVersion))."
                     )
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -229,7 +228,7 @@ public struct MainWindowView: View {
             
             Spacer()
             
-            Button("Upgrade Splash" /*FIXME: "Actualizar Splash" */) {
+            Button("Upgrade Splash") {
                 SplashService.shared.upgradeSplashInTerminal()
             }
             .buttonStyle(.borderedProminent)
@@ -237,14 +236,14 @@ public struct MainWindowView: View {
             .controlSize(.small)
             
             if !SplashService.shared.latestSplashCliReleaseURL.isEmpty, let url = URL(string: SplashService.shared.latestSplashCliReleaseURL) {
-                Button("View notes" /*FIXME: "Ver notas" */) {
+                Button("View notes") {
                     NSWorkspace.shared.open(url)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
             
-            Button("Skip" /*FIXME: "Omitir" */) {
+            Button("Skip") {
                 SplashService.shared.hasSplashCliUpdate = false
             }
             .buttonStyle(.bordered)
@@ -269,16 +268,16 @@ public struct MainWindowView: View {
                 .foregroundColor(.green)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text("Update available" /*FIXME: "Nueva versión disponible" */)
+                Text("Update available")
                     .font(.system(size: 12, weight: .semibold))
-                Text("Splash Monitor \(SplashService.shared.latestVersion ?? "new version") is available for download." /*FIXME: "Splash Monitor \(SplashService.shared.latestVersion ?? "nueva versión") está disponible para descargar." */)
+                Text("Splash Monitor \(SplashService.shared.latestVersion ?? String(localized: "new version")) is available for download.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            Button("Download" /*FIXME: "Descargar" */) {
+            Button("Download") {
                 if let url = URL(string: SplashService.shared.latestReleaseURL ?? "https://github.com/hometrix/SplashMonitor/releases/latest") {
                     NSWorkspace.shared.open(url)
                 }
@@ -287,7 +286,7 @@ public struct MainWindowView: View {
             .tint(.green)
             .controlSize(.small)
             
-            Button("Skip" /*FIXME: "Omitir" */) {
+            Button("Skip") {
                 SplashService.shared.hasUpdate = false
             }
             .buttonStyle(.bordered)
@@ -312,23 +311,23 @@ public struct MainWindowView: View {
                 .foregroundColor(.accentColor)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text("Would you like to place the monitor in the top menu bar?" /*FIXME: "¿Deseas colocar el monitor en la barra de menú superior?" */)
+                Text("Would you like to place the monitor in the top menu bar?")
                     .font(.system(size: 12, weight: .semibold))
-                Text("You'll be able to see token speed in tok/s and token usage next to Bluetooth and Wi-Fi." /*FIXME: "Podrás ver la velocidad en tok/s y el uso de tokens junto a Bluetooth y Wi-Fi." */)
+                Text("You'll be able to see token speed in tok/s and token usage next to Bluetooth and Wi-Fi.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            Button("Yes, place in menu bar" /*FIXME: "Sí, colocar arriba" */) {
+            Button("Yes, place in menu bar") {
                 Preferences.showMenuBarIcon = true
                 Preferences.hasAskedAboutMenuBar = true
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             
-            Button("Not now" /*FIXME: "No por ahora" */) {
+            Button("Not now") {
                 Preferences.showMenuBarIcon = false
                 Preferences.hasAskedAboutMenuBar = true
             }
@@ -351,9 +350,9 @@ public struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Splash Local Inference Monitor" /*FIXME: "Monitor de Inferencia Local Splash" */)
+                    Text("Splash Local Inference Monitor")
                         .font(.system(size: 20, weight: .bold))
-                    Text("Real-time token metrics, throughput, and Metal memory" /*FIXME: "Métricas de tokens, velocidad y memoria Metal en tiempo real" */)
+                    Text("Real-time token metrics, throughput, and Metal memory")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -364,7 +363,7 @@ public struct MainWindowView: View {
                     Button {
                         Task { await SplashService.shared.checkServerStatus() }
                     } label: {
-                        Label("Refresh" /*FIXME: "Actualizar" */, systemImage: "arrow.clockwise")
+                        Label("Refresh", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -400,7 +399,7 @@ public struct MainWindowView: View {
             
             // Nombre del modelo
             VStack(alignment: .leading, spacing: 2) {
-                Text("Running model" /*FIXME: "Modelo en ejecución" */)
+                Text("Running Model")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.secondary)
                     .textCase(.uppercase)
@@ -417,7 +416,7 @@ public struct MainWindowView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 } else {
-                    Text("Server stopped" /*FIXME: "Servidor detenido" */)
+                    Text("Server Stopped")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.secondary)
                 }
@@ -468,7 +467,7 @@ public struct MainWindowView: View {
     // MARK: - Settings Detail View
     private var settingsDetailView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Splash Monitor Settings" /*FIXME: "Configuración de Splash Monitor" */)
+            Text("Splash Monitor Settings")
                 .font(.system(size: 18, weight: .bold))
             
             Divider()
@@ -482,7 +481,7 @@ public struct MainWindowView: View {
                     
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Text("Optimal Performance Profile" /*FIXME: "Perfil de Rendimiento Óptimo" */)
+                            Text("Optimal Performance Profile")
                                 .font(.system(size: 13, weight: .bold))
                             
                             Text("M4 MAX / 64 GB")
@@ -494,7 +493,7 @@ public struct MainWindowView: View {
                                 .cornerRadius(3)
                         }
                         
-                        Text("Restores recommended high-speed and capacity settings for Apple Silicon: GDN BF16 (-50% RAM), Thinking Budget 8K, Persistent SSD cache, Context 128K, Idle off (Always in RAM), Port 8005, LAN 0.0.0.0, and open CORS (*)." /*FIXME: "Restablece los parámetros de máxima velocidad y capacidad recomendados para tu Apple Silicon: GDN BF16 (-50% RAM), Thinking Budget 8K, Caché SSD persistente, Contexto 128K, Inactividad off (Siempre en RAM), Puerto 8005, Red LAN 0.0.0.0 y CORS abierto (*)." */)
+                        Text("Restores recommended high-speed and capacity settings for Apple Silicon: GDN BF16 (-50% RAM), Thinking Budget 8K, Persistent SSD cache, Context 128K, Idle off (Always in RAM), Port 8005, LAN 0.0.0.0, and open CORS (*).")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -515,7 +514,7 @@ public struct MainWindowView: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "sparkles")
-                            Text("Restore Optimal Configuration" /*FIXME: "Restaurar Configuración Óptima" */)
+                            Text("Restore Optimal Configuration")
                         }
                         .font(.system(size: 11, weight: .semibold))
                     }
@@ -529,7 +528,7 @@ public struct MainWindowView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                             .font(.system(size: 12))
-                        Text("Optimal configuration restored and saved successfully in UserDefaults (M4 Max / 64 GB)!" /*FIXME: "¡Configuración óptima restaurada y guardada con éxito en UserDefaults (M4 Max / 64 GB)!" */)
+                        Text("Optimal configuration restored and saved successfully in UserDefaults (M4 Max / 64 GB)!")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.green)
                         Spacer()
@@ -548,47 +547,24 @@ public struct MainWindowView: View {
                     .stroke(Color.blue.opacity(0.25), lineWidth: 1)
             )
             
-            // Language Settings
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Application Language" /*FIXME: "Idioma de la Aplicación" */)
-                    .font(.system(size: 13, weight: .semibold))
-
-                //FIXME:
-//                Picker("", selection: $loc.languageMode) {
-//                    let sysLang = Localization.detectSystemLanguage() == "es" ? "Español" : "English"
-//                    Text("\("Automatic (macOS: " /*FIXME: "Automático (macOS: " */)\(sysLang))").tag("system")
-//                    Text("🇩🇴 Español (República Dominicana)").tag("es")
-//                    Text("🇬🇧 English").tag("en")
-//                }
-//                .pickerStyle(.radioGroup)
-//                .font(.system(size: 11))
-                
-                Text("Automatically syncs with macOS system language or lets you choose manually." /*FIXME: "Sincroniza automáticamente con el idioma configurado en tu macOS o permite fijar uno manualmente." */)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-            .padding(14)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .cornerRadius(10)
-            
             // Menu bar icon toggle
             VStack(alignment: .leading, spacing: 8) {
-                Text("Top Menu Bar (macOS Status Bar)" /*FIXME: "Barra de Menú Superior (macOS Status Bar)" */)
+                Text("Top Menu Bar (macOS Status Bar)")
                     .font(.system(size: 13, weight: .semibold))
                 
-                Toggle("Show icon and metrics in the top bar next to Bluetooth" /*FIXME: "Mostrar ícono y métricas en la barra superior junto al Bluetooth" */, isOn: Preferences.$showMenuBarIcon)
+                Toggle("Show icon and metrics in the top bar next to Bluetooth", isOn: Preferences.$showMenuBarIcon)
                     .font(.system(size: 12))
                 
                 if Preferences.showMenuBarIcon {
-                    Text("Information in menu bar:" /*FIXME: "Información en la barra:" */)
+                    Text("Information in menu bar:")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                     
-                    Picker("", selection: Preferences.$menuBarDisplayMode) {
-                        Text("Icon only" /*FIXME: "Solo Ícono" */).tag("icon")
-                        Text("Icon + Speed (tok/s)" /*FIXME: "Ícono + Velocidad (tok/s)" */).tag("speed")
-                        Text("Icon + Tokens Used" /*FIXME: "Ícono + Tokens Usados" */).tag("tokens")
-                        Text("Icon + Model" /*FIXME: "Ícono + Modelo" */).tag("model")
+                    Picker("empty", selection: Preferences.$menuBarDisplayMode) {
+                        Text("Icon Only").tag("icon")
+                        Text("Icon + Speed (tok/s)").tag("speed")
+                        Text("Icon + Tokens Used").tag("tokens")
+                        Text("Icon + Model").tag("model")
                     }
                     .pickerStyle(.radioGroup)
                     .font(.system(size: 11))
@@ -599,9 +575,9 @@ public struct MainWindowView: View {
                     // Modo Solo Barra de Menú
                     Toggle(isOn: Preferences.$menuBarOnlyMode) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Menu Bar Only Mode" /*FIXME: "Modo Solo Barra de Menú" */)
+                            Text("Menu Bar Only Mode")
                                 .font(.system(size: 12))
-                            Text("Cmd+Q hides the app from the Dock and task list instead of quitting. Use Cmd+Shift+Q to quit completely." /*FIXME: "Cmd+Q oculta la app del Dock y del listado de tareas en lugar de cerrarla. Usa Cmd+Shift+Q para salir completamente." */)
+                            Text("Cmd+Q hides the app from the Dock and task list instead of quitting. Use Cmd+Shift+Q to quit completely.")
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                         }
@@ -615,7 +591,7 @@ public struct MainWindowView: View {
             
             // Inicio Automático al Encender el Mac (Launch at Login)
             VStack(alignment: .leading, spacing: 8) {
-                Text("System Startup" /*FIXME: "Inicio del Sistema" */)
+                Text("System Startup")
                     .font(.system(size: 13, weight: .semibold))
                 
                 Toggle(isOn: Binding(
@@ -623,9 +599,9 @@ public struct MainWindowView: View {
                     set: { autoLaunch.setEnabled($0) }
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Launch Splash Monitor at startup" /*FIXME: "Iniciar Splash Monitor al encender el Mac" */)
+                        Text("Launch Splash Monitor at startup")
                             .font(.system(size: 12))
-                        Text("Automatically launch the app in background when logging in to macOS." /*FIXME: "Ejecuta automáticamente la aplicación en segundo plano al iniciar sesión en macOS." */)
+                        Text("Automatically launch the app in background when logging in to macOS.")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
@@ -638,14 +614,14 @@ public struct MainWindowView: View {
             
             // Notificaciones de macOS
             VStack(alignment: .leading, spacing: 8) {
-                Text("macOS Notifications" /*FIXME: "Notificaciones de macOS" */)
+                Text("macOS Notifications")
                     .font(.system(size: 13, weight: .semibold))
                 
                 Toggle(isOn: $notifications.isNotificationsEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("System alerts and notifications" /*FIXME: "Alertas y notificaciones del sistema" */)
+                        Text("System alerts and notifications")
                             .font(.system(size: 12))
-                        Text("Receive alerts when the server starts, stops unexpectedly, or if unified memory enters critical pressure." /*FIXME: "Recibe avisos cuando el servidor se inicie, se detenga inesperadamente o si la memoria unificada del Mac entra en presión crítica." */)
+                        Text("Receive alerts when the server starts, stops unexpectedly, or if unified memory enters critical pressure.")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
@@ -658,10 +634,10 @@ public struct MainWindowView: View {
             
             // Shell integration (P-09)
             VStack(alignment: .leading, spacing: 8) {
-                Text("Shell Integration" /*FIXME: "Integración con el Shell" */)
+                Text("Shell Integration")
                     .font(.system(size: 13, weight: .semibold))
                 
-                Toggle("Allow Splash Monitor to add a line to your ~/.zshrc" /*FIXME: "Permitir a Splash Monitor añadir una línea a tu ~/.zshrc" */,
+                Toggle("Allow Splash Monitor to add a line to your ~/.zshrc",
                        isOn: Binding(
                             get: { Preferences.shellConfigConsent },
                             set: { allowed in
@@ -676,12 +652,12 @@ public struct MainWindowView: View {
                        ))
                     .font(.system(size: 12))
                 
-                Text("Without this line, agents launched from an external terminal do not inherit the active port. The ~/.splash_monitor_env file is always written, with or without permission." /*FIXME: "Sin esta línea, los agentes lanzados desde una terminal externa no heredan el puerto activo. El fichero ~/.splash_monitor_env se escribe siempre, con o sin permiso." */)
+                Text("Without this line, agents launched from an external terminal do not inherit the active port. The ~/.splash_monitor_env file is always written, with or without permission.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 if Preferences.shellConfigConsent {
-                    Button("Undo changes to ~/.zshrc" /*FIXME: "Deshacer cambios en ~/.zshrc" */) {
+                    Button("Undo changes to ~/.zshrc") {
                         SplashService.shared.clearShellEnvironment()
                         Preferences.shellConfigConsent = false
                         Preferences.shellConfigDeclined = true
@@ -697,7 +673,7 @@ public struct MainWindowView: View {
             
             // Refresh rate
             VStack(alignment: .leading, spacing: 8) {
-                Text("Refresh Interval" /*FIXME: "Frecuencia de Actualización" */)
+                Text("Refresh Interval")
                     .font(.system(size: 13, weight: .semibold))
                 
                 HStack {
@@ -716,25 +692,25 @@ public struct MainWindowView: View {
             
             // Server Network & Context Options
             VStack(alignment: .leading, spacing: 10) {
-                Text("Inference Engine Options" /*FIXME: "Opciones del Motor de Inferencia" */)
+                Text("Inference Engine Options")
                     .font(.system(size: 13, weight: .semibold))
                 
-                Toggle("Allow incoming connections from local network (bind to 0.0.0.0)" /*FIXME: "Permitir conexiones entrantes desde la red local (enlazar a 0.0.0.0)" */,
+                Toggle("Allow incoming connections from local network (bind to 0.0.0.0)",
                        isOn: Preferences.$listenOnAllInterfaces)
                     .font(.system(size: 12))
                 
-                Text("By default, Splash only listens on 127.0.0.1 (localhost). Enable this option to let other devices, servers, or agents on your local network (LAN) run inference on this Mac." /*FIXME: "Por defecto, Splash solo escucha en 127.0.0.1 (localhost). Activa esta opción para permitir que otros dispositivos, servidores o agentes en tu red local (LAN) realicen inferencias en tu Mac." */)
+                Text("By default, Splash only listens on 127.0.0.1 (localhost). Enable this option to let other devices, servers, or agents on your local network (LAN) run inference on this Mac.")
                     .font(.system(size: 10))
                 if Preferences.listenOnAllInterfaces {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Allowed Domains or Hosts (--allowed-host):" /*FIXME: "Dominios o Hosts Permitidos (--allowed-host):" */)
+                        Text("Allowed Domains or Hosts (--allowed-host):")
                             .font(.system(size: 11, weight: .medium))
                         
-                        TextField("e.g. mydomain.duckdns.org, mymac.local" /*FIXME: "ej. midominio.duckdns.org, mimac.local" */, text: Preferences.$allowedHosts)
+                        TextField("e.g. mydomain.duckdns.org, mymac.local", text: Preferences.$allowedHosts)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11, design: .monospaced))
                         
-                        Text("Splash blocks requests with unknown Host headers for security (DNS Rebinding protection). Enter your DDNS domains or hostnames separated by commas." /*FIXME: "Splash bloquea por seguridad cualquier petición con un Host desconocido (protección DNS Rebinding). Ingresa tus dominios DDNS o nombres de host separados por comas." */)
+                        Text("Splash blocks requests with unknown Host headers for security (DNS Rebinding protection). Enter your DDNS domains or hostnames separated by commas.")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
@@ -742,14 +718,14 @@ public struct MainWindowView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Allowed Web Origins & Extensions (--allowed-origin):" /*FIXME: "Orígenes Web y Extensiones (--allowed-origin):" */)
+                    Text("Allowed Web Origins & Extensions (--allowed-origin):")
                         .font(.system(size: 11, weight: .medium))
                     
-                    TextField("e.g. * (for Chrome extension and local web)" /*FIXME: "ej. * (para extensión de Chrome y web local)" */, text: Preferences.$allowedOrigins)
+                    TextField("e.g. * (for Chrome extension and local web)", text: Preferences.$allowedOrigins)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11, design: .monospaced))
                     
-                    Text("Allows browser extensions (Chrome, Arc, Brave), local web apps, and Tauri to interact with Splash via CORS. Default '*' allows any local origin or extension." /*FIXME: "Permite que extensiones de navegador (Chrome, Arc, Brave), aplicaciones Web locales y Tauri interactúen con Splash vía CORS. Por defecto '*' permite cualquier origen local o extensión." */)
+                    Text("Allows browser extensions (Chrome, Arc, Brave), local web apps, and Tauri to interact with Splash via CORS. Default '*' allows any local origin or extension.")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
@@ -758,59 +734,59 @@ public struct MainWindowView: View {
                 Divider()
                 
                 HStack {
-                    Text("Context window limit:" /*FIXME: "Límite de ventana de contexto:" */)
+                    Text("Context window limit:")
                         .font(.system(size: 12))
                     
                     Spacer()
                     
-                    Picker("", selection: Preferences.$maxContext) {
-                        Text("Automatic (managed by Splash)" /*FIXME: "Automático (gestión de Splash)" */).tag("auto")
+                    Picker("empty", selection: Preferences.$maxContext) {
+                        Text("Automatic (managed by Splash)").tag("auto")
                         Text("16K (16,384 tokens)").tag("16K")
                         Text("32K (32,768 tokens)").tag("32K")
                         Text("64K (65,536 tokens)").tag("64K")
                         Text("128K (131,072 tokens)").tag("128K")
                         Text("256K (262,144 tokens)").tag("256K")
                         Text("512K (524,288 tokens)").tag("512K")
-                        Text("1M (1,000,000 tokens · YaRN)" /*FIXME: "1M (1,000,000 tokens · YaRN)" */).tag("1M")
+                        Text("1M (1,000,000 tokens · YaRN)").tag("1M")
                     }
                     .labelsHidden()
                     .frame(width: 250)
                 }
                 
-                Text("Configures the --max-context flag to limit or expand memory reserved for token history (Splash 1.4.0+ supports up to 1M with YaRN)." /*FIXME: "Configura el parámetro --max-context para limitar o expandir la memoria reservada para el historial de tokens (Splash 1.4.0+ soporta hasta 1M con YaRN)." */)
+                Text("Configures the --max-context flag to limit or expand memory reserved for token history (Splash 1.4.0+ supports up to 1M with YaRN).")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 Divider()
                 
                 HStack {
-                    Text("Idle memory release timeout:" /*FIXME: "Liberación de memoria por inactividad:" */)
+                    Text("Idle memory release timeout:")
                         .font(.system(size: 12))
                     Spacer()
-                    Picker("", selection: Preferences.$idleRelease) {
-                        Text("1 min (Fast saving)" /*FIXME: "1 min (Ahorro rápido)" */).tag("1m")
-                        Text("2 min (Aggressive)" /*FIXME: "2 min (Agresivo)" */).tag("2m")
-                        Text("5 min (Balanced)" /*FIXME: "5 min (Equilibrado)" */).tag("5m")
-                        Text("10 min (Splash default)" /*FIXME: "10 min (Por defecto Splash)" */).tag("10m")
-                        Text("30 min (Extended)" /*FIXME: "30 min (Extendido)" */).tag("30m")
-                        Text("Disabled (Always in RAM)" /*FIXME: "Desactivado (Siempre en RAM)" */).tag("off")
+                    Picker("empty", selection: Preferences.$idleRelease) {
+                        Text("1 min (Fast saving)").tag("1m")
+                        Text("2 min (Aggressive)").tag("2m")
+                        Text("5 min (Balanced)").tag("5m")
+                        Text("10 min (Splash default)").tag("10m")
+                        Text("30 min (Extended)").tag("30m")
+                        Text("Disabled (Always in RAM)").tag("off")
                     }
                     .labelsHidden()
                     .frame(width: 250)
                 }
                 
-                Text("Flag --idle-release: unwires and frees VRAM model weights when idle, restoring them on-the-fly when new queries arrive." /*FIXME: "Parámetro --idle-release: desvincula y libera los pesos en VRAM cuando no hay peticiones activas, restaurándolos al vuelo al recibir nuevas consultas." */)
+                Text("Flag --idle-release: unwires and frees VRAM model weights when idle, restoring them on-the-fly when new queries arrive.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 Divider()
                 
                 HStack {
-                    Text("Max Metal memory budget:" /*FIXME: "Presupuesto máximo de memoria Metal:" */)
+                    Text("Max Metal memory budget:")
                         .font(.system(size: 12))
                     Spacer()
-                    Picker("", selection: Preferences.$maxMemory) {
-                        Text("Automatic (unlimited)" /*FIXME: "Automático (sin límite)" */).tag("auto")
+                    Picker("empty", selection: Preferences.$maxMemory) {
+                        Text("Automatic (unlimited)").tag("auto")
                         Text("16 GB").tag("16G")
                         Text("24 GB").tag("24G")
                         Text("28 GB").tag("28G")
@@ -823,57 +799,57 @@ public struct MainWindowView: View {
                     .frame(width: 250)
                 }
                 
-                Text("Flag --max-memory: limits the Metal unified memory budget to avoid exhausting Mac RAM." /*FIXME: "Parámetro --max-memory: limita el techo de memoria unificada asignable a Metal para no copar la RAM disponible en el Mac." */)
+                Text("Flag --max-memory: limits the Metal unified memory budget to avoid exhausting Mac RAM.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 Divider()
                 
-                Toggle("Automatic protection under macOS critical memory pressure" /*FIXME: "Protección automática ante presión crítica de memoria macOS" */,
+                Toggle("Automatic protection under macOS critical memory pressure",
                        isOn: Preferences.$autoReleaseOnMemoryPressure)
                     .font(.system(size: 12))
                 
-                Text("Monitors macOS kernel events. If the system enters critical memory pressure and Splash is idle, frees resources to prevent system freezing." /*FIXME: "Monitorea eventos del kernel de macOS. Si el sistema entra en presión de memoria crítica y Splash está inactivo, libera los recursos para evitar bloqueos del sistema." */)
+                Text("Monitors macOS kernel events. If the system enters critical memory pressure and Splash is idle, frees resources to prevent system freezing.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 Divider()
                 
-                Toggle("Language / Code Only mode (--language-only)" /*FIXME: "Modo Solo Lenguaje / Código (--language-only)" */,
+                Toggle("Language / Code Only mode (--language-only)",
                        isOn: Preferences.$languageOnly)
                     .font(.system(size: 12))
                 
-                Text("Disables vision projector (mmproj) loading. Required for GGUF coder models (like Tiel-Coder, Qwopus, Cyber-Tiel) that lack image weights." /*FIXME: "Desactiva la carga del proyector de visión (mmproj). Requerido para modelos de código GGUF (como Tiel-Coder, Qwopus, Cyber-Tiel) que no incluyen pesos de imágenes." */)
+                Text("Disables vision projector (mmproj) loading. Required for GGUF coder models (like Tiel-Coder, Qwopus, Cyber-Tiel) that lack image weights.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 Divider()
                 
                 HStack {
-                    Text("MoE Draft Verification (--verify-rows):" /*FIXME: "Verificación de Borrador MoE (--verify-rows):" */)
+                    Text("MoE Draft Verification (--verify-rows):")
                         .font(.system(size: 12))
                     Spacer()
-                    Picker("", selection: Preferences.$verifyRows) {
-                        Text("Auto (Adaptive, +13–42% speed)" /*FIXME: "Auto (Adaptativa, +13–42% vel)" */).tag("auto")
-                        Text("All (All rows, Deterministic)" /*FIXME: "All (Todas las filas, Determinista)" */).tag("all")
+                    Picker("empty", selection: Preferences.$verifyRows) {
+                        Text("Auto (Adaptive, +13–42% speed)").tag("auto")
+                        Text("All (All rows, Deterministic)").tag("all")
                     }
                     .labelsHidden()
                     .frame(width: 250)
                 }
                 
-                Text("Flag --verify-rows (Splash 1.4.0+): 'auto' adapts speculative draft token verification for faster decode. 'all' ensures deterministic output reproducibility." /*FIXME: "Parámetro --verify-rows (Splash 1.4.0+): 'auto' adapta la verificación de tokens de borrador aumentando la velocidad de decodificación. 'all' garantiza reproducibilidad exacta de salidas." */)
+                Text("Flag --verify-rows (Splash 1.4.0+): 'auto' adapts speculative draft token verification for faster decode. 'all' ensures deterministic output reproducibility.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 Divider()
                 
                 HStack {
-                    Text("MoE Experts RAM Budget (--expert-memory):" /*FIXME: "Memoria en RAM para Expertos MoE (--expert-memory):" */)
+                    Text("MoE Experts RAM Budget (--expert-memory):")
                         .font(.system(size: 12))
                     Spacer()
-                    Picker("", selection: Preferences.$expertMemory) {
-                        Text("Automatic (managed by Splash)" /*FIXME: "Automático (gestión de Splash)" */).tag("auto")
-                        Text("Disabled (All resident in RAM)" /*FIXME: "Desactivado (Todos en RAM)" */).tag("off")
+                    Picker("empty", selection: Preferences.$expertMemory) {
+                        Text("Automatic (managed by Splash)").tag("auto")
+                        Text("Disabled (All resident in RAM)").tag("off")
                         Text("4 GB (Streaming SSD)").tag("4G")
                         Text("8 GB (Streaming SSD)").tag("8G")
                         Text("12 GB (Streaming SSD)").tag("12G")
@@ -884,21 +860,21 @@ public struct MainWindowView: View {
                     .frame(width: 250)
                 }
                 
-                Text("Flag --expert-memory (Splash 1.4.0+): retains active MoE experts in RAM and streams the rest on-the-fly from the high-speed SSD." /*FIXME: "Parámetro --expert-memory (Splash 1.4.0+): permite mantener expertos MoE en RAM y transmitir los restantes en streaming desde el SSD ultrarrápido sin saturar la memoria." */)
+                Text("Flag --expert-memory (Splash 1.4.0+): retains active MoE experts in RAM and streams the rest on-the-fly from the high-speed SSD.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
                 Divider()
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Additional Splash CLI Flags:" /*FIXME: "Flags CLI Adicionales de Splash:" */)
+                    Text("Additional Splash CLI Flags:")
                         .font(.system(size: 11, weight: .medium))
                     
-                    TextField("e.g. --no-webui --max-cache-disk 50GB" /*FIXME: "ej. --no-webui --max-cache-disk 50GB" */, text: Preferences.$customServerFlags)
+                    TextField("e.g. --no-webui --max-cache-disk 50GB", text: Preferences.$customServerFlags)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11, design: .monospaced))
                     
-                    Text("Arbitrary additional flags passed directly to 'splash serve'. Automatically sanitized to prevent command injection." /*FIXME: "Parámetros y banderas arbitrarias adicionales que se pasarán al final de 'splash serve'. Se sanean automáticamente para evitar inyección de comandos." */)
+                    Text("Arbitrary additional flags passed directly to 'splash serve'. Automatically sanitized to prevent command injection.")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
@@ -910,15 +886,15 @@ public struct MainWindowView: View {
             // Check for updates
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Splash Monitor Updates" /*FIXME: "Actualizaciones de Splash Monitor" */)
+                    Text("Splash Monitor Updates")
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
                     if SplashService.shared.hasUpdate {
-                        Text("New version: \(SplashService.shared.latestVersion ?? "")!" /*FIXME: "¡Nueva versión: \(SplashService.shared.latestVersion ?? "")!" */)
+                        Text("New version: \(SplashService.shared.latestVersion ?? "")!")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.green)
                     } else {
-                        Text("You're up to date" /*FIXME: "Estás en la última versión" */)
+                        Text("You're up to date")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
@@ -928,7 +904,7 @@ public struct MainWindowView: View {
                     Button {
                         Task { await SplashService.shared.checkForUpdate() }
                     } label: {
-                        Label("Check for updates" /*FIXME: "Buscar actualizaciones" */, systemImage: "arrow.clockwise")
+                        Label("Check for updates", systemImage: "arrow.clockwise")
                             .font(.system(size: 11))
                     }
                     .buttonStyle(.bordered)
@@ -940,7 +916,7 @@ public struct MainWindowView: View {
                                 NSWorkspace.shared.open(releaseURL)
                             }
                         } label: {
-                            Label("Download new version" /*FIXME: "Descargar nueva versión" */, systemImage: "arrow.down.circle")
+                            Label("Download new version", systemImage: "arrow.down.circle")
                                 .font(.system(size: 11))
                         }
                         .buttonStyle(.borderedProminent)
@@ -956,11 +932,11 @@ public struct MainWindowView: View {
             // Dependencies & CLI System Info
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("Splash CLI Inference Engine" /*FIXME: "Motor de Inferencia Splash CLI" */)
+                    Text("Splash CLI Inference Engine")
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
                     if SplashService.shared.hasSplashCliUpdate {
-                        Text("New version \(SplashService.shared.latestSplashCliVersion)!" /*FIXME: "¡Nueva versión \(SplashService.shared.latestSplashCliVersion)!" */)
+                        Text("New version: \(SplashService.shared.latestSplashCliVersion)!")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.orange)
                     }
@@ -969,8 +945,8 @@ public struct MainWindowView: View {
                             .fill(SplashService.shared.isSplashInstalled ? Color.green : Color.orange)
                             .frame(width: 7, height: 7)
                         Text(SplashService.shared.isSplashInstalled 
-                            ? (!SplashService.shared.installedSplashCliVersion.isEmpty ? "v\(SplashService.shared.installedSplashCliVersion)" : (SplashService.shared.splashVersion ?? ("Installed" /*FIXME: "Instalado" */))) 
-                            : ("Not installed" /*FIXME: "No instalado" */))
+                            ? (!SplashService.shared.installedSplashCliVersion.isEmpty ? "v\(SplashService.shared.installedSplashCliVersion)" : (SplashService.shared.splashVersion ?? ("Installed"))) 
+                            : ("Not installed"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(SplashService.shared.isSplashInstalled ? .green : .orange)
                     }
@@ -985,7 +961,7 @@ public struct MainWindowView: View {
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
                     
-                    Text("Models Directory: \(SplashService.shared.modelsDirectory.path)" /*FIXME: "Directorio de Modelos: \(SplashService.shared.modelsDirectory.path)" */)
+                    Text("Models Directory: \(SplashService.shared.modelsDirectory.path)")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
                 }
@@ -998,7 +974,7 @@ public struct MainWindowView: View {
                             Button {
                                 SplashService.shared.upgradeSplashInTerminal()
                             } label: {
-                                Label("Upgrade Splash (brew upgrade)" /*FIXME: "Actualizar Splash (brew upgrade)" */, systemImage: "arrow.up.circle")
+                                Label("Upgrade Splash (brew upgrade)", systemImage: "arrow.up.circle")
                                     .font(.system(size: 11))
                             }
                             .buttonStyle(.borderedProminent)
@@ -1008,7 +984,7 @@ public struct MainWindowView: View {
                             Button {
                                 SplashService.shared.upgradeSplashInTerminal()
                             } label: {
-                                Label("Upgrade Splash (brew upgrade)" /*FIXME: "Actualizar Splash (brew upgrade)" */, systemImage: "arrow.up.circle")
+                                Label("Upgrade Splash (brew upgrade)", systemImage: "arrow.up.circle")
                                     .font(.system(size: 11))
                             }
                             .buttonStyle(.bordered)
@@ -1018,7 +994,7 @@ public struct MainWindowView: View {
                         Button {
                             SplashService.shared.installSplashDependency()
                         } label: {
-                            Label("Install Splash (brew install)" /*FIXME: "Instalar Splash (brew install)" */, systemImage: "arrow.down.circle.fill")
+                            Label("Install Splash (brew install)", systemImage: "arrow.down.circle.fill")
                                 .font(.system(size: 11, weight: .bold))
                         }
                         .buttonStyle(.borderedProminent)
@@ -1036,7 +1012,7 @@ public struct MainWindowView: View {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
-                            Label("Check update" /*FIXME: "Buscar actualización" */, systemImage: "arrow.clockwise")
+                            Label("Check update", systemImage: "arrow.clockwise")
                                 .font(.system(size: 11))
                         }
                     }

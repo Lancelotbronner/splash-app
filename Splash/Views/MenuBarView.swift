@@ -16,11 +16,11 @@ public struct MenuBarView: View {
         
         public var title: LocalizedStringResource {
             switch self {
-            case .metrics: return "Metrics" /*FIXME: "Métricas" */
-            case .models: return "Models" /*FIXME: "Modelos" */
-            case .server: return "Server" /*FIXME: "Servidor" */
-            case .settings: return "Settings" /*FIXME: "Ajustes" */
-            case .about: return "About" /*FIXME: "Acerca de" */
+            case .metrics: return LocalizedStringResource("Metrics")
+            case .models: return LocalizedStringResource("Models")
+            case .server: return LocalizedStringResource("Server")
+            case .settings: return LocalizedStringResource("Settings")
+            case .about: return LocalizedStringResource("About")
             }
         }
         
@@ -107,7 +107,8 @@ public struct MenuBarView: View {
                         .cornerRadius(3)
                     
                     if !SplashService.shared.isSplashInstalled {
-                        Text("BREW")
+                        Text("brew")
+                            .textCase(.uppercase)
                             .font(.system(size: 7, weight: .bold, design: .monospaced))
                             .foregroundColor(.white)
                             .padding(.horizontal, 3)
@@ -123,11 +124,11 @@ public struct MenuBarView: View {
                         .frame(width: 6, height: 6)
                     
                     if !SplashService.shared.isSplashInstalled {
-                        Text("Needs Splash" /*FIXME: "Requiere Splash" */)
+                        Text("Needs Splash")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.orange)
                     } else {
-                        Text(SplashService.shared.isRunning ? SplashService.shared.activeModel.components(separatedBy: "/").last ?? SplashService.shared.activeModel : "Offline" /*FIXME: "Desconectado" */)
+                        Text(SplashService.shared.isRunning ? SplashService.shared.activeModel.components(separatedBy: "/").last ?? SplashService.shared.activeModel : String(localized: "Offline"))
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -147,7 +148,7 @@ public struct MenuBarView: View {
                         .foregroundColor(.orange)
                 }
                 .buttonStyle(.plain)
-                .help("Release memory (Unload model weights)" /*FIXME: "Liberar memoria (Descargar pesos del modelo)" */)
+                .help("Release memory (Unload model weights)")
             }
             
             // Stop server button if running
@@ -160,7 +161,7 @@ public struct MenuBarView: View {
                         .foregroundColor(.red)
                 }
                 .buttonStyle(.plain)
-                .help("Stop Splash Server" /*FIXME: "Detener Servidor Splash" */)
+                .help("Stop Splash Server")
             }
             
             // Open full window button
@@ -171,7 +172,7 @@ public struct MenuBarView: View {
                     .font(.system(size: 11))
             }
             .buttonStyle(.plain)
-            .help("Open full application window" /*FIXME: "Abrir aplicación completa en ventana" */)
+            .help("Open full application window")
             
             Button {
                 Task {
@@ -182,7 +183,7 @@ public struct MenuBarView: View {
                     .font(.system(size: 11))
             }
             .buttonStyle(.plain)
-            .help("Refresh now" /*FIXME: "Refrescar ahora" */)
+            .help("Refresh now")
             
             Button {
                 NSApplication.shared.terminate(nil)
@@ -192,7 +193,7 @@ public struct MenuBarView: View {
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
-            .help("Quit Splash Monitor (Exit app)" /*FIXME: "Salir de Splash Monitor (Cerrar app)" */)
+            .help("Quit Splash Monitor (Exit app)")
         }
     }
     
@@ -229,19 +230,19 @@ public struct MenuBarView: View {
     @ViewBuilder
     private var settingsView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Menu Bar Configuration" /*FIXME: "Configuración de la Barra de Menú" */)
+            Text("Menu Bar Configuration")
                 .font(.system(size: 12, weight: .semibold))
             
             VStack(alignment: .leading, spacing: 6) {
-                Text("Information shown in top bar:" /*FIXME: "Información mostrada en la barra superior:" */)
+                Text("Information shown in top bar:")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
-                Picker("", selection: Preferences.$menuBarDisplayMode) {
-                    Text("Icon Only" /*FIXME: "Solo Ícono" */).tag("icon")
-                    Text("Icon + Speed (tok/s)" /*FIXME: "Ícono + Velocidad (tok/s)" */).tag("speed")
-                    Text("Icon + Tokens Used" /*FIXME: "Ícono + Tokens Usados" */).tag("tokens")
-                    Text("Icon + Active Model" /*FIXME: "Ícono + Modelo Activo" */).tag("model")
+                Picker("empty", selection: Preferences.$menuBarDisplayMode) {
+                    Text("Icon Only").tag("icon")
+                    Text("Icon + Speed (tok/s)").tag("speed")
+                    Text("Icon + Tokens Used").tag("tokens")
+                    Text("Icon + Active Model").tag("model")
                 }
                 .pickerStyle(.radioGroup)
                 .font(.system(size: 11))
@@ -251,7 +252,7 @@ public struct MenuBarView: View {
             .cornerRadius(8)
             
             VStack(alignment: .leading, spacing: 6) {
-                Text("Refresh Interval" /*FIXME: "Frecuencia de Actualización" */)
+                Text("Refresh Interval")
                     .font(.system(size: 11, weight: .semibold))
                 
                 HStack {
@@ -274,7 +275,7 @@ public struct MenuBarView: View {
             } label: {
                 HStack {
                     Image(systemName: "macwindow")
-                    Text("Open Full Main Window" /*FIXME: "Abrir Ventana Principal Completa" */)
+                    Text("Open Full Main Window")
                 }
                 .frame(maxWidth: .infinity)
             }

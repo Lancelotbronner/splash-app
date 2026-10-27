@@ -23,12 +23,12 @@ public enum AppCategory: String, Codable, CaseIterable {
     
     public var localizedName: LocalizedStringResource {
         switch self {
-        case .ide: return "IDE / Code Editor"
-        case .codingAgent: return "Autonomous Coding Agent"
-        case .chatbot: return "Chatbot / Graphical UI" /*FIXME: "Chatbot / Interfaz Gráfica" */
-        case .terminal: return "Terminal / CLI Console" /*FIXME: "Terminal / Consola CLI" */
-        case .customScript: return "Script / Custom Process" /*FIXME: "Script / Proceso Personalizado" */
-        case .lanClient: return "Remote Client / LAN Network" /*FIXME: "Cliente Remoto / Red LAN" */
+        case .ide: LocalizedStringResource("IDE / Code Editor")
+        case .codingAgent: LocalizedStringResource("Autonomous Coding Agent")
+        case .chatbot: LocalizedStringResource("Chatbot / Graphical UI")
+        case .terminal: LocalizedStringResource("Terminal / CLI Console")
+        case .customScript: LocalizedStringResource("Script / Custom Process")
+        case .lanClient: LocalizedStringResource("Remote Client / LAN Network")
         }
     }
 }
@@ -41,9 +41,9 @@ public enum AppConnectionStatus: String, Codable {
     
     public var localizedName: LocalizedStringResource {
         switch self {
-        case .active: return "Streaming" /*FIXME: "Transmitiendo" */
-        case .idle: return "Connected (Idle)" /*FIXME: "Conectado (En espera)" */
-        case .recent: return "Recently Disconnected" /*FIXME: "Desconectado reciente" */
+        case .active: LocalizedStringResource("Streaming")
+        case .idle: LocalizedStringResource("Connected (Idle)")
+        case .recent: LocalizedStringResource("Recently Disconnected")
         }
     }
 }

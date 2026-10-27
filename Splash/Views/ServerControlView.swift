@@ -17,11 +17,11 @@ public struct ServerControlView: View {
     
     /// Error de validación del identificador personalizado (P-03).
     /// `nil` = válido o campo no utilizado. Misma regla que aplica el servicio.
-    private var customModelError: String? {
+    private var customModelError: LocalizedStringResource? {
         guard isCustomModel else { return nil }
         let value = customModelText.trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty {
-            return "Enter an owner/repo or owner/repo:variant identifier." /*FIXME: "Escribe un identificador owner/repo o owner/repo:variante." */
+            return "Enter an owner/repo or owner/repo:variant identifier."
         }
         return ModelIDValidator.rejectionReason(value)
     }
@@ -58,61 +58,55 @@ public struct ServerControlView: View {
             portString = "\(newPort)"
         }
         .alert(
-            "Splash Server Offline" /*FIXME: "Servidor Splash Apagado" */,
+            "Splash Server Offline",
             isPresented: $showingAgentOfflineAlert
         ) {
-            Button("Start Server First" /*FIXME: "Arrancar Servidor Primero" */) {
+            Button("Start Server First") {
                 let targetModel = isCustomModel ? customModelText.trimmingCharacters(in: .whitespacesAndNewlines) : SplashService.shared.selectedModelForLaunch
                 let targetPort = Int(portString) ?? SplashService.shared.activePort
                 SplashService.shared.startServer(model: targetModel, port: targetPort)
             }
-            Button("Cancel" /*FIXME: "Cancelar" */, role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("To connect \(pendingAgentName), the local Splash inference server must be running. Start the server first." /*FIXME: "Para conectar \(pendingAgentName), el servidor de inferencia local Splash debe estar activo. Arranca el servidor primero." */)
+            Text("To connect \(pendingAgentName), the local Splash inference server must be running. Start the server first.")
         }
         .alert(
-            "\(pendingAgentName) Not Found" /*FIXME: "\(pendingAgentName) No Encontrado" */,
+            "\(pendingAgentName) Not Found",
             isPresented: $showingAgentNotInstalledAlert
         ) {
-            Button("Open Installation Guide" /*FIXME: "Abrir Guía de Instalación" */) {
+            Button("Open Installation Guide") {
                 let url = SplashService.shared.agentInstallURL(agent: pendingAgentCommand)
                 NSWorkspace.shared.open(url)
             }
 
             Button(
-                pendingAgentCommand == "claude-cowork" ? "Open Claude Anyway" : (pendingAgentCommand == "chatgpt" ? "Open ChatGPT Anyway" : (pendingAgentCommand == "dsh" ? "Open DeepSeek Harness Anyway" : "Launch in Terminal Anyway"))
-                   /*FIXME:
-                    pendingAgentCommand == "claude-cowork" ? "Abrir Claude de Todos Modos" : (pendingAgentCommand == "chatgpt" ? "Abrir ChatGPT de Todos Modos" : (pendingAgentCommand == "dsh" ? "Abrir DeepSeek Harness de Todos Modos" : "Lanzar en Terminal de Todos Modos"
-                    */
+                pendingAgentCommand == "claude-cowork" ? LocalizedStringResource("Open Claude Anyway") : (pendingAgentCommand == "chatgpt" ? LocalizedStringResource("Open ChatGPT Anyway") : (pendingAgentCommand == "dsh" ? LocalizedStringResource("Open DeepSeek Harness Anyway") : LocalizedStringResource("Launch in Terminal Anyway")))
             ) {
                 SplashService.shared.launchAgent(agent: pendingAgentCommand)
             }
-            Button("Cancel" /*FIXME: "Cancelar" */, role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(
                 pendingAgentCommand == "claude-cowork" ? "Claude for Mac application was not detected on your system (/Applications/Claude.app). You can download it from the official Claude website." : (pendingAgentCommand == "chatgpt" ? "ChatGPT for Mac application was not detected on your system (/Applications/ChatGPT.app). You can download it from the official OpenAI website." : (pendingAgentCommand == "dsh" ? "DeepSeek Harness app (/Applications/DeepSeek Harness.app) or binary 'dsh' was not detected on your system. You can download the official app or install the CLI via 'npm i -g @deepseek-ai/dsh'." : "Command '\(pendingAgentCommand)' was not detected on your system. You can install it following the official guide."))
-                /*FIXME:
-                pendingAgentCommand == "claude-cowork" ? "No se detectó la aplicación Claude for Mac en tu sistema (/Applications/Claude.app). Puedes descargarla desde la web oficial de Claude." : (pendingAgentCommand == "chatgpt" ? "No se detectó la aplicación ChatGPT for Mac en tu sistema (/Applications/ChatGPT.app). Puedes descargarla desde la web oficial de OpenAI." : (pendingAgentCommand == "dsh" ? "No se detectó la aplicación DeepSeek Harness (/Applications/DeepSeek Harness.app) ni el binario 'dsh' en tu sistema. Puedes descargar la app oficial o instalar el CLI con 'npm i -g @deepseek-ai/dsh'." : "No se detectó el comando '\(pendingAgentCommand)' en tu sistema. Puedes instalarlo siguiendo la guía oficial."))
-                 */
             )
         }
         .alert(
             item: SplashService.$shared.portConflict
         ) { conflict in
             Alert(
-                title: Text("⚠️ Port \(conflict.port) In Use" /*FIXME: "⚠️ Puerto \(conflict.port) en Uso" */),
-                message: Text("Process '\(conflict.processName)' (PID \(conflict.pid)) is currently using port \(conflict.port).\n\nWould you like to switch to suggested free port \(conflict.suggestedPort) or free port \(conflict.port)?" /*FIXME: "El proceso '\(conflict.processName)' (PID \(conflict.pid)) está utilizando el puerto \(conflict.port).\n\n¿Deseas cambiar al puerto libre sugerido \(conflict.suggestedPort) o liberar el puerto \(conflict.port)?" */),
-                primaryButton: .default(Text("Use port \(conflict.suggestedPort)" /*FIXME: "Usar puerto \(conflict.suggestedPort)" */)) {
+                title: Text("⚠️ Port \(conflict.port) In Use"),
+                message: Text("Process '\(conflict.processName)' (PID \(conflict.pid)) is currently using port \(conflict.port).\n\nWould you like to switch to suggested free port \(conflict.suggestedPort) or free port \(conflict.port)?"),
+                primaryButton: .default(Text("Use port \(conflict.suggestedPort)")) {
                     portString = "\(conflict.suggestedPort)"
                     SplashService.shared.useSuggestedPort(conflict.suggestedPort)
                 },
-                secondaryButton: .destructive(Text("Free port \(conflict.port)" /*FIXME: "Liberar puerto \(conflict.port)" */)) {
+                secondaryButton: .destructive(Text("Free port \(conflict.port)")) {
                     SplashService.shared.resolvePortConflict(killProcess: true)
                 }
             )
         }
         .alert(
-            "Configure your shell" /*FIXME: "Configurar tu shell" */,
+            "Configure your shell",
             isPresented: Binding(
                 get: { SplashService.shared.pendingShellConfigPort != nil },
                 set: { presented in
@@ -120,22 +114,22 @@ public struct ServerControlView: View {
                 }
             )
         ) {
-            Button("Allow and configure" /*FIXME: "Permitir y configurar" */) {
+            Button("Allow and configure") {
                 SplashService.shared.resolveShellConfigPrompt(allow: true)
             }
-            Button("No thanks" /*FIXME: "No, gracias" */, role: .cancel) {
+            Button("No thanks", role: .cancel) {
                 SplashService.shared.resolveShellConfigPrompt(allow: false)
             }
         } message: {
-            Text("Splash Monitor can add a line to your ~/.zshrc so agents launched from a terminal inherit port \(SplashService.shared.pendingShellConfigPort ?? SplashService.shared.activePort). This writes to your personal configuration; you can undo it from Settings. The ~/.splash_monitor_env file is always written." /*FIXME: "Splash Monitor puede añadir una línea a tu ~/.zshrc para que los agentes lanzados desde una terminal hereden el puerto \(Preferences.pendingShellConfigPort ?? Preferences.activePort). Escribirá en tu configuración personal; podrás deshacerlo desde Configuración. El fichero ~/.splash_monitor_env se escribe siempre." */)
+            Text("Splash Monitor can add a line to your ~/.zshrc so agents launched from a terminal inherit port \(SplashService.shared.pendingShellConfigPort ?? SplashService.shared.activePort). This writes to your personal configuration; you can undo it from Settings. The ~/.splash_monitor_env file is always written.")
         }
         .sheet(isPresented: $showingLogsSheet) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Label("Splash Server Logs" /*FIXME: "Registros del Servidor Splash" */, systemImage: "terminal.fill")
+                    Label("Splash Server Logs", systemImage: "terminal.fill")
                         .font(.system(size: 13, weight: .bold))
                     Spacer()
-                    Button("Close" /*FIXME: "Cerrar" */) {
+                    Button("Close") {
                         showingLogsSheet = false
                     }
                     .buttonStyle(.bordered)
@@ -143,7 +137,7 @@ public struct ServerControlView: View {
                 
                 let logs = SplashService.shared.readRecentServerLogs(lines: 100)
                 ScrollView {
-                    Text(logs.isEmpty ? "No logs available yet." /*FIXME: "No hay registros disponibles aún." */ : logs)
+                    Text(logs.isEmpty ? String(localized: "No logs available yet.") : logs)
                         .font(.system(size: 10, design: .monospaced))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
@@ -165,7 +159,7 @@ public struct ServerControlView: View {
                 .font(.system(size: 14))
             
             VStack(alignment: .leading, spacing: 1) {
-                Text("Splash CLI is not installed on this Mac" /*FIXME: "Splash CLI no está instalado en este Mac" */)
+                Text("Splash CLI is not installed on this Mac")
                     .font(.system(size: 11, weight: .bold))
                 Text("brew install incoai/tap/splash")
                     .font(.system(size: 9, design: .monospaced))
@@ -177,7 +171,7 @@ public struct ServerControlView: View {
             Button {
                 SplashService.shared.installSplashDependency()
             } label: {
-                Text("Install Now" /*FIXME: "Instalar Ahora" */)
+                Text("Install Now")
                     .font(.system(size: 10, weight: .bold))
             }
             .buttonStyle(.borderedProminent)
@@ -196,7 +190,7 @@ public struct ServerControlView: View {
                     .fill(SplashService.shared.isRunning ? Color.green : Color.red)
                     .frame(width: 9, height: 9)
                 
-                Text(SplashService.shared.isRunning ? "Splash Server Active" /*FIXME: "Servidor Splash Activo" */ : "Splash Server Stopped" /*FIXME: "Servidor Splash Detenido" */)
+                Text("Splash Server Active")
                     .font(.system(size: 12, weight: .bold))
                 
                 Spacer()
@@ -210,10 +204,10 @@ public struct ServerControlView: View {
             
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Running Model" /*FIXME: "Modelo en Ejecución" */)
+                    Text("Running Model")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
-                    Text(SplashService.shared.isRunning ? SplashService.shared.activeModel : "None (server stopped)" /*FIXME: "Ninguno (servidor apagado)" */)
+                    Text(SplashService.shared.isRunning ? SplashService.shared.activeModel : String(localized: "None (server stopped)"))
                         .font(.system(size: 11, weight: .semibold))
                         .lineLimit(1)
                 }
@@ -221,7 +215,7 @@ public struct ServerControlView: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("Active Port" /*FIXME: "Puerto Activo" */)
+                    Text("Active Port")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                     HStack(spacing: 4) {
@@ -241,7 +235,7 @@ public struct ServerControlView: View {
                     Button(role: .destructive) {
                         SplashService.shared.stopServer()
                     } label: {
-                        Label("Stop Server" /*FIXME: "Detener Servidor" */, systemImage: "stop.fill")
+                        Label("Stop Server", systemImage: "stop.fill")
                             .font(.system(size: 11))
                     }
                     .buttonStyle(.bordered)
@@ -250,7 +244,7 @@ public struct ServerControlView: View {
                     Button {
                         SplashService.shared.switchModel(to: SplashService.shared.activeModel)
                     } label: {
-                        Label("Restart" /*FIXME: "Reiniciar" */, systemImage: "arrow.clockwise")
+                        Label("Restart", systemImage: "arrow.clockwise")
                             .font(.system(size: 11))
                     }
                     .buttonStyle(.bordered)
@@ -271,7 +265,7 @@ public struct ServerControlView: View {
                         HStack(spacing: 4) {
                             Image(systemName: vision ? "eye.fill" : "doc.text.fill")
                                 .font(.system(size: 9))
-                            Text(vision ? "Vision Active" /*FIXME: "Visión Activa" */ : "Text Only" /*FIXME: "Solo Texto" */)
+                            Text("Vision Active")
                                 .font(.system(size: 9, weight: .semibold))
                         }
                         .padding(.horizontal, 6)
@@ -280,8 +274,8 @@ public struct ServerControlView: View {
                         .foregroundColor(vision ? .purple : .orange)
                         .cornerRadius(4)
                         .help(vision
-                            ? "Model supports vision modalities (images and PDF)." /*FIXME: "El modelo soporta modalidades de visión (imágenes y PDF)." */
-                            : "Model is running in text/code only mode (--language-only)." /*FIXME: "El modelo está corriendo en modo solo texto/código (--language-only)." */)
+                            ? LocalizedStringResource("Model supports vision modalities (images and PDF).")
+                            : LocalizedStringResource("Model is running in text/code only mode (--language-only)."))
                     }
                 }
                 .padding(.top, 2)
@@ -299,7 +293,7 @@ public struct ServerControlView: View {
                 Image(systemName: "cpu")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.accentColor)
-                Text(SplashService.shared.isRunning ? "Switch Model or Restart" /*FIXME: "Cambiar Modelo o Reiniciar" */ : "Start Server with Model" /*FIXME: "Arrancar Servidor con Modelo" */)
+                Text(SplashService.shared.isRunning ? "Switch Model or Restart" : "Start Server with Model")
                     .font(.system(size: 11, weight: .semibold))
                 
                 Spacer()
@@ -319,15 +313,15 @@ public struct ServerControlView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkles")
                             .foregroundColor(.orange)
-                        Text("Optimal Profile" /*FIXME: "Perfil Óptimo" */)
+                        Text("Optimal Profile")
                     }
                     .font(.system(size: 10, weight: .semibold))
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help("Restores high-performance recommended configuration for Apple M4 Max (64 GB): GDN BF16, Thinking 8K, SSD Cache, Context 128K, Port 8005, and LAN 0.0.0.0." /*FIXME: "Restaura la configuración recomendada de alto rendimiento para Apple M4 Max (64 GB): GDN BF16, Thinking 8K, Caché SSD, Contexto 128K, Puerto 8005 y LAN 0.0.0.0." */)
+                .help("Restores high-performance recommended configuration for Apple M4 Max (64 GB): GDN BF16, Thinking 8K, SSD Cache, Context 128K, Port 8005, and LAN 0.0.0.0.")
                 
-                Toggle("Custom" /*FIXME: "Personalizado" */, isOn: $isCustomModel)
+                Toggle("Custom", isOn: $isCustomModel)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 10))
             }
@@ -337,7 +331,7 @@ public struct ServerControlView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                         .font(.system(size: 11))
-                    Text("Optimal M4 Max (64 GB) profile restored: Port 8005, GDN BF16, Thinking 8K, Ctx 128K, SSD Cache!" /*FIXME: "¡Perfil óptimo M4 Max (64 GB) restaurado: Puerto 8005, GDN BF16, Thinking 8K, Ctx 128K, Caché SSD!" */)
+                    Text("Optimal M4 Max (64 GB) profile restored: Port 8005, GDN BF16, Thinking 8K, Ctx 128K, SSD Cache!")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.green)
                     Spacer()
@@ -350,10 +344,10 @@ public struct ServerControlView: View {
             
             if isCustomModel {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Hugging Face Identifier (owner/repo):" /*FIXME: "Identificador de Hugging Face (owner/repo):" */)
+                    Text("Hugging Face Identifier (owner/repo):")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
-                    TextField("e.g. mlx-community/Qwen3.8-27B-4bit" /*FIXME: "ej. mlx-community/Qwen3.8-27B-4bit" */, text: $customModelText)
+                    TextField("e.g. mlx-community/Qwen3.8-27B-4bit", text: $customModelText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11, design: .monospaced))
                     
@@ -372,17 +366,17 @@ public struct ServerControlView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Select model for inference:" /*FIXME: "Selecciona el modelo para la inferencia:" */)
+                    Text("Select model for inference:")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                     
                     if SplashService.shared.installedModels.isEmpty {
                         HStack {
-                            Text("No models installed." /*FIXME: "No hay modelos instalados." */)
+                            Text("No models installed.")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("Use 'Models' tab to download" /*FIXME: "Usa la pestaña 'Modelos' para descargar" */)
+                            Text("Use 'Models' tab to download")
                                 .font(.system(size: 9))
                                 .foregroundColor(.orange)
                         }
@@ -390,7 +384,7 @@ public struct ServerControlView: View {
                         .background(Color(nsColor: .quaternaryLabelColor).opacity(0.15))
                         .cornerRadius(6)
                     } else {
-                        Picker("", selection: SplashService.$shared.selectedModelForLaunch) {
+                        Picker("empty", selection: SplashService.$shared.selectedModelForLaunch) {
                             ForEach(SplashService.shared.installedModels) { model in
                                 HStack {
                                     Text(model.shortName)
@@ -410,7 +404,7 @@ public struct ServerControlView: View {
             VStack(spacing: 9) {
                 // Fila 1: Puerto y Configuración de Red / Host
                 HStack(spacing: 8) {
-                    Text("Port:" /*FIXME: "Puerto:" */)
+                    Text("Port:")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -427,7 +421,7 @@ public struct ServerControlView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "sparkles")
-                            Text("Suggest free" /*FIXME: "Sugerir libre" */)
+                            Text("Suggest free")
                                 .lineLimit(1)
                         }
                         .font(.system(size: 11))
@@ -435,7 +429,7 @@ public struct ServerControlView: View {
                     .buttonStyle(.borderless)
                     .foregroundColor(.blue)
                     .fixedSize()
-                    .help("Scan and automatically suggest a free port on your system" /*FIXME: "Escanear y sugerir automáticamente un puerto libre en tu sistema" */)
+                    .help("Scan and automatically suggest a free port on your system")
                     
                     if let p = Int(portString) {
                         if SplashService.shared.isPortListening(port: p) && (!SplashService.shared.isRunning || p != SplashService.shared.activePort) {
@@ -443,7 +437,7 @@ public struct ServerControlView: View {
                                 Image(systemName: "exclamationmark.circle.fill")
                                     .font(.system(size: 9))
                                     .foregroundColor(.orange)
-                                Text("In use" /*FIXME: "En uso" */)
+                                Text("In use")
                                     .font(.system(size: 10, weight: .semibold))
                                     .foregroundColor(.orange)
                                     .lineLimit(1)
@@ -454,7 +448,7 @@ public struct ServerControlView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 9))
                                     .foregroundColor(.green)
-                                Text("Free" /*FIXME: "Libre" */)
+                                Text("Free")
                                     .font(.system(size: 10, weight: .semibold))
                                     .foregroundColor(.green)
                                     .lineLimit(1)
@@ -481,9 +475,9 @@ public struct ServerControlView: View {
                             Preferences.listenOnAllInterfaces = true
                         } label: {
                             HStack {
-                                let label = SplashService.shared.localNetworkIP != nil
-                                    ? "0.0.0.0 (LAN: \(SplashService.shared.localNetworkIP!))" /*FIXME: "0.0.0.0 (Acceso LAN: \(Preferences.localNetworkIP!))" */
-                                    : "0.0.0.0 (LAN Access)" /*FIXME: "0.0.0.0 (Acceso LAN)" */
+                                let label: LocalizedStringResource = SplashService.shared.localNetworkIP != nil
+                                    ? LocalizedStringResource("0.0.0.0 (LAN: \(SplashService.shared.localNetworkIP!))")
+                                    : LocalizedStringResource("0.0.0.0 (LAN Access)")
                                 Text(label)
                                 if Preferences.listenOnAllInterfaces {
                                     Image(systemName: "checkmark")
@@ -495,12 +489,12 @@ public struct ServerControlView: View {
                             Image(systemName: Preferences.listenOnAllInterfaces ? "network" : "lock.laptopcomputer")
                                 .font(.system(size: 10))
                                 .foregroundColor(Preferences.listenOnAllInterfaces ? .blue : .secondary)
-                            let hostText: String = {
+                            let hostText: LocalizedStringResource = {
                                 if Preferences.listenOnAllInterfaces {
                                     if let ip = SplashService.shared.localNetworkIP {
-                                        return "0.0.0.0 (\(ip))"
+                                        return LocalizedStringResource("0.0.0.0 (\(ip))")
                                     }
-                                    return "0.0.0.0 (LAN)"
+                                    return LocalizedStringResource("0.0.0.0 (LAN)")
                                 }
                                 return "127.0.0.1 (Localhost)"
                             }()
@@ -515,7 +509,7 @@ public struct ServerControlView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("127.0.0.1 only accepts connections from this Mac. 0.0.0.0 exposes the server to your local network (LAN) for other devices to connect." /*FIXME: "127.0.0.1 solo acepta conexiones en este Mac. 0.0.0.0 expone el servidor a tu red local (LAN) para que otros equipos puedan conectarse." */)
+                    .help("127.0.0.1 only accepts connections from this Mac. 0.0.0.0 exposes the server to your local network (LAN) for other devices to connect.")
                 }
                 
                 // Fila 2: Modalidad, Contexto Máximo y Botón de Acción Principal
@@ -526,7 +520,7 @@ public struct ServerControlView: View {
                             Preferences.maxContext = "auto"
                         } label: {
                             HStack {
-                                Text("Auto (by memory)" /*FIXME: "Automático (por memoria)" */)
+                                Text("Auto (by memory)")
                                 if Preferences.maxContext == "auto" {
                                     Image(systemName: "checkmark")
                                 }
@@ -538,7 +532,7 @@ public struct ServerControlView: View {
                                 Preferences.maxContext = ctx
                             } label: {
                                 HStack {
-                                    Text(ctx == "1M" ? "1M tokens (YaRN)" : "\(ctx) tokens")
+                                    Text("1M tokens (YaRN)")
                                     if Preferences.maxContext == ctx {
                                         Image(systemName: "checkmark")
                                     }
@@ -550,7 +544,7 @@ public struct ServerControlView: View {
                             Image(systemName: "brain.head.profile")
                                 .font(.system(size: 10))
                                 .foregroundColor(.purple)
-                            Text(Preferences.maxContext == "auto" ? "Ctx: Auto" : "Ctx: \(Preferences.maxContext)")
+                            Text("Ctx: \(Preferences.maxContext)")
                                 .font(.system(size: 10, design: .monospaced))
                                 .lineLimit(1)
                         }
@@ -561,7 +555,7 @@ public struct ServerControlView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("Maximum context token limit (--max-context) for Splash inference." /*FIXME: "Límite máximo de tokens de contexto (--max-context) para la inferencia de Splash." */)
+                    .help("Maximum context token limit (--max-context) for Splash inference.")
                     
                     Divider()
                         .frame(height: 14)
@@ -572,7 +566,7 @@ public struct ServerControlView: View {
                             Preferences.languageOnly = false
                         } label: {
                             HStack {
-                                Text("👁️ Vision + Text (Standard)" /*FIXME: "👁️ Visión + Texto (Normal)" */)
+                                Text("👁️ Vision + Text (Standard)")
                                 if !Preferences.languageOnly {
                                     Image(systemName: "checkmark")
                                 }
@@ -582,7 +576,7 @@ public struct ServerControlView: View {
                             Preferences.languageOnly = true
                         } label: {
                             HStack {
-                                Text("📝 Text / Code Only (--language-only)" /*FIXME: "📝 Solo Texto / Código (--language-only)" */)
+                                Text("📝 Text / Code Only (--language-only)")
                                 if Preferences.languageOnly {
                                     Image(systemName: "checkmark")
                                 }
@@ -593,7 +587,7 @@ public struct ServerControlView: View {
                             Image(systemName: Preferences.languageOnly ? "doc.text" : "eye")
                                 .font(.system(size: 10))
                                 .foregroundColor(Preferences.languageOnly ? .orange : .teal)
-                            Text(Preferences.languageOnly ? "Text Only" /*FIXME: "Solo Texto" */ : "Vision" /*FIXME: "Visión" */)
+                            Text("Text Only")
                                 .font(.system(size: 10, design: .monospaced))
                                 .lineLimit(1)
                         }
@@ -604,7 +598,7 @@ public struct ServerControlView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("Configures whether Splash should initialize multimodal image support or text-only mode (--language-only, required for Coder models without mmproj projectors)." /*FIXME: "Configura si Splash debe inicializar soporte multimodal de imágenes o modo solo texto (--language-only, requerido para modelos Coder sin proyector mmproj)." */)
+                    .help("Configures whether Splash should initialize multimodal image support or text-only mode (--language-only, required for Coder models without mmproj projectors).")
                     
                     Divider()
                         .frame(height: 14)
@@ -612,12 +606,12 @@ public struct ServerControlView: View {
                     // Selector de Liberación de Memoria por Inactividad (--idle-release)
                     Menu {
                         ForEach([
-                            ("1m", "1 min (Fast saving)" /*FIXME: "1 min (Ahorro rápido)" */),
-                            ("2m", "2 min (Aggressive)" /*FIXME: "2 min (Agresivo)" */),
-                            ("5m", "5 min (Balanced)" /*FIXME: "5 min (Equilibrado)" */),
-                            ("10m", "10 min (Default)" /*FIXME: "10 min (Por defecto)" */),
-                            ("30m", "30 min (Extended)" /*FIXME: "30 min (Extendido)" */),
-                            ("off", "Disabled (Always in RAM)" /*FIXME: "Desactivado (Siempre en RAM)" */)
+                            ("1m", "1 min (Fast saving)"),
+                            ("2m", "2 min (Aggressive)"),
+                            ("5m", "5 min (Balanced)"),
+                            ("10m", "10 min (Default)"),
+                            ("30m", "30 min (Extended)"),
+                            ("off", "Disabled (Always in RAM)")
                         ], id: \.0) { item in
                             Button {
                                 Preferences.idleRelease = item.0
@@ -635,7 +629,7 @@ public struct ServerControlView: View {
                             Image(systemName: "timer")
                                 .font(.system(size: 10))
                                 .foregroundColor(.cyan)
-                            Text("Idle: \(Preferences.idleRelease)" /*FIXME: "Reposo: \(Preferences.idleRelease)" */)
+                            Text("Idle: \(Preferences.idleRelease)")
                                 .font(.system(size: 10, design: .monospaced))
                                 .lineLimit(1)
                         }
@@ -646,7 +640,7 @@ public struct ServerControlView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("Idle time before unwiring and releasing Metal unified memory weights (--idle-release). Weights are restored automatically on incoming requests." /*FIXME: "Tiempo de inactividad antes de desvincular y liberar la memoria unificada de Metal (--idle-release). Cuando llega una nueva consulta, Splash recarga los pesos al vuelo." */)
+                    .help("Idle time before unwiring and releasing Metal unified memory weights (--idle-release). Weights are restored automatically on incoming requests.")
                     
                     Divider()
                         .frame(height: 14)
@@ -657,7 +651,7 @@ public struct ServerControlView: View {
                             Preferences.maxMemory = "auto"
                         } label: {
                             HStack {
-                                Text("Auto (unlimited)" /*FIXME: "Automático (sin límite)" */)
+                                Text("Auto (unlimited)")
                                 if Preferences.maxMemory == "auto" {
                                     Image(systemName: "checkmark")
                                 }
@@ -681,7 +675,7 @@ public struct ServerControlView: View {
                             Image(systemName: "memorychip")
                                 .font(.system(size: 10))
                                 .foregroundColor(.indigo)
-                            Text(Preferences.maxMemory == "auto" ? "RAM: Auto" : "RAM: \(Preferences.maxMemory)")
+                            Text("RAM: \(Preferences.maxMemory)")
                                 .font(.system(size: 10, design: .monospaced))
                                 .lineLimit(1)
                         }
@@ -692,7 +686,7 @@ public struct ServerControlView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("Maximum Metal memory budget (--max-memory) to prevent hogging all unified memory." /*FIXME: "Presupuesto máximo de memoria Metal (--max-memory) para evitar acaparar toda la memoria unificada del Mac." */)
+                    .help("Maximum Metal memory budget (--max-memory) to prevent hogging all unified memory.")
                     
                     Spacer()
                     
@@ -704,7 +698,7 @@ public struct ServerControlView: View {
                         HStack(spacing: 6) {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Starting Server..." /*FIXME: "Iniciando Servidor..." */)
+                            Text("Starting Server...")
                                 .font(.system(size: 11, weight: .semibold))
                                 .lineLimit(1)
                         }
@@ -718,7 +712,7 @@ public struct ServerControlView: View {
                             Button {
                                 SplashService.shared.switchModel(to: targetModel)
                             } label: {
-                                Label("Restart" /*FIXME: "Reiniciar" */, systemImage: "arrow.clockwise")
+                                Label("Restart", systemImage: "arrow.clockwise")
                                     .font(.system(size: 11))
                                     .lineLimit(1)
                             }
@@ -729,7 +723,7 @@ public struct ServerControlView: View {
                             Button {
                                 SplashService.shared.startServer(model: targetModel, port: targetPort)
                             } label: {
-                                Label("Switch Model" /*FIXME: "Cambiar Modelo" */, systemImage: "arrow.triangle.2.circlepath")
+                                Label("Switch Model", systemImage: "arrow.triangle.2.circlepath")
                                     .font(.system(size: 11, weight: .semibold))
                                     .lineLimit(1)
                             }
@@ -743,7 +737,7 @@ public struct ServerControlView: View {
                         Button {
                             SplashService.shared.startServer(model: targetModel, port: targetPort)
                         } label: {
-                            Label("Start Server" /*FIXME: "Arrancar Servidor" */, systemImage: "play.fill")
+                            Label("Start Server", systemImage: "play.fill")
                                 .font(.system(size: 11, weight: .semibold))
                                 .lineLimit(1)
                         }
@@ -764,7 +758,7 @@ public struct ServerControlView: View {
                         Preferences.stateFormat = "fp32"
                     } label: {
                         HStack {
-                            Text("FP32 (Standard, maximum fidelity)" /*FIXME: "FP32 (Estándar, máxima fidelidad)" */)
+                            Text("FP32 (Standard, maximum fidelity)")
                             if Preferences.stateFormat == "fp32" {
                                 Image(systemName: "checkmark")
                             }
@@ -774,7 +768,7 @@ public struct ServerControlView: View {
                         Preferences.stateFormat = "bf16"
                     } label: {
                         HStack {
-                            Text("BF16 (-50% RAM in GDN states)" /*FIXME: "BF16 (-50% RAM en estados GDN)" */)
+                            Text("BF16 (-50% RAM in GDN states)")
                             if Preferences.stateFormat == "bf16" {
                                 Image(systemName: "checkmark")
                             }
@@ -785,7 +779,7 @@ public struct ServerControlView: View {
                         Image(systemName: "sparkles")
                             .font(.system(size: 10))
                             .foregroundColor(.pink)
-                        Text(Preferences.stateFormat.uppercased() == "BF16" ? "GDN: BF16 (-50%)" : "GDN: FP32")
+                        Text("GDN: BF16 (-50%)")
                             .font(.system(size: 10, design: .monospaced))
                             .lineLimit(1)
                     }
@@ -796,7 +790,7 @@ public struct ServerControlView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .help("Storage format for GDN recurrent states (--state-format). BF16 halves state memory in RAM (from 153 to 81 MiB on 27B) while keeping computation in FP32." /*FIXME: "Formato de almacenamiento para los estados recurrentes GDN (--state-format). BF16 reduce a la mitad el tamaño del estado en RAM (de 153 MiB a 81 MiB en 27B) manteniendo el cálculo en FP32." */)
+                .help("Storage format for GDN recurrent states (--state-format). BF16 halves state memory in RAM (from 153 to 81 MiB on 27B) while keeping computation in FP32.")
                 
                 Divider()
                     .frame(height: 14)
@@ -807,7 +801,7 @@ public struct ServerControlView: View {
                         Preferences.thinkingTokenBudget = "auto"
                     } label: {
                         HStack {
-                            Text("Uncapped (No limit)" /*FIXME: "Ilimitado (Sin tope)" */)
+                            Text("Uncapped (No limit)")
                             if Preferences.thinkingTokenBudget == "auto" {
                                 Image(systemName: "checkmark")
                             }
@@ -831,7 +825,7 @@ public struct ServerControlView: View {
                         Preferences.thinkingTokenBudget = "off"
                     } label: {
                         HStack {
-                            Text("Disabled (-1)" /*FIXME: "Desactivado (-1)" */)
+                            Text("Disabled (-1)")
                             if Preferences.thinkingTokenBudget == "off" {
                                 Image(systemName: "checkmark")
                             }
@@ -842,7 +836,7 @@ public struct ServerControlView: View {
                         Image(systemName: "lightbulb")
                             .font(.system(size: 10))
                             .foregroundColor(.yellow)
-                        Text(Preferences.thinkingTokenBudget == "auto" ? "Thinking: Auto" : (Preferences.thinkingTokenBudget == "off" ? "Thinking: Off" : "Thinking: \(Preferences.thinkingTokenBudget)"))
+                        Text("Thinking: \(Preferences.thinkingTokenBudget)")
                             .font(.system(size: 10, design: .monospaced))
                             .lineLimit(1)
                     }
@@ -853,7 +847,7 @@ public struct ServerControlView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .help("Maximum reasoning / thinking token budget (--thinking-token-budget) for chain-of-thought models." /*FIXME: "Presupuesto máximo de tokens de razonamiento / pensamiento (--thinking-token-budget) para modelos con cadena de pensamiento." */)
+                .help("Maximum reasoning / thinking token budget (--thinking-token-budget) for chain-of-thought models.")
                 
                 Divider()
                     .frame(height: 14)
@@ -864,12 +858,12 @@ public struct ServerControlView: View {
                         Image(systemName: Preferences.persistentCache ? "internaldrive.fill" : "internaldrive")
                             .font(.system(size: 10))
                             .foregroundColor(Preferences.persistentCache ? .green : .secondary)
-                        Text("Persistent SSD Cache" /*FIXME: "Caché SSD Persistente" */)
+                        Text("Persistent SSD Cache")
                             .font(.system(size: 10))
                     }
                 }
                 .toggleStyle(.checkbox)
-                .help("Keeps prefix cache on SSD across restarts (--persistent-cache). In Splash 1.3.2+ SSD cache is on by default in 'auto' mode and adjusts to disk space." /*FIXME: "Mantiene la caché de prefijos en SSD a través de reinicios (--persistent-cache). En Splash 1.3.2+ la caché SSD viene activada en modo 'auto' y se adapta al disco." */)
+                .help("Keeps prefix cache on SSD across restarts (--persistent-cache). In Splash 1.3.2+ SSD cache is on by default in 'auto' mode and adjusts to disk space.")
                 
                 Divider()
                     .frame(height: 14)
@@ -880,7 +874,7 @@ public struct ServerControlView: View {
                         Preferences.verifyRows = "auto"
                     } label: {
                         HStack {
-                            Text("Auto (Adaptive, +13–42% speed)" /*FIXME: "Auto (Adaptativa, +13–42% vel)" */)
+                            Text("Auto (Adaptive, +13–42% speed)")
                             if Preferences.verifyRows == "auto" {
                                 Image(systemName: "checkmark")
                             }
@@ -890,7 +884,7 @@ public struct ServerControlView: View {
                         Preferences.verifyRows = "all"
                     } label: {
                         HStack {
-                            Text("All (All rows, Deterministic)" /*FIXME: "All (Todas las filas, Determinista)" */)
+                            Text("All (All rows, Deterministic)")
                             if Preferences.verifyRows == "all" {
                                 Image(systemName: "checkmark")
                             }
@@ -901,7 +895,7 @@ public struct ServerControlView: View {
                         Image(systemName: "gauge.with.needle")
                             .font(.system(size: 10))
                             .foregroundColor(.indigo)
-                        Text(Preferences.verifyRows == "all" ? "Verify: All" : "Verify: Auto")
+                        Text("Verify: Auto")
                             .font(.system(size: 10, design: .monospaced))
                             .lineLimit(1)
                     }
@@ -912,7 +906,7 @@ public struct ServerControlView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .help("Speculative draft verification mode (--verify-rows). 'auto' adapts verification boosting decode speed. 'all' verifies all rows for determinism." /*FIXME: "Verificación de tokens de borrador especulativos (--verify-rows). 'auto' adapta la verificación aumentando la velocidad de decodificación. 'all' verifica todas las filas para determinismo." */)
+                .help("Speculative draft verification mode (--verify-rows). 'auto' adapts verification boosting decode speed. 'all' verifies all rows for determinism.")
                 
                 Spacer()
             }
@@ -924,7 +918,7 @@ public struct ServerControlView: View {
                     Image(systemName: "terminal")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
-                    Text("Additional CLI flags:" /*FIXME: "Flags CLI adicionales:" */)
+                    Text("Additional CLI flags:")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -937,12 +931,12 @@ public struct ServerControlView: View {
                 }
                 
                 TextField(
-                    "e.g. --no-webui --max-cache-disk 50GB" /*FIXME: "Ej: --no-webui --max-cache-disk 50GB" */,
+                    "Example: --no-webui --max-cache-disk 50GB",
                     text: Preferences.$customServerFlags
                 )
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 10, design: .monospaced))
-                .help("Additional flags and options passed directly at the end of the 'splash serve' command." /*FIXME: "Flags y opciones adicionales que se pasan directamente al final del comando 'splash serve'." */)
+                .help("Additional flags and options passed directly at the end of the 'splash serve' command.")
             }
             .padding(.top, 2)
             
@@ -952,7 +946,7 @@ public struct ServerControlView: View {
                     HStack(spacing: 4) {
                         Image(systemName: Preferences.runInBackground ? "speaker.slash.fill" : "terminal")
                             .font(.system(size: 10))
-                        Text("Run silently in background" /*FIXME: "Ejecutar en silencio (segundo plano)" */)
+                        Text("Run silently in background")
                             .font(.system(size: 11))
                     }
                 }
@@ -965,7 +959,7 @@ public struct ServerControlView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "doc.text.magnifyingglass")
-                        Text("View Logs" /*FIXME: "Ver Registros" */)
+                        Text("View Logs")
                     }
                     .font(.system(size: 11))
                 }
@@ -990,7 +984,7 @@ public struct ServerControlView: View {
     private var agentsLauncherView: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Connect Coding Agents" /*FIXME: "Conectar Agentes de Código" */)
+                Text("Connect Coding Agents")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 
@@ -999,7 +993,7 @@ public struct ServerControlView: View {
                 if !SplashService.shared.isRunning {
                     HStack(spacing: 3) {
                         Image(systemName: "info.circle")
-                        Text("Server offline" /*FIXME: "Servidor inactivo" */)
+                        Text("Server offline")
                     }
                     .font(.system(size: 9))
                     .foregroundColor(.orange)
@@ -1008,7 +1002,7 @@ public struct ServerControlView: View {
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 AgentButton(
-                    name: "Claude Code",
+                    name: LocalizedStringResource("Claude Code"),
                     icon: "brain.head.profile",
                     command: "claude",
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "claude"),
@@ -1018,10 +1012,10 @@ public struct ServerControlView: View {
                 }
                 
                 AgentButton(
-                    name: "Claude Cowork",
+                    name: LocalizedStringResource("Claude Cowork"),
                     icon: "person.2.badge.gearshape",
                     command: "claude-cowork",
-                    subtitle: "Claude for Mac",
+                    subtitle: LocalizedStringResource("Claude for Mac"),
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "claude-cowork"),
                     isServerRunning: SplashService.shared.isRunning
                 ) {
@@ -1029,10 +1023,10 @@ public struct ServerControlView: View {
                 }
                 
                 AgentButton(
-                    name: "ChatGPT Desktop",
+                    name: LocalizedStringResource("ChatGPT Desktop"),
                     icon: "sparkles",
                     command: "chatgpt",
-                    subtitle: "Codex & OWL (macOS)",
+                    subtitle: LocalizedStringResource("Codex & OWL (macOS)"),
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "chatgpt"),
                     isServerRunning: SplashService.shared.isRunning
                 ) {
@@ -1040,7 +1034,7 @@ public struct ServerControlView: View {
                 }
                 
                 AgentButton(
-                    name: "OpenCode",
+                    name: LocalizedStringResource("OpenCode"),
                     icon: "chevron.left.forwardslash.chevron.right",
                     command: "opencode",
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "opencode"),
@@ -1050,7 +1044,7 @@ public struct ServerControlView: View {
                 }
                 
                 AgentButton(
-                    name: "Codex",
+                    name: LocalizedStringResource("Codex"),
                     icon: "terminal",
                     command: "codex",
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "codex"),
@@ -1060,7 +1054,7 @@ public struct ServerControlView: View {
                 }
                 
                 AgentButton(
-                    name: "Hermes",
+                    name: LocalizedStringResource("Hermes"),
                     icon: "bolt.horizontal",
                     command: "hermes",
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "hermes"),
@@ -1070,10 +1064,10 @@ public struct ServerControlView: View {
                 }
                 
                 AgentButton(
-                    name: "Pi Agent",
+                    name: LocalizedStringResource("Pi Agent"),
                     icon: "character.cursor.ibeam",
                     command: "pi",
-                    subtitle: "pi.dev (Splash 1.3+)",
+                    subtitle: LocalizedStringResource("pi.dev (Splash 1.3+)"),
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "pi"),
                     isServerRunning: SplashService.shared.isRunning
                 ) {
@@ -1081,10 +1075,10 @@ public struct ServerControlView: View {
                 }
                 
                 AgentButton(
-                    name: "DeepSeek Harness",
+                    name: LocalizedStringResource("DeepSeek Harness"),
                     icon: "cpu.fill",
                     command: "dsh",
-                    subtitle: "App / dsh (DeepSeek AI)",
+                    subtitle: LocalizedStringResource("App / dsh (DeepSeek AI)"),
                     isInstalled: SplashService.shared.isAgentInstalled(agent: "dsh"),
                     isServerRunning: SplashService.shared.isRunning
                 ) {
@@ -1115,7 +1109,7 @@ public struct ServerControlView: View {
     private var apiEndpointsView: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Integration Endpoints" /*FIXME: "Endpoints de Integración" */)
+                Text("Integration Endpoints")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 Spacer()
@@ -1131,9 +1125,9 @@ public struct ServerControlView: View {
                 Button {
                     let host = SplashService.shared.preferredHostOrIP
                     copyToClipboard("http://\(host):\(SplashService.shared.activePort)/v1")
-                    showCopied("OpenAI URL copied!" /*FIXME: "¡Copiado OpenAI URL!" */)
+                    showCopied("OpenAI URL copied!")
                 } label: {
-                    Label("Copy OpenAI URL" /*FIXME: "Copiar OpenAI URL" */, systemImage: "doc.on.doc")
+                    Label("Copy OpenAI URL", systemImage: "doc.on.doc")
                         .font(.system(size: 10))
                 }
                 .buttonStyle(.bordered)
@@ -1142,9 +1136,9 @@ public struct ServerControlView: View {
                 Button {
                     let host = SplashService.shared.preferredHostOrIP
                     copyToClipboard("export OPENAI_BASE_URL=http://\(host):\(SplashService.shared.activePort)/v1\nexport ANTHROPIC_BASE_URL=http://\(host):\(SplashService.shared.activePort)")
-                    showCopied("Env Vars copied!" /*FIXME: "¡Copiado Env Vars!" */)
+                    showCopied("Env Vars copied!")
                 } label: {
-                    Label("Copy Env Vars" /*FIXME: "Copiar Env Vars" */, systemImage: "terminal")
+                    Label("Copy Env Vars", systemImage: "terminal")
                         .font(.system(size: 10))
                 }
                 .buttonStyle(.bordered)
@@ -1159,7 +1153,8 @@ public struct ServerControlView: View {
         pasteboard.setString(string, forType: .string)
     }
     
-    private func showCopied(_ message: String) {
+    private func showCopied(_ message: LocalizedStringResource) {
+        let message = String(localized: message)
         withAnimation {
             copiedMessage = message
         }
@@ -1174,10 +1169,10 @@ public struct ServerControlView: View {
 }
 
 struct AgentButton: View {
-    let name: String
+    let name: LocalizedStringResource
     let icon: String
     let command: String
-    var subtitle: String? = nil
+    var subtitle: LocalizedStringResource? = nil
     let isInstalled: Bool
     let isServerRunning: Bool
     let action: () -> Void

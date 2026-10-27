@@ -37,7 +37,7 @@ public final class SystemMemoryPressureSentinel {
         startMonitoring()
     }
     
-    deinit {
+    isolated deinit {
         stopMonitoring()
     }
     

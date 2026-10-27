@@ -10,19 +10,19 @@ public struct TokenMetricsView: View {
             // Speed Hero Cards
             HStack(spacing: 12) {
                 MetricCard(
-                    title: "DECODE (Output)" /*FIXME: "DECODE (Salida)" */,
-                    value: "\(SplashService.shared.formattedDecodeSpeed)",
+                    title: "DECODE (Output)",
+                    value: SplashService.shared.formattedDecodeSpeed,
                     unit: "tok/s",
-                    subtitle: "\(SplashService.shared.formattedTokensDecode) \("tokens" /*FIXME: "tokens" */)",
+                    subtitle: "\(SplashService.shared.formattedTokensDecode) tokens",
                     icon: "bolt.fill",
                     tint: .green
                 )
                 
                 MetricCard(
-                    title: "PREFILL (Input)" /*FIXME: "PREFILL (Entrada)" */,
-                    value: "\(SplashService.shared.formattedPrefillSpeed)",
+                    title: "PREFILL (Input)",
+                    value: SplashService.shared.formattedPrefillSpeed,
                     unit: "tok/s",
-                    subtitle: "\(SplashService.shared.formattedTokensPrefill) \("tokens" /*FIXME: "tokens" */)",
+                    subtitle: "\(SplashService.shared.formattedTokensPrefill) tokens",
                     icon: "arrow.down.forward.circle.fill",
                     tint: .blue
                 )
@@ -32,11 +32,11 @@ public struct TokenMetricsView: View {
             if !SplashService.shared.speedHistory.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("Decode Speed History" /*FIXME: "Historial de Velocidad (Decode)" */)
+                        Text("Decode Speed History")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text("\(SplashService.shared.formattedDecodeSpeed) tok/s \("current" /*FIXME: "actual" */)")
+                        Text("\(SplashService.shared.formattedDecodeSpeed) tok/s current")
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundColor(.green)
                     }
@@ -55,17 +55,17 @@ public struct TokenMetricsView: View {
             VStack(spacing: 8) {
                 HStack(spacing: 12) {
                     MiniStatRow(
-                        title: "Reused KV Cache" /*FIXME: "Caché KV Reutilizado" */,
+                        title: "Reused KV Cache",
                         value: SplashService.shared.formattedTokensReused,
-                        detail: "\(SplashService.shared.formattedCacheHitRate) \("hit rate" /*FIXME: "acierto" */)",
+                        detail: "\(SplashService.shared.formattedCacheHitRate) hit rate",
                         icon: "arrow.triangle.2.circlepath",
                         tint: .cyan
                     )
                     
                     MiniStatRow(
-                        title: "DFlash 2 Speculation" /*FIXME: "Especulación DFlash 2" */,
+                        title: "DFlash 2 Speculation",
                         value: SplashService.shared.formattedDraftAcceptanceRate,
-                        detail: "Draft acceptance" /*FIXME: "Aceptación draft" */,
+                        detail: "Draft acceptance",
                         icon: "sparkles",
                         tint: .orange
                     )
@@ -73,17 +73,17 @@ public struct TokenMetricsView: View {
                 
                 HStack(spacing: 12) {
                     MiniStatRow(
-                        title: "Latency TTFT (p50)" /*FIXME: "Latencia TTFT (p50)" */,
+                        title: "Latency TTFT (p50)",
                         value: String(format: "%.0f ms", SplashService.shared.status?.metrics?.ttftMs?.p50 ?? 0.0),
-                        detail: "Time to first token" /*FIXME: "Primer token" */,
+                        detail: "Time to first token",
                         icon: "timer",
                         tint: .purple
                     )
                     
                     MiniStatRow(
-                        title: "Latency ITL (p50)" /*FIXME: "Latencia ITL (p50)" */,
+                        title: "Latency ITL (p50)",
                         value: String(format: "%.1f ms", SplashService.shared.status?.metrics?.itlMs?.p50 ?? 0.0),
-                        detail: "Inter-token latency" /*FIXME: "Entre tokens" */,
+                        detail: "Inter-token latency",
                         icon: "waveform.path.ecg",
                         tint: .indigo
                     )
@@ -94,7 +94,7 @@ public struct TokenMetricsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Label {
-                        Text("Unified Metal Memory" /*FIXME: "Memoria Unificada Metal" */)
+                        Text("Unified Metal Memory")
                             .font(.system(size: 11, weight: .medium))
                     } icon: {
                         Image(systemName: "memorychip")
@@ -134,13 +134,13 @@ public struct TokenMetricsView: View {
                             .foregroundColor(.secondary)
                         Spacer()
                         if let thermal = SplashService.shared.status?.thermalState {
-                            Text("\("Thermal" /*FIXME: "Térmico" */): \(thermal.capitalized)")
+                            Text("Thermal: \(thermal.capitalized)")
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(thermal == "nominal" ? .green : (thermal == "fair" ? .yellow : .orange))
-                            Text("·")
+                            Text(verbatim: "·")
                                 .foregroundColor(.secondary)
                         }
-                        Text("\("Pressure" /*FIXME: "Presión" */): \(SplashService.shared.status?.memoryPressure?.capitalized ?? "Normal")")
+                        Text("Pressure: \(SplashService.shared.status?.memoryPressure?.capitalized ?? "Normal")")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(SplashService.shared.status?.memoryPressure == "normal" ? .green : .orange)
                     }
@@ -154,16 +154,16 @@ public struct TokenMetricsView: View {
                                 .fill(weights.released == true ? Color.orange : Color.green)
                                 .frame(width: 6, height: 6)
                             if weights.released == true {
-                                Text("Weights Released (Metal Unwired)" /*FIXME: "Pesos Liberados (Metal Desvinculado)" */)
+                                Text("Weights Released (Metal Unwired)")
                                     .font(.system(size: 10, weight: .semibold))
                                     .foregroundColor(.orange)
                             } else {
-                                Text("Weights Active in VRAM" /*FIXME: "Pesos Activos en VRAM" */)
+                                Text("Weights Active in VRAM")
                                     .font(.system(size: 10, weight: .medium))
                                     .foregroundColor(.secondary)
                             }
                             if let restores = weights.restores, restores > 0 {
-                                Text("· \(restores) \("restores" /*FIXME: "recuperaciones" */)")
+                                Text("· \(restores) restores")
                                     .font(.system(size: 9))
                                     .foregroundColor(.secondary)
                             }
@@ -180,7 +180,7 @@ public struct TokenMetricsView: View {
                             HStack(spacing: 3) {
                                 Image(systemName: "arrow.down.right.and.arrow.up.left")
                                     .font(.system(size: 9))
-                                Text("Free Memory" /*FIXME: "Liberar Memoria" */)
+                                Text("Free Memory")
                                     .font(.system(size: 10, weight: .medium))
                             }
                             .padding(.horizontal, 6)
@@ -189,7 +189,7 @@ public struct TokenMetricsView: View {
                             .cornerRadius(4)
                         }
                         .buttonStyle(.plain)
-                        .help("Stops the server and immediately unloads all Metal unified memory used by the model." /*FIXME: "Detiene el servidor y descarga inmediatamente toda la memoria unificada de Metal utilizada por el modelo." */)
+                        .help("Stops the server and immediately unloads all Metal unified memory used by the model.")
                     }
                 }
                 
@@ -219,7 +219,7 @@ public struct TokenMetricsView: View {
                 if let ane = SplashService.shared.status?.aneFfn, let state = ane.state {
                     HStack {
                         Label {
-                            Text("Apple Neural Engine (ANE)" /*FIXME: "Apple Neural Engine (ANE)" */)
+                            Text("Apple Neural Engine (ANE)")
                                 .font(.system(size: 10, weight: .medium))
                         } icon: {
                             Image(systemName: "cpu")
@@ -228,7 +228,7 @@ public struct TokenMetricsView: View {
                         }
                         Spacer()
                         if let share = ane.share {
-                            Text("\(state.capitalized) · \(Int(share * 100))% share")
+                            Text("\(state.capitalized) · \(Int(share * 100))%% share")
                                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                                 .foregroundColor(.secondary)
                         } else {
@@ -253,14 +253,14 @@ public struct TokenMetricsView: View {
                     
                     let activeApps = SplashService.shared.connectedApps.filter { $0.status == .active || $0.status == .idle }
                     if activeApps.isEmpty {
-                        Text("Connected apps:" /*FIXME: "Apps conectadas:" */)
+                        Text("Connected apps:")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
-                        Text("None active (listening :\(SplashService.shared.activePort))" /*FIXME: "Ninguna activa (escuchando :\(SplashService.shared.activePort))" */)
+                        Text("None active (listening :\(SplashService.shared.activePort))")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     } else {
-                        Text("Connected apps (\(activeApps.count)):" /*FIXME: "Apps conectadas (\(activeApps.count)):" */)
+                        Text("Connected apps (\(activeApps.count)):")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
                         
@@ -299,10 +299,10 @@ public struct TokenMetricsView: View {
             // Requests Overview
             let reqs = SplashService.shared.status?.requests
             HStack(spacing: 14) {
-                RequestPill(title: "Completed" /*FIXME: "Completadas" */, count: reqs?.completed ?? 0, color: .green)
-                RequestPill(title: "Queued" /*FIXME: "En Cola" */, count: SplashService.shared.status?.scheduler?.queued ?? 0, color: .blue)
-                RequestPill(title: "Cancelled" /*FIXME: "Canceladas" */, count: reqs?.cancelled ?? 0, color: .gray)
-                RequestPill(title: "Failed" /*FIXME: "Fallos" */, count: reqs?.failed ?? 0, color: .red)
+                RequestPill(title: "Completed", count: reqs?.completed ?? 0, color: .green)
+                RequestPill(title: "Queued", count: SplashService.shared.status?.scheduler?.queued ?? 0, color: .blue)
+                RequestPill(title: "Cancelled", count: reqs?.cancelled ?? 0, color: .gray)
+                RequestPill(title: "Failed", count: reqs?.failed ?? 0, color: .red)
             }
             .font(.system(size: 10))
             
@@ -344,7 +344,7 @@ public struct TokenMetricsView: View {
                         .frame(width: 8, height: 8)
                         .shadow(color: stage == .prefilling || stage == .decoding ? stageColor.opacity(0.8) : .clear, radius: 4)
                     
-                    Text("REQUEST LIFECYCLE" /*FIXME: "ESTADO DE LA PETICIÓN" */)
+                    Text("REQUEST LIFECYCLE")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundColor(.secondary)
                 }
@@ -369,7 +369,7 @@ public struct TokenMetricsView: View {
             if stage == .prefilling {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("Stage 1/2: Ingesting prompt & evaluating KV Cache..." /*FIXME: "Fase 1/2: Procesando prompt y evaluando KV Caché..." */)
+                        Text("Stage 1/2: Ingesting prompt & evaluating KV Cache...")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.blue)
                         Spacer()
@@ -384,7 +384,7 @@ public struct TokenMetricsView: View {
             } else if stage == .decoding {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("Stage 2/2: Generating output response tokens..." /*FIXME: "Fase 2/2: Generando tokens de respuesta..." */)
+                        Text("Stage 2/2: Generating output response tokens...")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.green)
                         Spacer()
@@ -398,24 +398,22 @@ public struct TokenMetricsView: View {
                 }
             } else if stage == .queued {
                 HStack {
-                    Text("Request queued waiting for inference slot..." /*FIXME: "Petición en cola esperando ranura de inferencia..." */)
+                    Text("Request queued waiting for inference slot...")
                         .font(.system(size: 11))
                         .foregroundColor(.orange)
                     Spacer()
-                    Text("Queued: \(SplashService.shared.status?.scheduler?.queued ?? 1)" /*FIXME: "En cola: \(SplashService.shared.status?.scheduler?.queued ?? 1)" */)
+                    Text("Queued: \(SplashService.shared.status?.scheduler?.queued ?? 1)")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.orange)
                 }
             } else {
                 HStack {
-                    Text(SplashService.shared.isRunning
-                         ? "Server ready · Waiting for queries from connected apps & agents" /*FIXME: "Servidor disponible · Listo para atender consultas de clientes y agentes" */
-                         : "Server stopped · Start Splash to accept requests" /*FIXME: "Servidor detenido · Inicia Splash para recibir peticiones" */)
+                    Text("Server stopped · Start Splash to accept requests")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                     Spacer()
                     if let completed = SplashService.shared.status?.requests?.completed, completed > 0 {
-                        Text("\(completed) \("completed" /*FIXME: "completadas" */)")
+                        Text("\(completed) completed")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.secondary)
                     }
@@ -435,10 +433,10 @@ public struct TokenMetricsView: View {
 // MARK: - Subcomponents
 
 struct MetricCard: View {
-    let title: String
+    let title: LocalizedStringResource
     let value: String
-    let unit: String
-    let subtitle: String
+    let unit: LocalizedStringResource
+    let subtitle: LocalizedStringResource
     let icon: String
     let tint: Color
     
@@ -478,9 +476,9 @@ struct MetricCard: View {
 }
 
 struct MiniStatRow: View {
-    let title: String
+    let title: LocalizedStringResource
     let value: String
-    let detail: String
+    let detail: LocalizedStringResource
     let icon: String
     let tint: Color
     
@@ -514,7 +512,7 @@ struct MiniStatRow: View {
 }
 
 struct RequestPill: View {
-    let title: String
+    let title: LocalizedStringResource
     let count: Int
     let color: Color
     
@@ -523,7 +521,7 @@ struct RequestPill: View {
             Circle()
                 .fill(color)
                 .frame(width: 6, height: 6)
-            Text("\(title):")
+            Text(title)
                 .foregroundColor(.secondary)
             Text("\(count)")
                 .fontWeight(.semibold)

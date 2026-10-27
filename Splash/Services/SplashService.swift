@@ -52,8 +52,8 @@ public class SplashService {
     public var portConflict: PortConflictInfo? = nil
     public var activeModel: String = "Ninguno"
     public var status: SplashStatus? = nil
-    public var lastError: String? = nil
-    
+    public var lastError: LocalizedStringResource? = nil
+
     /// Rastreo de transiciones de estado para notificaciones del sistema macOS
     private var previousRunningState: Bool? = nil
     
@@ -2462,11 +2462,11 @@ public class SplashService {
         
         public var title: LocalizedStringResource {
             switch self {
-            case .idle: return "Idle (Ready)" /*FIXME: "En Espera (Listo)" */
-            case .queued: return "In Queue" /*FIXME: "En Cola de Espera" */
-            case .prefilling: return "Prefilling (Prompt Intake)" /*FIXME: "Prefill (Procesando Entrada)" */
-            case .decoding: return "Decoding (Token Generation)" /*FIXME: "Decode (Generando Salida)" */
-            case .offline: return "Server Stopped" /*FIXME: "Servidor Detenido" */
+            case .idle: return LocalizedStringResource("Idle (Ready)")
+            case .queued: return LocalizedStringResource("In Queue")
+            case .prefilling: return LocalizedStringResource("Prefilling (Prompt Intake)")
+            case .decoding: return LocalizedStringResource("Decoding (Token Generation)")
+            case .offline: return LocalizedStringResource("Server Stopped")
             }
         }
         
@@ -2522,7 +2522,7 @@ public class SplashService {
         // después, ya en el actor principal: Swift 6 exige Sendable para cruzar actores y
         // las API de AppKit no deben usarse desde hilos en segundo plano.
         let listing = await Task.detached(priority: .utility) {
-            CommandRunner.run("/usr/sbin/lsof",
+            await CommandRunner.run("/usr/sbin/lsof",
                               ["-iTCP:\(port)", "-sTCP:ESTABLISHED", "-n", "-P"]).output
         }.value
         
@@ -2767,7 +2767,7 @@ extension SplashService: SystemMemoryPressureSentinelDelegate {
             let isBusy = (queued + prefilling + decoding) > 0
             if !isBusy {
                 print("⚠️ [SplashService] Presión de memoria del sistema CRÍTICA detectada y servidor inactivo. Liberando memoria...")
-                self.memoryReliefNotice = String(localized: "The Splash engine was put to sleep to protect macOS system memory." /*FIXME: "El motor Splash fue puesto en reposo para proteger la memoria del sistema macOS." */)
+                self.memoryReliefNotice = String(localized: "The Splash engine was put to sleep to protect macOS system memory.")
                 NotificationService.shared.notifyMemoryPressureCritical()
                 self.stopServer()
             } else {

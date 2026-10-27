@@ -80,13 +80,13 @@ public final class ModelDiagnosticService: ObservableObject {
     
     public func resetSmokeTests() {
         self.smokeTestResults = [
-            SmokeTestResult(id: "health", name: "Server Health (GET /health)" /* FIXME: "Salud del Servidor (GET /health)" */, icon: "heart.fill"),
-            SmokeTestResult(id: "ready", name: "Engine Metal Readiness (GET /ready)" /* FIXME: "Disponibilidad del Motor Metal (GET /ready)" */, icon: "bolt.fill"),
-            SmokeTestResult(id: "status", name: "Capabilities & Context (GET /status)" /* FIXME: "Capacidades y Contexto (GET /status)" */, icon: "info.circle.fill"),
-            SmokeTestResult(id: "template", name: "Jinja Template & Tokenizer (POST /apply-template)" /* FIXME: "Plantilla Jinja y Tokenizador (POST /apply-template)" */, icon: "doc.text.fill"),
-            SmokeTestResult(id: "openai", name: "OpenAI Chat Inference (POST /v1/chat/completions)" /* FIXME: "Inferencia OpenAI Chat (POST /v1/chat/completions)" */, icon: "bubble.left.and.bubble.right.fill"),
-            SmokeTestResult(id: "anthropic", name: "Anthropic Messages API (POST /v1/messages)" /* FIXME: "Compatibilidad Anthropic (POST /v1/messages)" */, icon: "apple.terminal.fill"),
-            SmokeTestResult(id: "tools", name: "Tool Calling & Structured Output" /* FIXME: "Llamada de Funciones (Tool Calling / JSON)" */, icon: "wrench.and.screwdriver.fill")
+            SmokeTestResult(id: "health", name: LocalizedStringResource("Server Health (GET /health)"), icon: "heart.fill"),
+            SmokeTestResult(id: "ready", name: LocalizedStringResource("Engine Metal Readiness (GET /ready)"), icon: "bolt.fill"),
+            SmokeTestResult(id: "status", name: LocalizedStringResource("Capabilities & Context (GET /status)"), icon: "info.circle.fill"),
+            SmokeTestResult(id: "template", name: LocalizedStringResource("Jinja Template & Tokenizer (POST /apply-template)"), icon: "doc.text.fill"),
+            SmokeTestResult(id: "openai", name: LocalizedStringResource("OpenAI Chat Inference (POST /v1/chat/completions)"), icon: "bubble.left.and.bubble.right.fill"),
+            SmokeTestResult(id: "anthropic", name: LocalizedStringResource("Anthropic Messages API (POST /v1/messages)"), icon: "apple.terminal.fill"),
+            SmokeTestResult(id: "tools", name: LocalizedStringResource("Tool Calling & Structured Output"), icon: "wrench.and.screwdriver.fill")
         ]
     }
     

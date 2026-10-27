@@ -49,33 +49,33 @@ public final class NotificationService {
         guard isNotificationsEnabled else { return }
         
         let content = UNMutableNotificationContent()
-        content.title = "Splash Monitor"
-        content.subtitle = "Server Active 🟢" /*FIXME: "Servidor Activo 🟢" */
-        
+        content.title = String(localized: "Splash Monitor")
+        content.subtitle = String(localized: "Server Active 🟢")
+
         let modelShort = model.components(separatedBy: "/").last ?? model
         let cleanModel = modelShort
             .replacingOccurrences(of: "-Splash", with: "")
             .replacingOccurrences(of: "-GGUF", with: "")
         
-        content.body = "Model \(cleanModel) ready on port :\(port)." /*FIXME: "Modelo \(cleanModel) listo en puerto :\(port)." */
+        content.body = String(localized: "Model \(cleanModel) ready on port :\(port).")
         content.sound = .default
         
         postNotification(id: "splash.server.started", content: content)
     }
     
     /// Envía una notificación cuando el servidor se detiene o se cae inesperadamente.
-    public func notifyServerStopped(reason: String? = nil, isUnexpected: Bool = false) {
+    public func notifyServerStopped(reason: LocalizedStringResource? = nil, isUnexpected: Bool = false) {
         guard isNotificationsEnabled else { return }
         
         let content = UNMutableNotificationContent()
-        content.title = "Splash Monitor"
-        
+        content.title = String(localized: "Splash Monitor")
+
         if isUnexpected {
-            content.subtitle = "⚠️ Server Stopped Unexpectedly" /*FIXME: "⚠️ Servidor Detenido Inesperadamente" */
-            content.body = reason ?? ("The Splash process terminated unexpectedly." /*FIXME: "El proceso de Splash se cerró de forma no programada." */)
+            content.subtitle = String(localized: "⚠️ Server Stopped Unexpectedly")
+            content.body = String(localized: reason ?? "The Splash process terminated unexpectedly.")
         } else {
-            content.subtitle = "Server Stopped" /*FIXME: "Servidor Detenido" */
-            content.body = reason ?? ("Splash server has been stopped." /*FIXME: "El servidor Splash ha sido detenido." */)
+            content.subtitle = String(localized: "Server Stopped")
+            content.body = String(localized: reason ?? "Splash server has been stopped.")
         }
         content.sound = isUnexpected ? .defaultCritical : .default
         
@@ -87,9 +87,9 @@ public final class NotificationService {
         guard isNotificationsEnabled else { return }
         
         let content = UNMutableNotificationContent()
-        content.title = "Splash Monitor"
-        content.subtitle = "🚨 Critical Memory Pressure" /*FIXME: "🚨 Presión de Memoria Crítica" */
-        content.body = "macOS reports unified memory exhaustion. Splash engine entered preventive standby." /*FIXME: "macOS reporta agotamiento de memoria unificada. El motor Splash se puso en reposo preventivo." */
+        content.title = String(localized: "Splash Monitor")
+        content.subtitle = String(localized: "🚨 Critical Memory Pressure")
+        content.body = String(localized: "macOS reports unified memory exhaustion. Splash engine entered preventive standby.")
         content.sound = .defaultCritical
         
         postNotification(id: "splash.memory.critical", content: content)

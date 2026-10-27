@@ -26,7 +26,7 @@ public struct AboutView: View {
                         .background(Color.orange)
                         .cornerRadius(4)
 
-                    Text("· First Release" /*FIXME: "· Primera Versión" */)
+                    Text("· First Release")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                     
@@ -42,12 +42,12 @@ public struct AboutView: View {
             
             // Description Card
             VStack(alignment: .leading, spacing: 10) {
-                Text("The first visual application and menu bar monitor created specifically for Inco AI's Splash local inference engine on Apple Silicon." /*FIXME: "La primera aplicación gráfica y monitor de barra de menú creada específicamente para el motor de inferencia local Splash de Inco AI en Apple Silicon." */)
+                Text("The first visual application and menu bar monitor created specifically for Inco AI's Splash local inference engine on Apple Silicon.")
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
                 .lineSpacing(3)
                 
-                Text("Provides real-time monitoring of tokens (prefill and decode), KV cache efficiency, DFlash 2 speculative acceptance, Metal unified memory, and allows exploring and installing any Hugging Face model without using the terminal." /*FIXME: "Proporciona monitoreo en vivo de tokens (prefill y decode), eficiencia del caché KV, aceptación especulativa DFlash 2, memoria unificada Metal, y permite explorar e instalar cualquier modelo de Hugging Face sin usar la terminal." */)
+                Text("Provides real-time monitoring of tokens (prefill and decode), KV cache efficiency, DFlash 2 speculative acceptance, Metal unified memory, and allows exploring and installing any Hugging Face model without using the terminal.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
                 .lineSpacing(2)
@@ -77,11 +77,11 @@ public struct AboutView: View {
                             Text("🇩🇴")
                         }
                         
-                        Text("JMGREP Developers · \("Software Engineer" /*FIXME: "Ingeniero en Software" */)")
+                        Text("JMGREP Developers · Software Engineer")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.accentColor)
                         
-                        Text("Creator & Developer · Dominican Republic" /*FIXME: "Creador y Desarrollador · República Dominicana" */)
+                        Text("Creator & Developer · Dominican Republic")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
@@ -96,14 +96,14 @@ public struct AboutView: View {
                         HStack(spacing: 5) {
                             Image(systemName: "cup.and.saucer.fill")
                                 .font(.system(size: 10))
-                            Text("Buy Me a Coffee" /*FIXME: "Invitar un café" */)
+                            Text("Buy Me a Coffee")
                                 .font(.system(size: 11, weight: .semibold))
                         }
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(Color.orange)
                     .controlSize(.small)
-                    .help("Support the project on Buy Me a Coffee" /*FIXME: "Apoyar el proyecto en Buy Me a Coffee" */)
+                    .help("Support the project on Buy Me a Coffee")
                 }
             }
             .padding(14)
@@ -125,7 +125,7 @@ public struct AboutView: View {
                 
                 HStack(spacing: 10) {
                     TechBadge(icon: "lock.shield", label: "MIT License")
-                    TechBadge(icon: "globe.americas.fill", label: "Made in DR 🇩🇴" /*FIXME: "Hecho en RD 🇩🇴" */)
+                    TechBadge(icon: "globe.americas.fill", label: "Made in DR 🇩🇴")
                 }
             }
             
@@ -147,7 +147,7 @@ public struct AboutView: View {
                         NSWorkspace.shared.open(url)
                     }
                 } label: {
-                    Label("Hugging Face Models" /*FIXME: "Modelos Hugging Face" */, systemImage: "cube")
+                    Label("Hugging Face Models", systemImage: "cube")
                         .font(.system(size: 11))
                 }
                 .buttonStyle(.bordered)
@@ -155,7 +155,7 @@ public struct AboutView: View {
             }
             
             // Copyright
-            Text("© 2026 JMGREP Developers · Joan Gregorio Pérez · \("Open Source" /*FIXME: "Código Abierto" */)")
+            Text("© 2026 JMGREP Developers · Joan Gregorio Pérez · \(String(localized: "Open Source"))")
                 .font(.system(size: 10))
                 .foregroundColor(.secondary.opacity(0.7))
                 .padding(.top, 6)
@@ -169,8 +169,8 @@ public struct AboutView: View {
 
 struct TechBadge: View {
     let icon: String
-    let label: String
-    
+    let label: LocalizedStringResource
+
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: icon)

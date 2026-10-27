@@ -118,7 +118,7 @@ struct SplashMonitorApp: App {
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Splash Monitor" /*FIXME: "Acerca de Splash Monitor" */) {
+                Button("About Splash Monitor") {
                     NotificationCenter.default.post(name: NSNotification.Name("ShowAboutView"), object: nil)
                     NSApp.activate(ignoringOtherApps: true)
                     for window in NSApp.windows where window.canBecomeMain {
@@ -128,7 +128,7 @@ struct SplashMonitorApp: App {
             }
             // Override the standard Quit menu item to support Menu Bar Only mode
             CommandGroup(replacing: .appTermination) {
-                Button("Quit Splash Monitor" /*FIXME: "Salir de Splash Monitor" */) {
+                Button("Quit Splash Monitor") {
                     if Preferences.menuBarOnlyMode && Preferences.showMenuBarIcon {
                         // Hide to menu bar instead of quitting
                         NSApp.setActivationPolicy(.accessory)
@@ -144,7 +144,7 @@ struct SplashMonitorApp: App {
                 
                 if Preferences.menuBarOnlyMode && Preferences.showMenuBarIcon {
                     Divider()
-                    Button("Quit Completely" /*FIXME: "Salir completamente" */) {
+                    Button("Quit Completely") {
                         appDelegate.isReallyQuitting = true
                         NSApp.terminate(nil)
                     }
