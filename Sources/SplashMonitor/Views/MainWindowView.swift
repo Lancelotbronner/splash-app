@@ -7,6 +7,8 @@ public struct MainWindowView: View {
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon: Bool = true
     @AppStorage("hasAskedAboutMenuBar") private var hasAskedAboutMenuBar: Bool = false
     @AppStorage("menuBarOnlyMode") private var menuBarOnlyMode: Bool = false
+    @ObservedObject private var notifications = NotificationService.shared
+    @ObservedObject private var autoLaunch = AutoLaunchService.shared
     @State private var selectedSidebarItem: SidebarItem = .dashboard
     @State private var showOptimalAppliedFeedback: Bool = false
 
@@ -642,6 +644,53 @@ public struct MainWindowView: View {
                     }
                     .font(.system(size: 12))
                 }
+            }
+            .padding(14)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(10)
+            
+            // Inicio Automático al Encender el Mac (Launch at Login)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(loc.isSpanish ? "Inicio del Sistema" : "System Startup")
+                    .font(.system(size: 13, weight: .semibold))
+                
+                Toggle(isOn: Binding(
+                    get: { autoLaunch.isEnabled },
+                    set: { autoLaunch.setEnabled($0) }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loc.isSpanish ? "Iniciar Splash Monitor al encender el Mac" : "Launch Splash Monitor at startup")
+                            .font(.system(size: 12))
+                        Text(loc.isSpanish
+                             ? "Ejecuta automáticamente la aplicación en segundo plano al iniciar sesión en macOS."
+                             : "Automatically launch the app in background when logging in to macOS.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .font(.system(size: 12))
+            }
+            .padding(14)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(10)
+            
+            // Notificaciones de macOS
+            VStack(alignment: .leading, spacing: 8) {
+                Text(loc.isSpanish ? "Notificaciones de macOS" : "macOS Notifications")
+                    .font(.system(size: 13, weight: .semibold))
+                
+                Toggle(isOn: $notifications.isNotificationsEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loc.isSpanish ? "Alertas y notificaciones del sistema" : "System alerts and notifications")
+                            .font(.system(size: 12))
+                        Text(loc.isSpanish
+                             ? "Recibe avisos cuando el servidor se inicie, se detenga inesperadamente o si la memoria unificada del Mac entra en presión crítica."
+                             : "Receive alerts when the server starts, stops unexpectedly, or if unified memory enters critical pressure.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .font(.system(size: 12))
             }
             .padding(14)
             .background(Color(nsColor: .controlBackgroundColor))

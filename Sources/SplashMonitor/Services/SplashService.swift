@@ -54,6 +54,9 @@ public class SplashService: ObservableObject {
     @Published public var status: SplashStatus? = nil
     @Published public var lastError: String? = nil
     
+    /// Rastreo de transiciones de estado para notificaciones del sistema macOS
+    private var previousRunningState: Bool? = nil
+    
     // Dependencies & CLI state
     @Published public var isSplashInstalled: Bool = false
     @Published public var splashVersion: String? = nil
@@ -635,6 +638,16 @@ public class SplashService: ObservableObject {
                 self.status = nil
             }
         }
+        
+        // Comprobar transiciones de estado para notificaciones macOS
+        if let wasRunning = previousRunningState {
+            if !wasRunning && self.isRunning {
+                NotificationService.shared.notifyServerStarted(model: self.activeModel, port: self.activePort)
+            } else if wasRunning && !self.isRunning && !self.isStartingServer {
+                NotificationService.shared.notifyServerStopped(reason: self.lastError, isUnexpected: true)
+            }
+        }
+        previousRunningState = self.isRunning
         
         // Scan active connected apps/clients
         await scanConnectedClients()
@@ -1447,6 +1460,7 @@ public class SplashService: ObservableObject {
     // MARK: - Server Control
     
     public func stopServerAsync() async {
+        previousRunningState = false
         await terminator.stopEngine(port: activePort, candidatePids: candidateStopPIDs())
         self.isRunning = false
         self.status = nil
@@ -2747,6 +2761,7 @@ extension SplashService: SystemMemoryPressureSentinelDelegate {
             if !isBusy {
                 print("⚠️ [SplashService] Presión de memoria del sistema CRÍTICA detectada y servidor inactivo. Liberando memoria...")
                 self.memoryReliefNotice = "El motor Splash fue puesto en reposo para proteger la memoria del sistema macOS."
+                NotificationService.shared.notifyMemoryPressureCritical()
                 self.stopServer()
             } else {
                 print("⚠️ [SplashService] Presión de memoria CRÍTICA detectada, pero hay operaciones en curso (prefilling: \(prefilling), decoding: \(decoding)).")
