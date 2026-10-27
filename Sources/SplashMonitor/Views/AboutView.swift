@@ -156,7 +156,7 @@ public struct AboutView: View {
                         NSWorkspace.shared.open(url)
                     }
                 } label: {
-                    Label("Modelos Hugging Face", systemImage: "cube")
+                    Label(tr(es: "Modelos Hugging Face", en: "Hugging Face Models"), systemImage: "cube")
                         .font(.system(size: 11))
                 }
                 .buttonStyle(.bordered)

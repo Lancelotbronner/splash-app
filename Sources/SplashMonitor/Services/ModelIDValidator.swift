@@ -89,26 +89,43 @@ public enum ModelIDValidator {
     }
 
     /// Motivo legible para mostrar al usuario en la interfaz.
-    public static func rejectionReason(_ raw: String) -> String? {
+    public static func rejectionReason(_ raw: String, isSpanish: Bool? = nil) -> String? {
         let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if value.isEmpty { return "El identificador está vacío." }
+        let spanish = isSpanish ?? (UserDefaults.standard.string(forKey: "appLanguageMode") != "en")
+        if value.isEmpty {
+            return spanish ? "El identificador está vacío." : "The model identifier is empty."
+        }
         if isValid(value) { return nil }
-        if !value.contains("/") { return "Falta el separador: usa el formato propietario/modelo o propietario/modelo:variante." }
+        if !value.contains("/") {
+            return spanish
+                ? "Falta el separador: usa el formato propietario/modelo o propietario/modelo:variante."
+                : "Missing separator: use format owner/model or owner/model:variant."
+        }
         let segments = value.split(separator: "/", omittingEmptySubsequences: false)
         if segments.count != 2 {
-            return "El formato debe ser propietario/modelo[:variante] (un solo separador '/')."
+            return spanish
+                ? "El formato debe ser propietario/modelo[:variante] (un solo separador '/')."
+                : "Format must be owner/model[:variant] (exactly one '/' separator)."
         }
         if value.rangeOfCharacter(from: forbiddenCharacters) != nil {
-            return "Contiene caracteres no permitidos (espacios, comillas, ; | & $ ` \\ % ? # …)."
+            return spanish
+                ? "Contiene caracteres no permitidos (espacios, comillas, ; | & $ ` \\ % ? # …)."
+                : "Contains forbidden characters (spaces, quotes, ; | & $ ` \\ % ? # …)."
         }
         let repoSegment = String(segments[1])
         let repoParts = repoSegment.split(separator: ":", omittingEmptySubsequences: false)
         if repoParts.count > 2 {
-            return "Demasiados separadores de variante ':' (máximo uno permitido)."
+            return spanish
+                ? "Demasiados separadores de variante ':' (máximo uno permitido)."
+                : "Too many variant ':' separators (maximum one allowed)."
         }
         if repoParts.count == 2 && repoParts[1].isEmpty {
-            return "La variante tras ':' no puede estar vacía."
+            return spanish
+                ? "La variante tras ':' no puede estar vacía."
+                : "Variant following ':' cannot be empty."
         }
-        return "Solo se admiten letras, dígitos, punto, guion y guion bajo (y ':' para variantes)."
+        return spanish
+            ? "Solo se admiten letras, dígitos, punto, guion y guion bajo (y ':' para variantes)."
+            : "Only letters, digits, dots, hyphens, and underscores are allowed (and ':' for variants)."
     }
 }

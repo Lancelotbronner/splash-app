@@ -658,7 +658,7 @@ public struct ServerControlView: View {
                             Image(systemName: "timer")
                                 .font(.system(size: 10))
                                 .foregroundColor(.cyan)
-                            Text("Reposo: \(service.idleRelease)")
+                            Text(tr(es: "Reposo: \(service.idleRelease)", en: "Idle: \(service.idleRelease)"))
                                 .font(.system(size: 10, design: .monospaced))
                                 .lineLimit(1)
                         }
@@ -793,7 +793,7 @@ public struct ServerControlView: View {
                         service.stateFormat = "fp32"
                     } label: {
                         HStack {
-                            Text("FP32 (Estándar, máxima fidelidad)")
+                            Text(tr(es: "FP32 (Estándar, máxima fidelidad)", en: "FP32 (Standard, maximum fidelity)"))
                             if service.stateFormat == "fp32" {
                                 Image(systemName: "checkmark")
                             }
@@ -803,7 +803,7 @@ public struct ServerControlView: View {
                         service.stateFormat = "bf16"
                     } label: {
                         HStack {
-                            Text("BF16 (-50% RAM en estados GDN)")
+                            Text(tr(es: "BF16 (-50% RAM en estados GDN)", en: "BF16 (-50% RAM in GDN states)"))
                             if service.stateFormat == "bf16" {
                                 Image(systemName: "checkmark")
                             }

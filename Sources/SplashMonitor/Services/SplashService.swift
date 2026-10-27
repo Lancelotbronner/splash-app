@@ -2496,6 +2496,58 @@ public class SplashService: ObservableObject {
         return "\(num)"
     }
     
+    // MARK: - Active Request Lifecycle (Issue #6)
+    
+    public enum ActiveRequestStage: String, CaseIterable {
+        case idle
+        case queued
+        case prefilling
+        case decoding
+        case offline
+        
+        public func title(isSpanish: Bool) -> String {
+            switch self {
+            case .idle: return isSpanish ? "En Espera (Listo)" : "Idle (Ready)"
+            case .queued: return isSpanish ? "En Cola de Espera" : "In Queue"
+            case .prefilling: return isSpanish ? "Prefill (Procesando Entrada)" : "Prefilling (Prompt Intake)"
+            case .decoding: return isSpanish ? "Decode (Generando Salida)" : "Decoding (Token Generation)"
+            case .offline: return isSpanish ? "Servidor Detenido" : "Server Stopped"
+            }
+        }
+        
+        public var icon: String {
+            switch self {
+            case .idle: return "checkmark.circle.fill"
+            case .queued: return "hourglass"
+            case .prefilling: return "arrow.down.forward.circle.fill"
+            case .decoding: return "bolt.fill"
+            case .offline: return "pause.circle"
+            }
+        }
+    }
+    
+    public var activeRequestStage: ActiveRequestStage {
+        guard isRunning else { return .offline }
+        let prefilling = status?.scheduler?.prefilling ?? 0
+        let decoding = status?.scheduler?.decoding ?? 0
+        let queued = status?.scheduler?.queued ?? 0
+        
+        if prefilling > 0 {
+            return .prefilling
+        } else if decoding > 0 {
+            return .decoding
+        } else if queued > 0 {
+            return .queued
+        } else {
+            return .idle
+        }
+    }
+    
+    public var isRequestActive: Bool {
+        let stage = activeRequestStage
+        return stage == .prefilling || stage == .decoding
+    }
+    
     // MARK: - Connected Apps / Client Detection
     
     public func scanConnectedClients() async {
@@ -2760,7 +2812,9 @@ extension SplashService: SystemMemoryPressureSentinelDelegate {
             let isBusy = (queued + prefilling + decoding) > 0
             if !isBusy {
                 print("⚠️ [SplashService] Presión de memoria del sistema CRÍTICA detectada y servidor inactivo. Liberando memoria...")
-                self.memoryReliefNotice = "El motor Splash fue puesto en reposo para proteger la memoria del sistema macOS."
+                self.memoryReliefNotice = Localization.shared.isSpanish
+                    ? "El motor Splash fue puesto en reposo para proteger la memoria del sistema macOS."
+                    : "The Splash engine was put to sleep to protect macOS system memory."
                 NotificationService.shared.notifyMemoryPressureCritical()
                 self.stopServer()
             } else {

@@ -10,6 +10,9 @@ public struct TokenMetricsView: View {
     
     public var body: some View {
         VStack(spacing: 14) {
+            // Active Request Lifecycle (Issue #6)
+            activeRequestCard
+            
             // Speed Hero Cards
             HStack(spacing: 12) {
                 MetricCard(
@@ -325,6 +328,117 @@ public struct TokenMetricsView: View {
             }
             .padding(.top, 4)
         }
+    }
+    
+    // MARK: - Active Request Progress Card (Issue #6)
+    @ViewBuilder
+    private var activeRequestCard: some View {
+        let stage = service.activeRequestStage
+        let isSpanish = loc.isSpanish
+        let stageColor: Color = {
+            switch stage {
+            case .prefilling: return .blue
+            case .decoding: return .green
+            case .queued: return .orange
+            case .idle: return .secondary
+            case .offline: return .gray
+            }
+        }()
+        
+        VStack(alignment: .leading, spacing: 8) {
+            // Header: Stage Title & Live badge
+            HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(stageColor)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: stage == .prefilling || stage == .decoding ? stageColor.opacity(0.8) : .clear, radius: 4)
+                    
+                    Text(tr(es: "ESTADO DE LA PETICIÓN", en: "REQUEST LIFECYCLE"))
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                // Stage Badge
+                HStack(spacing: 5) {
+                    Image(systemName: stage.icon)
+                        .font(.system(size: 10, weight: .bold))
+                    Text(stage.title(isSpanish: isSpanish))
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundColor(stageColor)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(stageColor.opacity(0.12))
+                .cornerRadius(5)
+            }
+            
+            // Progress Bar / Live Status
+            if stage == .prefilling {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(tr(es: "Fase 1/2: Procesando prompt y evaluando KV Caché...", en: "Stage 1/2: Ingesting prompt & evaluating KV Cache..."))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.blue)
+                        Spacer()
+                        Text("\(service.formattedPrefillSpeed) tok/s")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.blue)
+                    }
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .tint(.blue)
+                }
+            } else if stage == .decoding {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(tr(es: "Fase 2/2: Generando tokens de respuesta...", en: "Stage 2/2: Generating output response tokens..."))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.green)
+                        Spacer()
+                        Text("\(service.formattedDecodeSpeed) tok/s")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(.green)
+                    }
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .tint(.green)
+                }
+            } else if stage == .queued {
+                HStack {
+                    Text(tr(es: "Petición en cola esperando ranura de inferencia...", en: "Request queued waiting for inference slot..."))
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                    Spacer()
+                    Text(tr(es: "En cola: \(service.status?.scheduler?.queued ?? 1)", en: "Queued: \(service.status?.scheduler?.queued ?? 1)"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.orange)
+                }
+            } else {
+                HStack {
+                    Text(service.isRunning
+                         ? tr(es: "Servidor disponible · Listo para atender consultas de clientes y agentes", en: "Server ready · Waiting for queries from connected apps & agents")
+                         : tr(es: "Servidor detenido · Inicia Splash para recibir peticiones", en: "Server stopped · Start Splash to accept requests"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    if let completed = service.status?.requests?.completed, completed > 0 {
+                        Text("\(completed) \(tr(es: "completadas", en: "completed"))")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(stage == .prefilling || stage == .decoding ? stageColor.opacity(0.4) : Color.secondary.opacity(0.12), lineWidth: 1)
+        )
     }
 }
 
