@@ -1,10 +1,10 @@
 import SwiftUI
 import AppKit
 
-public struct AboutView: View {
-	public init() {}
+struct AboutView: View {
+	init() {}
 
-	public var body: some View {
+	var body: some View {
 		VStack(spacing: 20) {
 			// Header with App Icon
 			VStack(spacing: 12) {

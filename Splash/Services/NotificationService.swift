@@ -5,8 +5,8 @@ import AppKit
 /// Servicio centralizado de notificaciones locales de macOS para Splash Monitor.
 /// Maneja alertas de estado del servidor, avisos de modelos y presión de memoria crítica.
 @MainActor @Observable
-public final class NotificationService {
-	public static let shared = NotificationService()
+final class NotificationService {
+	static let shared = NotificationService()
 
 	private var center: UNUserNotificationCenter? {
 		guard let bundleId = Bundle.main.bundleIdentifier, !bundleId.isEmpty else { return nil }
@@ -17,7 +17,7 @@ public final class NotificationService {
 		return UNUserNotificationCenter.current()
 	}
 
-	public var isNotificationsEnabled: Bool {
+	var isNotificationsEnabled: Bool {
 		didSet {
 			Preferences.systemNotificationsEnabled = isNotificationsEnabled
 			if isNotificationsEnabled {
@@ -26,7 +26,7 @@ public final class NotificationService {
 		}
 	}
 
-	public init() {
+	init() {
 		// Habilitado por defecto si no ha sido configurado previamente
 		isNotificationsEnabled = Preferences.systemNotificationsEnabled
 
@@ -36,7 +36,7 @@ public final class NotificationService {
 	}
 
 	/// Solicita autorización para mostrar notificaciones al usuario si aún no está otorgada.
-	public func requestAuthorization() {
+	func requestAuthorization() {
 		center?.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
 			if let error = error {
 				print("⚠️ [NotificationService] Error solicitando permisos: \(error.localizedDescription)")
@@ -45,7 +45,7 @@ public final class NotificationService {
 	}
 
 	/// Envía una notificación cuando el servidor inicia exitosamente.
-	public func notifyServerStarted(model: String, port: Int) {
+	func notifyServerStarted(model: String, port: Int) {
 		guard isNotificationsEnabled else { return }
 
 		let content = UNMutableNotificationContent()
@@ -64,7 +64,7 @@ public final class NotificationService {
 	}
 
 	/// Envía una notificación cuando el servidor se detiene o se cae inesperadamente.
-	public func notifyServerStopped(reason: LocalizedStringResource? = nil, isUnexpected: Bool = false) {
+	func notifyServerStopped(reason: LocalizedStringResource? = nil, isUnexpected: Bool = false) {
 		guard isNotificationsEnabled else { return }
 
 		let content = UNMutableNotificationContent()
@@ -83,7 +83,7 @@ public final class NotificationService {
 	}
 
 	/// Envía una alerta cuando el sistema entra en presión de memoria crítica.
-	public func notifyMemoryPressureCritical() {
+	func notifyMemoryPressureCritical() {
 		guard isNotificationsEnabled else { return }
 
 		let content = UNMutableNotificationContent()

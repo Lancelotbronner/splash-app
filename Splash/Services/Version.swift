@@ -8,14 +8,14 @@ import Foundation
 /// literal con `sed`, de modo que la versión se declara una sola vez. Antes vivía
 /// duplicada en 5 lugares (servicio, Info.plist, DMG, instalador y README) y ya había
 /// divergido: el README anunciaba 1.0.0-beta mientras el binario compilaba 1.0.2-beta.
-public enum SplashVersion {
-	public static let current = "1.0.10-beta"
+enum SplashVersion {
+	static let current = "1.0.10-beta"
 	/// Identificador de paquete propio (P-11). Antes el proyecto se anunciaba como
 	/// `com.incoai.splashmonitor`, reclamando el espacio de nombres de IncoAI, del que
 	/// este monitor es software independiente.
-	public static let bundleIdentifier = "do.jmgrep.splashmonitor"
+	static let bundleIdentifier = "do.jmgrep.splashmonitor"
 	/// Número de compilación para `CFBundleVersion` (debe crecer con cada publicación).
-	public static let buildNumber = "11"
+	static let buildNumber = "11"
 }
 
 // MARK: - Comparación semántica de versiones (P-07 / H-08)
@@ -26,14 +26,14 @@ public enum SplashVersion {
 /// `1.0.10-beta` se considere ANTERIOR a `1.0.2-beta` (`'1' < '2'` en el tercer
 /// componente) y la app dejase de detectar actualizaciones a partir de la décima
 /// revisión. Verificado con `swift -e` sobre `841014e`.
-public struct SemanticVersion: Comparable, CustomStringConvertible {
-	public let major: Int
-	public let minor: Int
-	public let patch: Int
+struct SemanticVersion: Comparable, CustomStringConvertible {
+	let major: Int
+	let minor: Int
+	let patch: Int
 	/// Incluye el separador: `-beta`, `-beta.2`, `+build.7`. `nil` en versiones de publicación.
-	public let prerelease: String?
+	let prerelease: String?
 
-	public init?(_ raw: String) {
+	init?(_ raw: String) {
 		var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !text.isEmpty else { return nil }
 		if text.hasPrefix("v") || text.hasPrefix("V") { text.removeFirst() }
@@ -63,14 +63,14 @@ public struct SemanticVersion: Comparable, CustomStringConvertible {
 		patch = numbers[2]
 	}
 
-	public init(major: Int, minor: Int, patch: Int, prerelease: String? = nil) {
+	init(major: Int, minor: Int, patch: Int, prerelease: String? = nil) {
 		self.major = major
 		self.minor = minor
 		self.patch = patch
 		self.prerelease = prerelease
 	}
 
-	public static func < (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {
+	static func < (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {
 		if lhs.major != rhs.major { return lhs.major < rhs.major }
 		if lhs.minor != rhs.minor { return lhs.minor < rhs.minor }
 		if lhs.patch != rhs.patch { return lhs.patch < rhs.patch }
@@ -82,18 +82,18 @@ public struct SemanticVersion: Comparable, CustomStringConvertible {
 		}
 	}
 
-	public static func == (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {
+	static func == (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {
 		lhs.major == rhs.major && lhs.minor == rhs.minor && lhs.patch == rhs.patch
 		&& lhs.prerelease == rhs.prerelease
 	}
 
-	public var description: String {
+	var description: String {
 		"\(major).\(minor).\(patch)" + (prerelease ?? "")
 	}
 
 	/// `true` solo si ambas cadenas se pueden parsear y `latest` es posterior a `current`.
 	/// Ante una etiqueta no parseable devuelve `false` (nunca inventa una actualización).
-	public static func isNewer(_ latest: String, than current: String) -> Bool {
+	static func isNewer(_ latest: String, than current: String) -> Bool {
 		guard let new = SemanticVersion(latest), let old = SemanticVersion(current) else { return false }
 		return new > old
 	}

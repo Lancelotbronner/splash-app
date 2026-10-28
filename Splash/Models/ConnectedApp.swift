@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 
 // MARK: - App Category
-public enum AppCategory: String, Codable, CaseIterable {
+enum AppCategory: String, Codable, CaseIterable {
 	case ide = "IDE / Editor"
 	case codingAgent = "Agente de Código"
 	case chatbot = "Chatbot / WebUI"
@@ -10,7 +10,7 @@ public enum AppCategory: String, Codable, CaseIterable {
 	case customScript = "Script / Proceso"
 	case lanClient = "Cliente LAN"
 
-	public var iconName: String {
+	var iconName: String {
 		switch self {
 		case .ide: return "chevron.left.forwardslash.chevron.right"
 		case .codingAgent: return "brain.head.profile"
@@ -21,7 +21,7 @@ public enum AppCategory: String, Codable, CaseIterable {
 		}
 	}
 
-	public var localizedName: LocalizedStringResource {
+	var localizedName: LocalizedStringResource {
 		switch self {
 		case .ide: LocalizedStringResource("IDE / Code Editor")
 		case .codingAgent: LocalizedStringResource("Autonomous Coding Agent")
@@ -34,12 +34,12 @@ public enum AppCategory: String, Codable, CaseIterable {
 }
 
 // MARK: - Connection Status
-public enum AppConnectionStatus: String, Codable {
+enum AppConnectionStatus: String, Codable {
 	case active = "active"       // Currently has active open sockets or recent stream
 	case idle = "idle"           // Connected but waiting
 	case recent = "recent"       // Was connected recently in current session
 
-	public var localizedName: LocalizedStringResource {
+	var localizedName: LocalizedStringResource {
 		switch self {
 		case .active: LocalizedStringResource("Streaming")
 		case .idle: LocalizedStringResource("Connected (Idle)")
@@ -49,21 +49,21 @@ public enum AppConnectionStatus: String, Codable {
 }
 
 // MARK: - Connected App Model
-public struct ConnectedApp: Identifiable, Hashable {
-	public var id: String { "\(pid)-\(name)" }
-	public let pid: Int32
-	public let name: String
-	public let bundleId: String?
-	public let executablePath: String?
-	public let category: AppCategory
-	public let icon: NSImage?
-	public var connectionCount: Int
-	public var status: AppConnectionStatus
-	public var firstConnected: Date
-	public var lastSeen: Date
-	public var remoteAddress: String
+struct ConnectedApp: Identifiable, Hashable {
+	var id: String { "\(pid)-\(name)" }
+	let pid: Int32
+	let name: String
+	let bundleId: String?
+	let executablePath: String?
+	let category: AppCategory
+	let icon: NSImage?
+	var connectionCount: Int
+	var status: AppConnectionStatus
+	var firstConnected: Date
+	var lastSeen: Date
+	var remoteAddress: String
 
-	public init(
+	init(
 		pid: Int32,
 		name: String,
 		bundleId: String? = nil,
@@ -89,12 +89,12 @@ public struct ConnectedApp: Identifiable, Hashable {
 		self.remoteAddress = remoteAddress
 	}
 
-	public func hash(into hasher: inout Hasher) {
+	func hash(into hasher: inout Hasher) {
 		hasher.combine(pid)
 		hasher.combine(name)
 	}
 
-	public static func == (lhs: ConnectedApp, rhs: ConnectedApp) -> Bool {
+	static func == (lhs: ConnectedApp, rhs: ConnectedApp) -> Bool {
 		return lhs.pid == rhs.pid && lhs.name == rhs.name
 	}
 }

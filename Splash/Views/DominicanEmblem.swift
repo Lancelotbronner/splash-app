@@ -1,13 +1,13 @@
 import SwiftUI
 
-public struct DominicanEmblem: View {
-	public var size: CGFloat = 20
+struct DominicanEmblem: View {
+	var size: CGFloat = 20
 
-	public init(size: CGFloat = 20) {
+	init(size: CGFloat = 20) {
 		self.size = size
 	}
 
-	public var body: some View {
+	var body: some View {
 		ZStack {
 			// Flag quarter base
 			RoundedRectangle(cornerRadius: size * 0.22)

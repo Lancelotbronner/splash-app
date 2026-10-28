@@ -3,12 +3,12 @@ import AppKit
 
 // MARK: - Ejecución de comandos externos
 
-public struct CommandResult: Sendable {
-	public let status: Int32
-	public let output: String
-	public var succeeded: Bool { status == 0 }
+struct CommandResult: Sendable {
+	let status: Int32
+	let output: String
+	var succeeded: Bool { status == 0 }
 
-	public init(status: Int32, output: String) {
+	init(status: Int32, output: String) {
 		self.status = status
 		self.output = output
 	}
@@ -18,9 +18,9 @@ public struct CommandResult: Sendable {
 ///
 /// Lectura del pipe antes de `waitUntilExit()` para no bloquearse si la salida
 /// supera el búfer interno de 64 KB (caso real: `lsof` con muchas conexiones).
-public enum CommandRunner {
+enum CommandRunner {
 	@discardableResult
-	public static func run(_ executable: String, _ arguments: [String]) -> CommandResult {
+	static func run(_ executable: String, _ arguments: [String]) -> CommandResult {
 		guard FileManager.default.isExecutableFile(atPath: executable) else {
 			return CommandResult(status: -1, output: "")
 		}
@@ -46,7 +46,7 @@ public enum CommandRunner {
 
 /// Operaciones destructivas sobre procesos del motor, aisladas tras un protocolo
 /// para que las pruebas nunca envíen señales reales.
-public protocol ServerTerminating: Sendable {
+protocol ServerTerminating: Sendable {
 	/// Detiene el motor en `port` de forma ordenada y verificada.
 	func stopEngine(port: Int, candidatePids: [Int32]) async
 	/// Variante síncrona para `applicationWillTerminate`.
@@ -55,8 +55,8 @@ public protocol ServerTerminating: Sendable {
 
 /// Implementación endurecida: solo escuchas verificadas del motor, escalada
 /// INT → TERM → KILL, sin `pkill -f` genérico.
-public struct HardenedServerTerminator: ServerTerminating {
-	public init() {}
+struct HardenedServerTerminator: ServerTerminating {
+	init() {}
 
 	private static let lsof = "/usr/sbin/lsof"
 	private static let ps = "/bin/ps"
@@ -88,7 +88,7 @@ public struct HardenedServerTerminator: ServerTerminating {
 		return !ListerOutput.listeningPIDs(listing.output).isEmpty
 	}
 
-	public func stopEngine(port: Int, candidatePids: [Int32]) async {
+	func stopEngine(port: Int, candidatePids: [Int32]) async {
 		var targets = Set(Self.verifiedEnginePIDs(port: port))
 		targets.formUnion(Self.verified(candidatePids))
 		guard !targets.isEmpty else { return }
@@ -109,7 +109,7 @@ public struct HardenedServerTerminator: ServerTerminating {
 		for pid in Self.verifiedEnginePIDs(port: port) { kill(pid, SIGKILL) }
 	}
 
-	public func stopEngineSynchronously(port: Int, candidatePids: [Int32]) {
+	func stopEngineSynchronously(port: Int, candidatePids: [Int32]) {
 		var targets = Set(Self.verifiedEnginePIDs(port: port))
 		targets.formUnion(Self.verified(candidatePids))
 		for pid in targets { kill(pid, SIGTERM) }
@@ -119,9 +119,9 @@ public struct HardenedServerTerminator: ServerTerminating {
 // MARK: - Terminación de aplicaciones cliente (P-04 / H-05)
 
 /// Decisión pura de si es lícito terminar una app cliente.
-public enum ClientTerminationPolicy {
+enum ClientTerminationPolicy {
 	/// Requisitos: el PID sigue existiendo, es la misma aplicación y no es el monitor.
-	public static func canTerminate(pid: Int32,
+	static func canTerminate(pid: Int32,
 									recordedBundleID: String?,
 									currentBundleID: String?,
 									currentName: String?,

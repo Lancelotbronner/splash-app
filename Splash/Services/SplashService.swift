@@ -5,14 +5,14 @@ import AppKit
 
 // MARK: - Port Conflict Model
 
-public struct PortConflictInfo: Identifiable, Equatable {
-	public var id: String { "\(port)-\(pid)" }
-	public let port: Int
-	public let processName: String
-	public let pid: Int32
-	public let suggestedPort: Int
+struct PortConflictInfo: Identifiable, Equatable {
+	var id: String { "\(port)-\(pid)" }
+	let port: Int
+	let processName: String
+	let pid: Int32
+	let suggestedPort: Int
 
-	public init(port: Int, processName: String, pid: Int32, suggestedPort: Int) {
+	init(port: Int, processName: String, pid: Int32, suggestedPort: Int) {
 		self.port = port
 		self.processName = processName
 		self.pid = pid
@@ -21,79 +21,79 @@ public struct PortConflictInfo: Identifiable, Equatable {
 }
 
 @Observable
-public class SplashService {
-	@Bindable public private(set) static var shared = SplashService()
+class SplashService {
+	@Bindable private(set) static var shared = SplashService()
 
 	// MARK: - Dependencias inyectables (pruebas y sustitución)
 	/// Transporte HTTP para `/status`. Sustituible para probar el ciclo de sondeo sin motor.
-	public let transport: StatusTransport
+	let transport: StatusTransport
 	/// Operaciones destructivas sobre procesos. Las pruebas inyectan un doble que no
 	/// envía señales reales.
-	public let terminator: ServerTerminating
+	let terminator: ServerTerminating
 	/// Intervalo base de sondeo. Las pruebas lo amplían para no depender del reloj.
-	public let pollInterval: TimeInterval
+	let pollInterval: TimeInterval
 	/// Raíz de datos de la app. `nil` = `~/Library/Application Support/Splash`.
-	public let dataDirectoryRoot: URL?
+	let dataDirectoryRoot: URL?
 	/// Sustituto del lanzamiento real del motor (escritura de `.command` + `/bin/bash`).
-	public var serverLaunchOverride: ((_ command: String, _ logFile: URL?, _ background: Bool) -> Void)?
+	var serverLaunchOverride: ((_ command: String, _ logFile: URL?, _ background: Bool) -> Void)?
 	/// Sustituto de la escritura en el `~/.zshrc` del usuario.
-	public var shellWriteOverride: ((_ contents: String, _ url: URL) -> Void)?
+	var shellWriteOverride: ((_ contents: String, _ url: URL) -> Void)?
 	/// Directorio donde vive `~/.splash_monitor_env`. `nil` = directorio personal real.
 	/// Las pruebas lo apuntan a un directorio temporal para no escribir en el HOME.
-	public var shellEnvironmentDirectory: URL?
+	var shellEnvironmentDirectory: URL?
 	/// Omite la comprobación previa de conflictos de puerto (pruebas herméticas:
 	/// evita abrir un socket real y depender del estado de la máquina).
-	public var skipPortConflictCheck: Bool = false
+	var skipPortConflictCheck: Bool = false
 
 	// MARK: - Published State
-	public var isRunning: Bool = false
-	public var activePid: Int? = nil
-	public var activePort: Int = 8000
-	public var portConflict: PortConflictInfo? = nil
-	public var activeModel: String = "Ninguno"
-	public var status: SplashStatus? = nil
-	public var lastError: LocalizedStringResource? = nil
+	var isRunning: Bool = false
+	var activePid: Int? = nil
+	var activePort: Int = 8000
+	var portConflict: PortConflictInfo? = nil
+	var activeModel: String = "Ninguno"
+	var status: SplashStatus? = nil
+	var lastError: LocalizedStringResource? = nil
 
 	/// Rastreo de transiciones de estado para notificaciones del sistema macOS
 	private var previousRunningState: Bool? = nil
 
 	// Dependencies & CLI state
-	public var isSplashInstalled: Bool = false
-	public var splashVersion: String? = nil
-	public var hasHomebrew: Bool = false
-	public var isInstallingDependency: Bool = false
-	public var dependencyInstallLogs: [String] = []
-	public var dependencyInstallSuccess: Bool? = nil
+	var isSplashInstalled: Bool = false
+	var splashVersion: String? = nil
+	var hasHomebrew: Bool = false
+	var isInstallingDependency: Bool = false
+	var dependencyInstallLogs: [String] = []
+	var dependencyInstallSuccess: Bool? = nil
 
 	// Model lists
-	public var installedModels: [InstalledSplashModel] = []
-	public var availableOnlineModels: [HuggingFaceModelItem] = []
-	public var isLoadingOnlineModels: Bool = false
-	public var selectedModelForLaunch: String = "incoai/Qwen3.6-35B-A3B-Splash"
+	var installedModels: [InstalledSplashModel] = []
+	var availableOnlineModels: [HuggingFaceModelItem] = []
+	var isLoadingOnlineModels: Bool = false
+	var selectedModelForLaunch: String = "incoai/Qwen3.6-35B-A3B-Splash"
 
 	// Model Installation state & metrics
-	public var isInstalling: Bool = false
-	public var installingModelId: String? = nil
-	public var installLogs: [String] = []
-	public var installSuccess: Bool? = nil
-	public var downloadSpeedMBs: Double = 0.0
-	public var downloadedBytes: Int64 = 0
-	public var totalExpectedBytes: Int64 = 0
-	public var downloadProgressFraction: Double? = nil
-	public var downloadPhase: String = ""
+	var isInstalling: Bool = false
+	var installingModelId: String? = nil
+	var installLogs: [String] = []
+	var installSuccess: Bool? = nil
+	var downloadSpeedMBs: Double = 0.0
+	var downloadedBytes: Int64 = 0
+	var totalExpectedBytes: Int64 = 0
+	var downloadProgressFraction: Double? = nil
+	var downloadPhase: String = ""
 
 	// Server Launching state
-	public var isStartingServer: Bool = false
-	public var startingModelId: String? = nil
+	var isStartingServer: Bool = false
+	var startingModelId: String? = nil
 
 	// Performance history for graphing
-	public var speedHistory: [Double] = []
+	var speedHistory: [Double] = []
 
 	// MARK: - Perfil de Configuración Óptima (Apple Silicon M4 Max / 64 GB)
 
 	/// Restaura la configuración óptima de alto rendimiento para Apple Silicon M4 Max (64 GB de RAM)
 	/// alineada con scripts/apply_local_profile.sh.
-	public func restoreOptimalProfile() {
+	func restoreOptimalProfile() {
 		// 1. Motor de Inferencia y Splash 1.3.2
 		Preferences.stateFormat = "bf16"
 		Preferences.thinkingTokenBudget = "8K"
@@ -137,12 +137,12 @@ public class SplashService {
 	}
 
 	/// Nivel actual de presión de memoria del sistema macOS.
-	public var systemMemoryPressure: SystemMemoryPressureLevel = .normal
+	var systemMemoryPressure: SystemMemoryPressureLevel = .normal
 	/// Mensaje informativo cuando la memoria se ha liberado por presión o manualmente.
-	public var memoryReliefNotice: String? = nil
+	var memoryReliefNotice: String? = nil
 
 	/// Dirección IPv4 primaria en la red de área local (ej. "192.168.1.49").
-	public var localNetworkIP: String? {
+	var localNetworkIP: String? {
 		NetworkInterfaceHelper.primaryLocalIPv4()
 	}
 
@@ -150,7 +150,7 @@ public class SplashService {
 	/// Si `listenOnAllInterfaces` está activo, prioriza el primer dominio permitido configurado
 	/// (ej. DDNS como midominio.duckdns.org) o la IP en la red LAN.
 	/// En caso contrario, devuelve `127.0.0.1`.
-	public var preferredHostOrIP: String {
+	var preferredHostOrIP: String {
 		if Preferences.listenOnAllInterfaces {
 			let userHosts = Preferences.allowedHosts
 				.components(separatedBy: CharacterSet(charactersIn: ",; \n\t"))
@@ -167,31 +167,31 @@ public class SplashService {
 	}
 
 	// Update check (Splash Monitor App)
-	public var hasUpdate: Bool = false
-	public var latestVersion: String? = nil
-	public var latestReleaseURL: String? = nil
-	public let currentVersion = SplashVersion.current
+	var hasUpdate: Bool = false
+	var latestVersion: String? = nil
+	var latestReleaseURL: String? = nil
+	let currentVersion = SplashVersion.current
 	private let githubRepo = "hometrix/SplashMonitor"
 
 	// Splash CLI Engine Version & Updates (incoai/splash)
-	public var installedSplashCliVersion: String = ""
-	public var latestSplashCliVersion: String = ""
-	public var latestSplashCliReleaseURL: String = "https://github.com/incoai/splash/releases/latest"
-	public var hasSplashCliUpdate: Bool = false
-	public var isCheckingSplashCliUpdate: Bool = false
+	var installedSplashCliVersion: String = ""
+	var latestSplashCliVersion: String = ""
+	var latestSplashCliReleaseURL: String = "https://github.com/incoai/splash/releases/latest"
+	var hasSplashCliUpdate: Bool = false
+	var isCheckingSplashCliUpdate: Bool = false
 
 	// Agent installation cache (checked async, not on main thread)
-	public var installedAgents: Set<String> = []
+	var installedAgents: Set<String> = []
 
 	// Connected Applications & Clients
-	public var connectedApps: [ConnectedApp] = []
+	var connectedApps: [ConnectedApp] = []
 	private var knownClientsSession: [Int32: ConnectedApp] = [:]
 
 	// Timers & Processes
 	private var timer: Timer?
 	private var watchdog: Timer?
 	/// Intervalo del vigía de recuperación cuando el servidor está detenido.
-	public var watchdogInterval: TimeInterval { max(5.0, pollInterval * 4) }
+	var watchdogInterval: TimeInterval { max(5.0, pollInterval * 4) }
 	/// Contador para no reescanear el directorio de modelos en cada ciclo (P-12).
 	private var ticksSinceModelRefresh = 0
 	private var sizeCache = ModelSizeCache()
@@ -200,33 +200,33 @@ public class SplashService {
 	private var dependencyProcess: Process?
 
 	// Paths
-	public let dataDirectory: URL
+	let dataDirectory: URL
 
-	public var modelsDirectory: URL {
+	var modelsDirectory: URL {
 		dataDirectory.appendingPathComponent("models")
 	}
 
-	public var runtimeDirectory: URL {
+	var runtimeDirectory: URL {
 		dataDirectory.appendingPathComponent("runtime")
 	}
 
 	/// Ficheros de bloqueo candidatos, en orden de preferencia (P-08).
 	/// El motor 1.0.2 escribe `serve-<puerto>.lock`; `serve.lock` se mantiene como
 	/// compatibilidad con versiones anteriores y suele llegar vacío.
-	public func lockFileURLs(port: Int) -> [URL] {
+	func lockFileURLs(port: Int) -> [URL] {
 		ServeLockStore.candidateFileNames(port: port).map { runtimeDirectory.appendingPathComponent($0) }
 	}
 
 	/// Ruta histórica; se conserva para depuración y para la limpieza de residuos.
-	public var lockFileURL: URL {
+	var lockFileURL: URL {
 		runtimeDirectory.appendingPathComponent("serve.lock")
 	}
 
-	public var serverLogURL: URL {
+	var serverLogURL: URL {
 		dataDirectory.appendingPathComponent("logs/server.log")
 	}
 
-	public func readRecentServerLogs(lines: Int = 100) -> String {
+	func readRecentServerLogs(lines: Int = 100) -> String {
 		guard let data = try? Data(contentsOf: serverLogURL),
 			  let text = String(data: data, encoding: .utf8) else {
 			return ""
@@ -236,15 +236,15 @@ public class SplashService {
 		return slice.joined(separator: "\n")
 	}
 
-	public var brewExecutablePath: String? {
+	var brewExecutablePath: String? {
 		SplashPaths.firstExisting(SplashPaths.brewExecutableCandidates())
 	}
 
-	public var splashExecutablePath: String {
+	var splashExecutablePath: String {
 		SplashPaths.firstExisting(SplashPaths.splashExecutableCandidates()) ?? "splash"
 	}
 
-	public var splashPythonPath: String {
+	var splashPythonPath: String {
 		if let stable = SplashPaths.firstExisting(SplashPaths.pythonCandidates(),
 												  exists: { FileManager.default.fileExists(atPath: $0) }) {
 			return stable
@@ -256,7 +256,7 @@ public class SplashService {
 		return "/usr/bin/python3"
 	}
 
-	public var splashModelsScriptPath: String {
+	var splashModelsScriptPath: String {
 		if let stable = SplashPaths.firstExisting(SplashPaths.modelsScriptCandidates(),
 												  exists: { FileManager.default.fileExists(atPath: $0) }) {
 			return stable
@@ -265,7 +265,7 @@ public class SplashService {
 		return SplashPaths.firstCellarCandidate(subpath: "libexec/install/models.py", versions: versions) ?? ""
 	}
 
-	public init(transport: StatusTransport = URLSessionStatusTransport(),
+	init(transport: StatusTransport = URLSessionStatusTransport(),
 				terminator: ServerTerminating = HardenedServerTerminator(),
 				pollInterval: TimeInterval? = nil,
 				dataDirectoryRoot: URL? = nil,
@@ -303,7 +303,7 @@ public class SplashService {
 	/// Elimina restos del *bridge launcher* que se retiró en 1.0.1 pero que sigue en
 	/// disco tras actualizar (`~/Library/Application Support/Splash/splash_launcher.py`),
 	/// y bloqueos huérfanos del motor.
-	public func cleanLegacyArtifacts() {
+	func cleanLegacyArtifacts() {
 		let fm = FileManager.default
 		let legacyFiles = ["splash_launcher.py"]
 		for name in legacyFiles {
@@ -317,7 +317,7 @@ public class SplashService {
 
 	/// Borra bloqueos del motor cuyo PID ya no existe y que superan el margen de
 	/// arranque (P-08). No toca bloqueos vivos.
-	public func cleanStaleLocks() {
+	func cleanStaleLocks() {
 		let fm = FileManager.default
 		guard let entries = try? fm.contentsOfDirectory(at: runtimeDirectory,
 														includingPropertiesForKeys: [.contentModificationDateKey],
@@ -336,7 +336,7 @@ public class SplashService {
 
 	// MARK: - Dependency Management
 
-	public func checkDependencies() {
+	func checkDependencies() {
 		self.hasHomebrew = brewExecutablePath != nil
 		guard let directPath = SplashPaths.firstExisting(SplashPaths.splashExecutableCandidates()) else {
 			self.isSplashInstalled = false
@@ -359,7 +359,7 @@ public class SplashService {
 		}
 	}
 
-	public func installSplashDependency() {
+	func installSplashDependency() {
 		guard !isInstallingDependency else { return }
 		isInstallingDependency = true
 		dependencyInstallLogs = [
@@ -435,14 +435,14 @@ public class SplashService {
 		}
 	}
 
-	public func cancelDependencyInstall() {
+	func cancelDependencyInstall() {
 		dependencyProcess?.terminate()
 		dependencyProcess = nil
 		isInstallingDependency = false
 		dependencyInstallLogs.append(" Proceso de instalación cancelado.")
 	}
 
-	public func installSplashInTerminal() {
+	func installSplashInTerminal() {
 		let cmd = """
 		echo "🍺 Instalando Splash Engine via Homebrew..."
 		echo ""
@@ -453,7 +453,7 @@ public class SplashService {
 		runInTerminal(command: cmd, title: "Instalar Splash", scriptFileName: "install_splash.command")
 	}
 
-	public func upgradeSplashInTerminal() {
+	func upgradeSplashInTerminal() {
 		let cmd = """
 		echo "🍺 Actualizando Splash Engine via Homebrew..."
 		echo ""
@@ -489,7 +489,7 @@ public class SplashService {
 
 	// MARK: - Polling & Status Fetching
 
-	public func startPolling() {
+	func startPolling() {
 		timer?.invalidate()
 		watchdog?.invalidate()
 		watchdog = nil
@@ -506,12 +506,12 @@ public class SplashService {
 	}
 
 	/// `true` mientras el sondeo periódico está vivo (P-02). Expuesto para las pruebas.
-	public var isPollingActive: Bool {
+	var isPollingActive: Bool {
 		timer?.isValid ?? false
 	}
 
 	/// `true` mientras el vigía de recuperación está armado. Expuesto para las pruebas.
-	public var isWatchdogActive: Bool {
+	var isWatchdogActive: Bool {
 		watchdog?.isValid ?? false
 	}
 
@@ -534,19 +534,19 @@ public class SplashService {
 
 	/// Un ciclo del vigía: comprueba el estado y reconstruye el sondeo si hay motor.
 	/// Expuesto para poder probarlo sin depender del reloj.
-	public func watchdogTick() async {
+	func watchdogTick() async {
 		await checkServerStatus()
 		if isRunning { restorePollingAfterDetection() }
 	}
 
 	/// Reconstruye el sondeo periódico y apaga el vigía.
-	public func restorePollingAfterDetection() {
+	func restorePollingAfterDetection() {
 		watchdog?.invalidate()
 		watchdog = nil
 		if !isPollingActive { startPolling() }
 	}
 
-	public func checkServerStatus() async {
+	func checkServerStatus() async {
 		// 1. Resolver el bloqueo del motor (serve-<puerto>.lock y compatibilidad con serve.lock)
 		var lockPid: Int? = nil
 		var lockPort: Int = self.activePort
@@ -636,7 +636,7 @@ public class SplashService {
 	}
 
 	/// Ficheros de bloqueo a considerar, priorizando el del puerto activo.
-	public func lockCandidateURLs() -> [URL] {
+	func lockCandidateURLs() -> [URL] {
 		let fm = FileManager.default
 		var urls = lockFileURLs(port: activePort)
 		if let entries = try? fm.contentsOfDirectory(at: runtimeDirectory,
@@ -676,7 +676,7 @@ public class SplashService {
 
 	// MARK: - Local Installed Models
 
-	public func refreshInstalledModels() {
+	func refreshInstalledModels() {
 		var results: [InstalledSplashModel] = []
 		let fm = FileManager.default
 
@@ -776,7 +776,7 @@ public class SplashService {
 
 	/// Suma el tamaño real de un árbol resolviendo enlaces simbólicos.
 	/// `nonisolated` para poder invocarse desde trabajo en segundo plano.
-	nonisolated public static func directorySize(url: URL) -> Int64 {
+	nonisolated static func directorySize(url: URL) -> Int64 {
 		let fm = FileManager.default
 		var total: Int64 = 0
 		let resolvedRoot = url.resolvingSymlinksInPath()
@@ -794,7 +794,7 @@ public class SplashService {
 		return total
 	}
 
-	public func deleteModel(repoId: String) {
+	func deleteModel(repoId: String) {
 		// El identificador llega de la interfaz y se usa como ruta: sin validar,
 		// un valor como `../../..` borraba fuera del directorio de modelos.
 		guard ModelIDValidator.isValid(repoId) else {
@@ -871,7 +871,7 @@ public class SplashService {
 		refreshInstalledModels()
 	}
 
-	public func openModelInFinder(repoId: String) {
+	func openModelInFinder(repoId: String) {
 		if let installed = installedModels.first(where: { $0.repoId == repoId }) {
 			let target = installed.localPath.resolvingSymlinksInPath()
 			if FileManager.default.fileExists(atPath: target.path) {
@@ -892,7 +892,7 @@ public class SplashService {
 
 	// MARK: - Update Checks (Splash Monitor App & Splash CLI Engine)
 
-	public func checkForUpdate() async {
+	func checkForUpdate() async {
 		// 1. Splash Monitor App Update
 		if let url = URL(string: "https://api.github.com/repos/\(githubRepo)/releases/latest") {
 			var request = URLRequest(url: url)
@@ -920,7 +920,7 @@ public class SplashService {
 
 	/// Detecta la versión actualmente instalada del motor Splash CLI en el sistema (ej. "1.3.1").
 	@discardableResult
-	public func detectInstalledSplashVersion() -> String {
+	func detectInstalledSplashVersion() -> String {
 		guard isSplashInstalled else { return "" }
 		let path = splashExecutablePath
 		guard !path.isEmpty, FileManager.default.isExecutableFile(atPath: path) else { return "" }
@@ -938,7 +938,7 @@ public class SplashService {
 	}
 
 	/// Comprueba si existe una versión más reciente del motor oficial Splash CLI en GitHub (incoai/splash).
-	public func checkSplashCliUpdate() async {
+	func checkSplashCliUpdate() async {
 		guard isSplashInstalled else { return }
 		self.isCheckingSplashCliUpdate = true
 
@@ -981,7 +981,7 @@ public class SplashService {
 
 	// MARK: - Online Models Catalog (Hugging Face)
 
-	public func fetchOnlineModels() async {
+	func fetchOnlineModels() async {
 		self.isLoadingOnlineModels = true
 		var allItems: [String: HuggingFaceModelItem] = [:]
 
@@ -1120,7 +1120,7 @@ public class SplashService {
 		self.isLoadingOnlineModels = false
 	}
 
-	public func installModel(repoId: String, languageOnly: Bool? = nil) {
+	func installModel(repoId: String, languageOnly: Bool? = nil) {
 		guard !isInstalling else { return }
 		guard ModelIDValidator.isValid(repoId) else {
 			self.lastError = ModelIDValidator.rejectionReason(repoId) ?? "Identificador de modelo no válido."
@@ -1418,7 +1418,7 @@ public class SplashService {
 		}
 	}
 
-	public func cancelModelInstall() {
+	func cancelModelInstall() {
 		isInstallCancelled = true
 		installProcess?.terminate()
 		installProcess = nil
@@ -1432,7 +1432,7 @@ public class SplashService {
 
 	// MARK: - Server Control
 
-	public func stopServerAsync() async {
+	func stopServerAsync() async {
 		previousRunningState = false
 		await terminator.stopEngine(port: activePort, candidatePids: candidateStopPIDs())
 		self.isRunning = false
@@ -1446,7 +1446,7 @@ public class SplashService {
 		cleanStaleLocks()
 	}
 
-	public func stopServer() {
+	func stopServer() {
 		Task {
 			await stopServerAsync()
 		}
@@ -1457,7 +1457,7 @@ public class SplashService {
 	/// `pkill -INT -f "splash serve"`, que alcanza cualquier proceso cuya línea de
 	/// comandos contenga esa cadena, y después aplicaba `SIGKILL` a todo lo que
 	/// `lsof -ti :<puerto>` devolviese, incluidos los clientes conectados.
-	public func stopServerSync() {
+	func stopServerSync() {
 		terminator.stopEngineSynchronously(port: activePort, candidatePids: candidateStopPIDs())
 		for url in lockFileURLs(port: activePort) where FileManager.default.fileExists(atPath: url.path) {
 			try? FileManager.default.removeItem(at: url)
@@ -1465,7 +1465,7 @@ public class SplashService {
 	}
 
 	/// Reset all published state — releases memory
-	public func resetState() {
+	func resetState() {
 		speedHistory.removeAll()
 		status = nil
 		isRunning = false
@@ -1495,13 +1495,13 @@ public class SplashService {
 
 	/// Detiene el motor del puerto indicado. Delega en el terminador endurecido:
 	/// solo escuchas verificadas del motor y escalada INT → TERM → KILL.
-	public func killSplashProcesses(port: Int) async {
+	func killSplashProcesses(port: Int) async {
 		await terminator.stopEngine(port: port, candidatePids: candidateStopPIDs())
 	}
 
 	/// PIDs candidatos a detener: el proceso activo y los declarados por bloqueos vivos.
 	/// Nunca se amplía con «todo lo que escuche en el puerto».
-	public func candidateStopPIDs() -> [Int32] {
+	func candidateStopPIDs() -> [Int32] {
 		var pids: [Int32] = []
 		if let pid = activePid, pid > 0 { pids.append(Int32(pid)) }
 		for url in lockCandidateURLs() {
@@ -1512,7 +1512,7 @@ public class SplashService {
 	}
 
 	/// PID declarado por el bloqueo vivo del motor, si existe (P-08).
-	public func readLockPid() -> Int? {
+	func readLockPid() -> Int? {
 		for url in lockCandidateURLs() {
 			guard let lock = ServeLockStore.decode(try? Data(contentsOf: url)), lock.pid > 0 else { continue }
 			if kill(Int32(lock.pid), 0) == 0 { return lock.pid }
@@ -1520,7 +1520,7 @@ public class SplashService {
 		return nil
 	}
 
-	public func isPortListening(port: Int) -> Bool {
+	func isPortListening(port: Int) -> Bool {
 		var addr = sockaddr_in()
 		addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.stride)
 		addr.sin_family = sa_family_t(AF_INET)
@@ -1542,7 +1542,7 @@ public class SplashService {
 		return result != 0
 	}
 
-	public func findSuggestedFreePort(preferred: Int? = nil) -> Int {
+	func findSuggestedFreePort(preferred: Int? = nil) -> Int {
 		var candidates: [Int] = []
 		if let pref = preferred, pref > 1024, pref <= 65535 {
 			candidates.append(pref)
@@ -1565,7 +1565,7 @@ public class SplashService {
 		return 8000
 	}
 
-	public func detectPortConflict(port: Int) -> PortConflictInfo? {
+	func detectPortConflict(port: Int) -> PortConflictInfo? {
 		guard isPortListening(port: port) else { return nil }
 
 		let proc = Process()
@@ -1611,7 +1611,7 @@ public class SplashService {
 		return PortConflictInfo(port: port, processName: friendlyName, pid: pid, suggestedPort: suggested)
 	}
 
-	public func resolvePortConflict(killProcess: Bool) {
+	func resolvePortConflict(killProcess: Bool) {
 		guard let conflict = portConflict else { return }
 		let targetPort = conflict.port
 		self.portConflict = nil
@@ -1635,13 +1635,13 @@ public class SplashService {
 		}
 	}
 
-	public func useSuggestedPort(_ newPort: Int) {
+	func useSuggestedPort(_ newPort: Int) {
 		self.portConflict = nil
 		self.activePort = newPort
 		startServer(model: selectedModelForLaunch, port: newPort)
 	}
 
-	public func startServer(model: String, port: Int = 8000) {
+	func startServer(model: String, port: Int = 8000) {
 		guard isSplashInstalled else {
 			installSplashDependency()
 			return
@@ -2007,7 +2007,7 @@ public class SplashService {
 		}
 	}
 
-	public func switchModel(to model: String) {
+	func switchModel(to model: String) {
 		// Si el modelo y puerto son los mismos, solo reiniciar
 		// Si el puerto cambió, reiniciar con el nuevo puerto
 		startServer(model: model, port: activePort)
@@ -2021,9 +2021,9 @@ public class SplashService {
 	/// P-09: escribir fuera del directorio de datos exige consentimiento explícito.
 	/// Antes la app modificaba `~/.zshrc` sin avisar y solo se podía deshacer a mano.
 	/// P-13: política única — el entorno se sincroniza siempre (también en 8000).
-	public var pendingShellConfigPort: Int?
+	var pendingShellConfigPort: Int?
 
-	public func syncShellEnvironment(port: Int) {
+	func syncShellEnvironment(port: Int) {
 		guard ShellEnvironment.shouldSync(port: port) else { return }
 		let home = shellEnvironmentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
 		let envFile = home.appendingPathComponent(ShellEnvironment.fileName)
@@ -2044,7 +2044,7 @@ public class SplashService {
 	}
 
 	/// Añade la línea `source` a `~/.zshrc` si no está ya (idempotente).
-	public func injectShellSource(envFile: URL) {
+	func injectShellSource(envFile: URL) {
 		let home = shellEnvironmentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
 		let zshrc = home.appendingPathComponent(".zshrc")
 		let contents = (try? String(contentsOf: zshrc, encoding: .utf8)) ?? ""
@@ -2058,7 +2058,7 @@ public class SplashService {
 	}
 
 	/// Respuesta del usuario al aviso de configuración del shell (P-09).
-	public func resolveShellConfigPrompt(allow: Bool) {
+	func resolveShellConfigPrompt(allow: Bool) {
 		Preferences.shellConfigConsent = allow
 		Preferences.shellConfigDeclined = !allow
 		guard allow, let port = pendingShellConfigPort else {
@@ -2074,7 +2074,7 @@ public class SplashService {
 
 	/// Revierte por completo el efecto de `syncShellEnvironment`: quita la inyección de
 	/// `~/.zshrc` (reversión exacta, no heurística) y borra el fichero de entorno.
-	public func clearShellEnvironment() {
+	func clearShellEnvironment() {
 		let home = shellEnvironmentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
 		let envFile = home.appendingPathComponent(ShellEnvironment.fileName)
 		let zshrc = home.appendingPathComponent(".zshrc")
@@ -2095,7 +2095,7 @@ public class SplashService {
 
 	/// Sincroniza el modelo cargado y el puerto activo en ~/.codex/config.toml
 	/// para que ChatGPT Desktop (Codex & OWL) trabaje automáticamente con el modelo activo.
-	public func syncCodexEnvironment(model: String, port: Int) {
+	func syncCodexEnvironment(model: String, port: Int) {
 		guard !model.isEmpty && model != "Ninguno" else { return }
 		let home = shellEnvironmentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
 		let codexConfigURL = home.appendingPathComponent(".codex/config.toml")
@@ -2130,7 +2130,7 @@ public class SplashService {
 	// MARK: - Agent Launcher Helpers
 
 	/// Fast check using filesystem only — no Process, no blocking
-	public func isAgentInstalled(agent: String) -> Bool {
+	func isAgentInstalled(agent: String) -> Bool {
 		if agent == "claude-cowork" {
 			let home = FileManager.default.homeDirectoryForCurrentUser.path
 			return installedAgents.contains("claude-cowork")
@@ -2159,7 +2159,7 @@ public class SplashService {
 	}
 
 	/// Background check — safe to call from any thread
-	public func refreshAgentAvailability() {
+	func refreshAgentAvailability() {
 		let agents = ["claude", "opencode", "codex", "hermes", "pi", "dsh"]
 		let home = FileManager.default.homeDirectoryForCurrentUser.path
 
@@ -2202,7 +2202,7 @@ public class SplashService {
 		}
 	}
 
-	public func agentInstallURL(agent: String) -> URL {
+	func agentInstallURL(agent: String) -> URL {
 		switch agent {
 		case "claude":
 			return URL(string: "https://code.claude.com/docs/en/overview")!
@@ -2226,9 +2226,9 @@ public class SplashService {
 	}
 
 	/// Agentes que el motor sabe lanzar (`splash <agente>` o app nativa para cowork/chatgpt o dsh).
-	public static let supportedAgents = ["claude", "claude-cowork", "opencode", "codex", "hermes", "pi", "chatgpt", "dsh"]
+	static let supportedAgents = ["claude", "claude-cowork", "opencode", "codex", "hermes", "pi", "chatgpt", "dsh"]
 
-	public func launchAgent(agent: String) {
+	func launchAgent(agent: String) {
 		guard isSplashInstalled else {
 			installSplashDependency()
 			return
@@ -2388,54 +2388,54 @@ public class SplashService {
 
 	// MARK: - Formatting Helpers
 
-	public var formattedTokensDecode: String {
+	var formattedTokensDecode: String {
 		guard let tokens = status?.metrics?.decodeOutputTokens else { return "0" }
 		return formatNumber(tokens)
 	}
 
-	public var formattedTokensPrefill: String {
+	var formattedTokensPrefill: String {
 		guard let tokens = status?.metrics?.prefillInputTokens else { return "0" }
 		return formatNumber(tokens)
 	}
 
-	public var formattedTokensReused: String {
+	var formattedTokensReused: String {
 		guard let tokens = status?.cache?.reusedTokens else { return "0" }
 		return formatNumber(tokens)
 	}
 
-	public var formattedDecodeSpeed: String {
+	var formattedDecodeSpeed: String {
 		guard let speed = status?.metrics?.decodeTokensPerSecond else { return "0.0" }
 		return String(format: "%.1f", speed)
 	}
 
-	public var formattedPrefillSpeed: String {
+	var formattedPrefillSpeed: String {
 		guard let speed = status?.metrics?.prefillTokensPerSecond else { return "0.0" }
 		return String(format: "%.1f", speed)
 	}
 
-	public var formattedDraftAcceptanceRate: String {
+	var formattedDraftAcceptanceRate: String {
 		guard let rate = status?.metrics?.draftAcceptanceRate else { return "0.0%" }
 		return String(format: "%.1f%%", rate * 100.0)
 	}
 
-	public var formattedCacheHitRate: String {
+	var formattedCacheHitRate: String {
 		guard let rate = status?.cache?.hitRate else { return "0.0%" }
 		return String(format: "%.1f%%", rate * 100.0)
 	}
 
-	public var formattedMemoryUsed: String {
+	var formattedMemoryUsed: String {
 		guard let bytes = status?.memoryActual?.currentBytes else { return "0 GB" }
 		let gb = Double(bytes) / 1_073_741_824.0
 		return String(format: "%.1f GB", gb)
 	}
 
-	public var formattedMemoryLimit: String {
+	var formattedMemoryLimit: String {
 		guard let bytes = status?.memoryGovernor?.limitBytes ?? status?.memoryPlan?.device?.recommendedMaxWorkingSetBytes else { return "0 GB" }
 		let gb = Double(bytes) / 1_073_741_824.0
 		return String(format: "%.1f GB", gb)
 	}
 
-	public var memoryUsageRatio: Double {
+	var memoryUsageRatio: Double {
 		guard let current = status?.memoryActual?.currentBytes,
 			  let limit = status?.memoryGovernor?.limitBytes ?? status?.memoryPlan?.device?.recommendedMaxWorkingSetBytes,
 			  limit > 0 else { return 0.0 }
@@ -2453,14 +2453,14 @@ public class SplashService {
 
 	// MARK: - Active Request Lifecycle (Issue #6)
 
-	public enum ActiveRequestStage: String, CaseIterable {
+	enum ActiveRequestStage: String, CaseIterable {
 		case idle
 		case queued
 		case prefilling
 		case decoding
 		case offline
 
-		public var title: LocalizedStringResource {
+		var title: LocalizedStringResource {
 			switch self {
 			case .idle: return LocalizedStringResource("Idle (Ready)")
 			case .queued: return LocalizedStringResource("In Queue")
@@ -2470,7 +2470,7 @@ public class SplashService {
 			}
 		}
 
-		public var icon: String {
+		var icon: String {
 			switch self {
 			case .idle: return "checkmark.circle.fill"
 			case .queued: return "hourglass"
@@ -2481,7 +2481,7 @@ public class SplashService {
 		}
 	}
 
-	public var activeRequestStage: ActiveRequestStage {
+	var activeRequestStage: ActiveRequestStage {
 		guard isRunning else { return .offline }
 		let prefilling = status?.scheduler?.prefilling ?? 0
 		let decoding = status?.scheduler?.decoding ?? 0
@@ -2498,14 +2498,14 @@ public class SplashService {
 		}
 	}
 
-	public var isRequestActive: Bool {
+	var isRequestActive: Bool {
 		let stage = activeRequestStage
 		return stage == .prefilling || stage == .decoding
 	}
 
 	// MARK: - Connected Apps / Client Detection
 
-	public func scanConnectedClients() async {
+	func scanConnectedClients() async {
 		guard isRunning else {
 			if !connectedApps.isEmpty {
 				self.connectedApps = []
@@ -2678,13 +2678,13 @@ public class SplashService {
 		}
 	}
 
-	public func activateApp(app: ConnectedApp) {
+	func activateApp(app: ConnectedApp) {
 		if let running = NSRunningApplication(processIdentifier: app.pid) {
 			running.activate(options: .activateIgnoringOtherApps)
 		}
 	}
 
-	public func revealAppInFinder(app: ConnectedApp) {
+	func revealAppInFinder(app: ConnectedApp) {
 		if let path = app.executablePath, FileManager.default.fileExists(atPath: path) {
 			NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
 		} else if let bundle = app.bundleId,
@@ -2701,7 +2701,7 @@ public class SplashService {
 	/// proceso) y sin distinguir las apps del propio monitor.
 	/// - Returns: `true` si la aplicación fue terminada.
 	@discardableResult
-	public func terminateApp(app: ConnectedApp) -> Bool {
+	func terminateApp(app: ConnectedApp) -> Bool {
 		let running = NSRunningApplication(processIdentifier: app.pid)
 		let allowed = ClientTerminationPolicy.canTerminate(
 			pid: app.pid,
@@ -2720,7 +2720,7 @@ public class SplashService {
 
 	/// Libera la memoria del servidor de inmediato usando el endpoint nativo POST /v1/memory/release (Splash 1.3.2+)
 	/// o deteniendo el servidor si no está respondiendo.
-	public func releaseMemoryNow() {
+	func releaseMemoryNow() {
 		guard isRunning else { return }
 		memoryReliefNotice = "Memoria liberada manualmente por el usuario."
 
@@ -2755,7 +2755,7 @@ public class SplashService {
 
 // MARK: - Centinela de Presión de Memoria del Kernel de macOS
 extension SplashService: SystemMemoryPressureSentinelDelegate {
-	public func memoryPressureDidChange(to level: SystemMemoryPressureLevel) {
+	func memoryPressureDidChange(to level: SystemMemoryPressureLevel) {
 		self.systemMemoryPressure = level
 
 		guard Preferences.autoReleaseOnMemoryPressure else { return }

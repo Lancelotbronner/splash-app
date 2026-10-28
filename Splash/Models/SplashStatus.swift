@@ -2,27 +2,27 @@ import Foundation
 
 // MARK: - Splash Native Status Models
 
-public struct SplashStatus: Codable {
-	public let ready: Bool?
-	public let maximumContextTokens: Int?
-	public let memoryPressure: String?
-	public let instance: InstanceInfo?
-	public let memoryPlan: MemoryPlan?
-	public let memoryActual: MemoryActual?
-	public let memoryGovernor: MemoryGovernor?
-	public let cache: CacheMetrics?
-	public let scheduler: SchedulerMetrics?
-	public let requests: RequestMetrics?
-	public let metrics: PerformanceMetrics?
-	public let vision: Bool?
-	public let inputModalities: [String]?
-	public let thermalState: String?
-	public let aneFfn: AneFfnMetrics?
-	public let weights: WeightsStatus?
+struct SplashStatus: Codable {
+	let ready: Bool?
+	let maximumContextTokens: Int?
+	let memoryPressure: String?
+	let instance: InstanceInfo?
+	let memoryPlan: MemoryPlan?
+	let memoryActual: MemoryActual?
+	let memoryGovernor: MemoryGovernor?
+	let cache: CacheMetrics?
+	let scheduler: SchedulerMetrics?
+	let requests: RequestMetrics?
+	let metrics: PerformanceMetrics?
+	let vision: Bool?
+	let inputModalities: [String]?
+	let thermalState: String?
+	let aneFfn: AneFfnMetrics?
+	let weights: WeightsStatus?
 	// Splash 1.4.0+ Telemetry
-	public let streaming: StreamingStatus?
-	public let kvSpill: KvSpillStatus?
-	public let verificationMode: String?
+	let streaming: StreamingStatus?
+	let kvSpill: KvSpillStatus?
+	let verificationMode: String?
 
 	enum CodingKeys: String, CodingKey {
 		case ready
@@ -47,13 +47,13 @@ public struct SplashStatus: Codable {
 	}
 }
 
-public struct InstanceInfo: Codable {
-	public let id: String?
-	public let pid: Int?
-	public let model: String?
-	public let host: String?
-	public let port: Int?
-	public let startedAt: Double?
+struct InstanceInfo: Codable {
+	let id: String?
+	let pid: Int?
+	let model: String?
+	let host: String?
+	let port: Int?
+	let startedAt: Double?
 
 	enum CodingKeys: String, CodingKey {
 		case id, pid, model, host, port
@@ -61,18 +61,18 @@ public struct InstanceInfo: Codable {
 	}
 }
 
-public struct MemoryPlan: Codable {
-	public let device: DeviceInfo?
-	public let model: ModelInfo?
-	public let budget: MemoryBudget?
+struct MemoryPlan: Codable {
+	let device: DeviceInfo?
+	let model: ModelInfo?
+	let budget: MemoryBudget?
 }
 
-public struct DeviceInfo: Codable {
-	public let deviceName: String?
-	public let macosVersion: String?
-	public let gpuCoreCount: Int?
-	public let physicalMemoryBytes: Int64?
-	public let recommendedMaxWorkingSetBytes: Int64?
+struct DeviceInfo: Codable {
+	let deviceName: String?
+	let macosVersion: String?
+	let gpuCoreCount: Int?
+	let physicalMemoryBytes: Int64?
+	let recommendedMaxWorkingSetBytes: Int64?
 
 	enum CodingKeys: String, CodingKey {
 		case deviceName = "device_name"
@@ -83,10 +83,10 @@ public struct DeviceInfo: Codable {
 	}
 }
 
-public struct ModelInfo: Codable {
-	public let modelName: String?
-	public let maximumContextTokens: Int?
-	public let attentionLayers: Int?
+struct ModelInfo: Codable {
+	let modelName: String?
+	let maximumContextTokens: Int?
+	let attentionLayers: Int?
 
 	enum CodingKeys: String, CodingKey {
 		case modelName = "model_name"
@@ -95,12 +95,12 @@ public struct ModelInfo: Codable {
 	}
 }
 
-public struct MemoryBudget: Codable {
-	public let physicalMemoryBytes: Int64?
-	public let hardBudgetBytes: Int64?
-	public let targetWeightsBytes: Int64?
-	public let draftWeightsBytes: Int64?
-	public let fixedRuntimeBytes: Int64?
+struct MemoryBudget: Codable {
+	let physicalMemoryBytes: Int64?
+	let hardBudgetBytes: Int64?
+	let targetWeightsBytes: Int64?
+	let draftWeightsBytes: Int64?
+	let fixedRuntimeBytes: Int64?
 
 	enum CodingKeys: String, CodingKey {
 		case physicalMemoryBytes = "physical_memory_bytes"
@@ -111,11 +111,11 @@ public struct MemoryBudget: Codable {
 	}
 }
 
-public struct MemoryActual: Codable {
-	public let currentBytes: Int64?
-	public let peakBytes: Int64?
-	public let denseBytes: Int64?
-	public let sparseResidentBytes: Int64?
+struct MemoryActual: Codable {
+	let currentBytes: Int64?
+	let peakBytes: Int64?
+	let denseBytes: Int64?
+	let sparseResidentBytes: Int64?
 
 	enum CodingKeys: String, CodingKey {
 		case currentBytes = "current_bytes"
@@ -125,12 +125,12 @@ public struct MemoryActual: Codable {
 	}
 }
 
-public struct MemoryGovernor: Codable {
-	public let limitBytes: Int64?
-	public let observedResidentBytes: Int64?
-	public let headroomBytes: Int64?
-	public let systemPressure: String?
-	public let hostAvailableBytes: Int64?
+struct MemoryGovernor: Codable {
+	let limitBytes: Int64?
+	let observedResidentBytes: Int64?
+	let headroomBytes: Int64?
+	let systemPressure: String?
+	let hostAvailableBytes: Int64?
 
 	enum CodingKeys: String, CodingKey {
 		case limitBytes = "limit_bytes"
@@ -141,14 +141,14 @@ public struct MemoryGovernor: Codable {
 	}
 }
 
-public struct CacheMetrics: Codable {
-	public let lookups: Int?
-	public let hits: Int?
-	public let coldMisses: Int?
-	public let hitRate: Double?
-	public let reusedTokens: Int64?
-	public let kvHitTokens: Int64?
-	public let deduplicatedTokens: Int64?
+struct CacheMetrics: Codable {
+	let lookups: Int?
+	let hits: Int?
+	let coldMisses: Int?
+	let hitRate: Double?
+	let reusedTokens: Int64?
+	let kvHitTokens: Int64?
+	let deduplicatedTokens: Int64?
 
 	enum CodingKeys: String, CodingKey {
 		case lookups, hits
@@ -160,12 +160,12 @@ public struct CacheMetrics: Codable {
 	}
 }
 
-public struct SchedulerMetrics: Codable {
-	public let queued: Int?
-	public let prefilling: Int?
-	public let decoding: Int?
-	public let prefillBatches: Int?
-	public let decodeBatches: Int?
+struct SchedulerMetrics: Codable {
+	let queued: Int?
+	let prefilling: Int?
+	let decoding: Int?
+	let prefillBatches: Int?
+	let decodeBatches: Int?
 
 	enum CodingKeys: String, CodingKey {
 		case queued, prefilling, decoding
@@ -174,23 +174,23 @@ public struct SchedulerMetrics: Codable {
 	}
 }
 
-public struct RequestMetrics: Codable {
-	public let submitted: Int?
-	public let completed: Int?
-	public let cancelled: Int?
-	public let failed: Int?
+struct RequestMetrics: Codable {
+	let submitted: Int?
+	let completed: Int?
+	let cancelled: Int?
+	let failed: Int?
 }
 
-public struct PerformanceMetrics: Codable {
-	public let prefillInputTokens: Int64?
-	public let prefillTokensPerSecond: Double?
-	public let decodeOutputTokens: Int64?
-	public let decodeTokensPerSecond: Double?
-	public let draftedTokens: Int64?
-	public let acceptedDraftTokens: Int64?
-	public let draftAcceptanceRate: Double?
-	public let ttftMs: PercentileMetric?
-	public let itlMs: PercentileMetric?
+struct PerformanceMetrics: Codable {
+	let prefillInputTokens: Int64?
+	let prefillTokensPerSecond: Double?
+	let decodeOutputTokens: Int64?
+	let decodeTokensPerSecond: Double?
+	let draftedTokens: Int64?
+	let acceptedDraftTokens: Int64?
+	let draftAcceptanceRate: Double?
+	let ttftMs: PercentileMetric?
+	let itlMs: PercentileMetric?
 
 	enum CodingKeys: String, CodingKey {
 		case prefillInputTokens = "prefill_input_tokens"
@@ -205,19 +205,19 @@ public struct PerformanceMetrics: Codable {
 	}
 }
 
-public struct PercentileMetric: Codable {
-	public let p50: Double?
-	public let p95: Double?
-	public let samples: Int?
+struct PercentileMetric: Codable {
+	let p50: Double?
+	let p95: Double?
+	let samples: Int?
 }
 
-public struct AneFfnMetrics: Codable {
-	public let state: String?
-	public let share: Double?
-	public let minPromptChunk: Int?
-	public let evaluations: Int?
-	public let timing: Double?
-	public let reruns: Int?
+struct AneFfnMetrics: Codable {
+	let state: String?
+	let share: Double?
+	let minPromptChunk: Int?
+	let evaluations: Int?
+	let timing: Double?
+	let reruns: Int?
 
 	enum CodingKeys: String, CodingKey {
 		case state, share, evaluations, timing, reruns
@@ -225,10 +225,10 @@ public struct AneFfnMetrics: Codable {
 	}
 }
 
-public struct WeightsStatus: Codable {
-	public let idleReleaseSeconds: Double?
-	public let released: Bool?
-	public let restores: Int?
+struct WeightsStatus: Codable {
+	let idleReleaseSeconds: Double?
+	let released: Bool?
+	let restores: Int?
 
 	enum CodingKeys: String, CodingKey {
 		case idleReleaseSeconds = "idle_release_seconds"
@@ -238,11 +238,11 @@ public struct WeightsStatus: Codable {
 
 // MARK: - Splash 1.4.0+ Streaming & KV Spill Models
 
-public struct StreamingStatus: Codable {
-	public let enabled: Bool?
-	public let expertMemoryBytes: Int64?
-	public let pleMemoryBytes: Int64?
-	public let activeStreams: Int?
+struct StreamingStatus: Codable {
+	let enabled: Bool?
+	let expertMemoryBytes: Int64?
+	let pleMemoryBytes: Int64?
+	let activeStreams: Int?
 
 	enum CodingKeys: String, CodingKey {
 		case enabled
@@ -252,11 +252,11 @@ public struct StreamingStatus: Codable {
 	}
 }
 
-public struct KvSpillStatus: Codable {
-	public let active: Bool?
-	public let spilledTokens: Int?
-	public let spilledBytes: Int64?
-	public let hotTokens: Int?
+struct KvSpillStatus: Codable {
+	let active: Bool?
+	let spilledTokens: Int?
+	let spilledBytes: Int64?
+	let hotTokens: Int?
 
 	enum CodingKeys: String, CodingKey {
 		case active
@@ -268,21 +268,21 @@ public struct KvSpillStatus: Codable {
 
 // MARK: - Lock file model
 
-public struct ServeLock: Codable {
-	public let pid: Int
-	public let model: String
-	public let port: Int
+struct ServeLock: Codable {
+	let pid: Int
+	let model: String
+	let port: Int
 }
 
 // MARK: - Hugging Face & Local Model Info
 
-public struct HuggingFaceModelItem: Codable, Identifiable {
-	public var id: String
-	public let likes: Int?
-	public let downloads: Int?
-	public let tags: [String]?
-	public let pipelineTag: String?
-	public let createdAt: String?
+struct HuggingFaceModelItem: Codable, Identifiable {
+	var id: String
+	let likes: Int?
+	let downloads: Int?
+	let tags: [String]?
+	let pipelineTag: String?
+	let createdAt: String?
 
 	enum CodingKeys: String, CodingKey {
 		case id, likes, downloads, tags
@@ -290,7 +290,7 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
 		case createdAt
 	}
 
-	public var isOfficial: Bool {
+	var isOfficial: Bool {
 		if id.hasSuffix("-Splash") { return false }
 		// Splash 1.3.x — Qwen3 base family
 		if id.hasPrefix("mlx-community/Qwen3.8-27B") { return true }
@@ -309,19 +309,19 @@ public struct HuggingFaceModelItem: Codable, Identifiable {
 		return false
 	}
 
-	public var displayName: String {
+	var displayName: String {
 		return id.components(separatedBy: "/").last ?? id
 	}
 }
 
-public struct InstalledSplashModel: Identifiable, Hashable {
-	public var id: String { repoId }
-	public let repoId: String
-	public let localPath: URL
-	public let diskSizeBytes: Int64
-	public let isCurrentlyActive: Bool
+struct InstalledSplashModel: Identifiable, Hashable {
+	var id: String { repoId }
+	let repoId: String
+	let localPath: URL
+	let diskSizeBytes: Int64
+	let isCurrentlyActive: Bool
 
-	public var formattedSize: String {
+	var formattedSize: String {
 		let gb = Double(diskSizeBytes) / 1_073_741_824.0
 		if gb >= 1.0 {
 			return String(format: "%.1f GB", gb)
@@ -330,15 +330,15 @@ public struct InstalledSplashModel: Identifiable, Hashable {
 		return String(format: "%.0f MB", mb)
 	}
 
-	public var shortName: String {
+	var shortName: String {
 		repoId.components(separatedBy: "/").last ?? repoId
 	}
 
-	public var variant: String? {
+	var variant: String? {
 		ModelIDValidator.components(from: repoId)?.variant
 	}
 
-	public var isCoderFineTune: Bool {
+	var isCoderFineTune: Bool {
 		let lower = repoId.lowercased()
 		return lower.contains("coder") || lower.contains("code") || lower.contains("qwopus") || lower.contains("tiel")
 	}

@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-public struct ModelManagerView: View {
+struct ModelManagerView: View {
 	@State private var selectedTab: Int = 0 // 0: Instalados, 1: Explorar HF, 2: Personalizado
 	@State private var customRepoId: String = ""
 	@State private var customModelLanguageOnly: Bool = false
@@ -12,7 +12,7 @@ public struct ModelManagerView: View {
 	@State private var modelToDelete: InstalledSplashModel? = nil
 	@State private var copiedLogs: Bool = false
 
-	public var body: some View {
+	var body: some View {
 		VStack(spacing: 12) {
 			// Segmented Picker
 			Picker("empty", selection: $selectedTab) {

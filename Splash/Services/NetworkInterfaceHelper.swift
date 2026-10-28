@@ -1,13 +1,13 @@
 import Foundation
 
 /// Utilidad para consultar las interfaces de red del sistema macOS.
-public enum NetworkInterfaceHelper {
+enum NetworkInterfaceHelper {
 
 	/// Obtiene la dirección IPv4 primaria de la red local del Mac (por ejemplo, `192.168.1.49`).
 	///
 	/// Se excluyen las direcciones de bucle local (`127.x.x.x`) y direcciones de enlace local (`169.254.x.x`).
 	/// Se priorizan interfaces físicas comunes de macOS como `en0` (Wi-Fi/Ethernet principal) y `en1`.
-	public static func primaryLocalIPv4() -> String? {
+	static func primaryLocalIPv4() -> String? {
 		var ifaddr: UnsafeMutablePointer<ifaddrs>?
 		guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return nil }
 		defer { freeifaddrs(ifaddr) }

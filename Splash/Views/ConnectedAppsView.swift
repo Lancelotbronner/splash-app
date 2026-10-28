@@ -1,17 +1,17 @@
 import SwiftUI
 import AppKit
 
-public struct ConnectedAppsView: View {
+struct ConnectedAppsView: View {
 	@State private var copiedMessage: String? = nil
 	@State private var selectedTab: ConnectedAppsTab = .detected
 
-	public enum ConnectedAppsTab: String, CaseIterable, Identifiable {
+	enum ConnectedAppsTab: String, CaseIterable, Identifiable {
 		case detected
 		case quickConnect
 
-		public var id: String { rawValue }
+		var id: String { rawValue }
 
-		public var title: LocalizedStringResource {
+		var title: LocalizedStringResource {
 			switch self {
 			case .detected: return LocalizedStringResource("Detected Apps")
 			case .quickConnect: return LocalizedStringResource("Integration Guide")
@@ -19,11 +19,11 @@ public struct ConnectedAppsView: View {
 		}
 	}
 
-	public init(initialTab: ConnectedAppsTab = .detected) {
+	init(initialTab: ConnectedAppsTab = .detected) {
 		self._selectedTab = State(initialValue: initialTab)
 	}
 
-	public var body: some View {
+	var body: some View {
 		VStack(alignment: .leading, spacing: 16) {
 			// Header
 			headerView

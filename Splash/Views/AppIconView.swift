@@ -1,14 +1,14 @@
 import SwiftUI
 import AppKit
 
-public struct AppIconView: View {
-	public let size: CGFloat
+struct AppIconView: View {
+	let size: CGFloat
 
-	public init(size: CGFloat = 28) {
+	init(size: CGFloat = 28) {
 		self.size = size
 	}
 
-	public var body: some View {
+	var body: some View {
 		if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
 		   let nsImage = NSImage(contentsOf: iconURL) {
 			Image(nsImage: nsImage)

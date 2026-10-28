@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-public struct ModelTestingView: View {
+struct ModelTestingView: View {
 	@StateObject private var diagnosticService = ModelDiagnosticService()
 
 	@State private var selectedSubTab: Int = 0 // 0: Smoke Test, 1: Benchmark, 2: Playground
@@ -17,7 +17,7 @@ public struct ModelTestingView: View {
 	// Benchmark options
 	@State private var benchmarkTokens: Int = 128
 
-	public var body: some View {
+	var body: some View {
 		VStack(alignment: .leading, spacing: 14) {
 			// Header & Active Server Status Banner
 			headerView

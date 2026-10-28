@@ -10,30 +10,30 @@ import Combine
 /// - `smoke_real.py`: Health, ready, Jinja templates, OpenAI Chat, Anthropic Messages y Tool calling.
 /// - `http_regression.py`: Medición de TTFT (ms), velocidad de decodificación (tok/s) y aceleración por KV Cache.
 @MainActor
-public final class ModelDiagnosticService: ObservableObject {
+final class ModelDiagnosticService: ObservableObject {
 
 	// MARK: - Tipos de Diagnóstico
 
-	public enum CheckStatus: Equatable {
+	enum CheckStatus: Equatable {
 		case idle
 		case running
 		case passed(details: String, latencyMs: Double)
 		case warning(details: String, latencyMs: Double)
 		case failed(error: String)
 
-		public var isPassed: Bool {
+		var isPassed: Bool {
 			if case .passed = self { return true }
 			return false
 		}
 	}
 
-	public struct SmokeTestResult: Identifiable, Equatable {
-		public let id: String
-		public let name: LocalizedStringResource
-		public let icon: String
-		public var status: CheckStatus
+	struct SmokeTestResult: Identifiable, Equatable {
+		let id: String
+		let name: LocalizedStringResource
+		let icon: String
+		var status: CheckStatus
 
-		public init(id: String, name: LocalizedStringResource, icon: String, status: CheckStatus = .idle) {
+		init(id: String, name: LocalizedStringResource, icon: String, status: CheckStatus = .idle) {
 			self.id = id
 			self.name = name
 			self.icon = icon
@@ -41,44 +41,44 @@ public final class ModelDiagnosticService: ObservableObject {
 		}
 	}
 
-	public struct BenchmarkResult: Equatable {
-		public var coldDecodeTokPerSec: Double = 0.0
-		public var warmDecodeTokPerSec: Double = 0.0
-		public var coldTTFTMs: Double = 0.0
-		public var warmTTFTMs: Double = 0.0
-		public var cacheSpeedupMultiplier: Double = 0.0
-		public var promptTokens: Int = 0
-		public var outputTokens: Int = 0
-		public var timestamp: Date = Date()
+	struct BenchmarkResult: Equatable {
+		var coldDecodeTokPerSec: Double = 0.0
+		var warmDecodeTokPerSec: Double = 0.0
+		var coldTTFTMs: Double = 0.0
+		var warmTTFTMs: Double = 0.0
+		var cacheSpeedupMultiplier: Double = 0.0
+		var promptTokens: Int = 0
+		var outputTokens: Int = 0
+		var timestamp: Date = Date()
 	}
 
 	// MARK: - Estado Observable
 
-	@Published public var isRunningSmokeTest: Bool = false
-	@Published public var smokeTestResults: [SmokeTestResult] = []
+	@Published var isRunningSmokeTest: Bool = false
+	@Published var smokeTestResults: [SmokeTestResult] = []
 
-	@Published public var isRunningBenchmark: Bool = false
-	@Published public var benchmarkProgress: Double = 0.0
-	@Published public var currentBenchmarkPhase: String = ""
-	@Published public var latestBenchmark: BenchmarkResult? = nil
+	@Published var isRunningBenchmark: Bool = false
+	@Published var benchmarkProgress: Double = 0.0
+	@Published var currentBenchmarkPhase: String = ""
+	@Published var latestBenchmark: BenchmarkResult? = nil
 
 	// Playground State
-	@Published public var isGeneratingPlayground: Bool = false
-	@Published public var playgroundOutput: String = ""
-	@Published public var playgroundTTFTMs: Double = 0.0
-	@Published public var playgroundTokPerSec: Double = 0.0
-	@Published public var playgroundTokensGenerated: Int = 0
-	@Published public var playgroundRawResponse: String = ""
-	@Published public var playgroundLastError: String? = nil
+	@Published var isGeneratingPlayground: Bool = false
+	@Published var playgroundOutput: String = ""
+	@Published var playgroundTTFTMs: Double = 0.0
+	@Published var playgroundTokPerSec: Double = 0.0
+	@Published var playgroundTokensGenerated: Int = 0
+	@Published var playgroundRawResponse: String = ""
+	@Published var playgroundLastError: String? = nil
 
 	private let session: URLSession
 
-	public init(session: URLSession = .shared) {
+	init(session: URLSession = .shared) {
 		self.session = session
 		resetSmokeTests()
 	}
 
-	public func resetSmokeTests() {
+	func resetSmokeTests() {
 		self.smokeTestResults = [
 			SmokeTestResult(id: "health", name: LocalizedStringResource("Server Health (GET /health)"), icon: "heart.fill"),
 			SmokeTestResult(id: "ready", name: LocalizedStringResource("Engine Metal Readiness (GET /ready)"), icon: "bolt.fill"),
@@ -98,7 +98,7 @@ public final class ModelDiagnosticService: ObservableObject {
 
 	// MARK: - Ejecución del Smoke Test Completo (1-Click)
 
-	public func runFullSmokeTest(port: Int, targetModel: String) async {
+	func runFullSmokeTest(port: Int, targetModel: String) async {
 		guard !isRunningSmokeTest else { return }
 		isRunningSmokeTest = true
 		resetSmokeTests()
@@ -338,7 +338,7 @@ public final class ModelDiagnosticService: ObservableObject {
 
 	// MARK: - Benchmark de Rendimiento & Aceleración de KV Cache
 
-	public func runBenchmark(port: Int, targetModel: String, tokenLimit: Int = 128) async {
+	func runBenchmark(port: Int, targetModel: String, tokenLimit: Int = 128) async {
 		guard !isRunningBenchmark else { return }
 		isRunningBenchmark = true
 		benchmarkProgress = 0.0
@@ -440,7 +440,7 @@ public final class ModelDiagnosticService: ObservableObject {
 
 	// MARK: - Playground Interactivo de Inferencia en Tiempo Real
 
-	public func sendInteractivePrompt(
+	func sendInteractivePrompt(
 		port: Int,
 		model: String,
 		apiProtocol: String, // "openai" o "anthropic"

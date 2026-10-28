@@ -1,8 +1,8 @@
 import SwiftUI
 
-public struct TokenMetricsView: View {
+struct TokenMetricsView: View {
 
-	public var body: some View {
+	var body: some View {
 		VStack(spacing: 14) {
 			// Active Request Lifecycle (Issue #6)
 			activeRequestCard

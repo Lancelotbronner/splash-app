@@ -1,14 +1,14 @@
 import SwiftUI
 import AppKit
 
-public struct MainWindowView: View {
+struct MainWindowView: View {
 	@State private var notifications = NotificationService.shared
 	@State private var autoLaunch = AutoLaunchService.shared
 	@State private var selectedSidebarItem: SidebarItem = .dashboard
 	@State private var showOptimalAppliedFeedback: Bool = false
 
 
-	public enum SidebarItem: String, CaseIterable, Identifiable {
+	enum SidebarItem: String, CaseIterable, Identifiable {
 		case dashboard
 		case connectedApps
 		case models
@@ -17,9 +17,9 @@ public struct MainWindowView: View {
 		case settings
 		case about
 
-		public var id: String { rawValue }
+		var id: String { rawValue }
 
-		public var title: LocalizedStringResource {
+		var title: LocalizedStringResource {
 			switch self {
 			case .dashboard: return LocalizedStringResource("Token Dashboard")
 			case .connectedApps: return LocalizedStringResource("Connected Apps")
@@ -31,7 +31,7 @@ public struct MainWindowView: View {
 			}
 		}
 
-		public var icon: String {
+		var icon: String {
 			switch self {
 			case .dashboard: return "speedometer"
 			case .connectedApps: return "app.connected.to.app.below.fill"
@@ -44,11 +44,11 @@ public struct MainWindowView: View {
 		}
 	}
 
-	public init(initialTab: SidebarItem = .dashboard) {
+	init(initialTab: SidebarItem = .dashboard) {
 		self._selectedSidebarItem = State(initialValue: initialTab)
 	}
 
-	public var body: some View {
+	var body: some View {
 		NavigationSplitView {
 			// Sidebar
 			VStack(alignment: .leading, spacing: 0) {

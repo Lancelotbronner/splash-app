@@ -1,20 +1,20 @@
 import SwiftUI
 import AppKit
 
-public struct MenuBarView: View {
+struct MenuBarView: View {
 	@Environment(\.openWindow) private var openWindow
 	@State private var activeTab: AppTab = .metrics
 
-	public enum AppTab: String, CaseIterable, Identifiable {
+	enum AppTab: String, CaseIterable, Identifiable {
 		case metrics
 		case models
 		case server
 		case settings
 		case about
 
-		public var id: String { rawValue }
+		var id: String { rawValue }
 
-		public var title: LocalizedStringResource {
+		var title: LocalizedStringResource {
 			switch self {
 			case .metrics: return LocalizedStringResource("Metrics")
 			case .models: return LocalizedStringResource("Models")
@@ -24,7 +24,7 @@ public struct MenuBarView: View {
 			}
 		}
 
-		public var icon: String {
+		var icon: String {
 			switch self {
 			case .metrics: return "speedometer"
 			case .models: return "shippingbox"
@@ -35,7 +35,7 @@ public struct MenuBarView: View {
 		}
 	}
 
-	public var body: some View {
+	var body: some View {
 		VStack(spacing: 0) {
 			// Header
 			headerView

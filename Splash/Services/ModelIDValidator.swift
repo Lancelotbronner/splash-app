@@ -12,16 +12,16 @@ import Foundation
 /// Las reglas replican las restricciones que el propio motor impone a los alias de
 /// modelo (`DEVELOPMENT.md` §API model aliases): sin espacios, sin caracteres de
 /// control, sin `\`, `%`, `?`, `#`, y sin segmentos vacíos, `.` o `..`.
-public enum ModelIDValidator {
-	public static let maxOwnerLength = 64
-	public static let maxRepositoryLength = 96
-	public static let maxVariantLength = 64
+enum ModelIDValidator {
+	static let maxOwnerLength = 64
+	static let maxRepositoryLength = 96
+	static let maxVariantLength = 64
 
 	private static let forbiddenCharacters = CharacterSet(charactersIn: " \t\n\r\\%?#\"'`;&|$<>(){}[]*!~^=")
 		.union(.controlCharacters)
 		.union(.illegalCharacters)
 
-	public static func isValid(_ raw: String) -> Bool {
+	static func isValid(_ raw: String) -> Bool {
 		let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !value.isEmpty,
 			  value.rangeOfCharacter(from: forbiddenCharacters) == nil else { return false }
@@ -61,13 +61,13 @@ public enum ModelIDValidator {
 	}
 
 	/// Recorta espacios y devuelve `nil` si el identificador no es válido.
-	public static func normalized(_ raw: String) -> String? {
+	static func normalized(_ raw: String) -> String? {
 		let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		return isValid(value) ? value : nil
 	}
 
 	/// Desglosa el identificador en sus componentes (owner, repository, variant opcional).
-	public static func components(from raw: String) -> (owner: String, repository: String, variant: String?)? {
+	static func components(from raw: String) -> (owner: String, repository: String, variant: String?)? {
 		guard let valid = normalized(raw) else { return nil }
 		let segments = valid.split(separator: "/")
 		let owner = String(segments[0])
@@ -78,18 +78,18 @@ public enum ModelIDValidator {
 	}
 
 	/// Devuelve el identificador base `owner/repository` sin el sufijo `:variante`.
-	public static func baseModelId(_ raw: String) -> String? {
+	static func baseModelId(_ raw: String) -> String? {
 		guard let comp = components(from: raw) else { return nil }
 		return "\(comp.owner)/\(comp.repository)"
 	}
 
 	/// Indica si el identificador incluye una variante `:VARIANTE`.
-	public static func hasVariant(_ raw: String) -> Bool {
+	static func hasVariant(_ raw: String) -> Bool {
 		return components(from: raw)?.variant != nil
 	}
 
 	/// Motivo legible para mostrar al usuario en la interfaz.
-	public static func rejectionReason(_ raw: String) -> LocalizedStringResource? {
+	static func rejectionReason(_ raw: String) -> LocalizedStringResource? {
 		let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		if value.isEmpty {
 			return "The model identifier is empty."

@@ -1,9 +1,9 @@
 import SwiftUI
 import AppKit
 
-public struct DependencyInstallView: View {
+struct DependencyInstallView: View {
 
-	public var body: some View {
+	var body: some View {
 		VStack(spacing: 16) {
 			// Header
 			HStack(spacing: 14) {

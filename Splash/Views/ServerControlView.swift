@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-public struct ServerControlView: View {
+struct ServerControlView: View {
 	@State private var portString: String = "8000"
 	@State private var isCustomModel: Bool = false
 	@State private var customModelText: String = ""
@@ -32,7 +32,7 @@ public struct ServerControlView: View {
 		return err
 	}
 
-	public var body: some View {
+	var body: some View {
 		VStack(spacing: 12) {
 			// 0. Dependency missing alert if needed
 			if !SplashService.shared.isSplashInstalled {
