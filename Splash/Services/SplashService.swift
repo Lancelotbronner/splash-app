@@ -1146,7 +1146,7 @@ public class SplashService {
 		downloadProgressFraction = nil
 		downloadPhase = "Iniciando descarga y preparación..."
 
-		let textOnlyKeywords = ["coder", "code", "uncensored", "optiq", "mtp", "instruct", "chat", "deepseek", "base"]
+		let textOnlyKeywords = ["coder", "magicoder", "starcoder", "codellama"]
 		let autoLangOnly = textOnlyKeywords.contains { effectiveRepoId.lowercased().contains($0) }
 		let initialLangOnly = languageOnly ?? autoLangOnly
 
