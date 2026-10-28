@@ -1,22 +1,27 @@
-import Foundation
+import SwiftUI
 import ServiceManagement
 
 /// Servicio para gestionar el arranque automático de Splash Monitor al iniciar sesión en macOS.
 /// Utiliza `SMAppService.mainApp` nativo disponible en macOS 13+.
 @MainActor @Observable
 final class AutoLaunchService {
-	static let shared = AutoLaunchService()
+	@Bindable static private(set) var shared = AutoLaunchService()
 
-	private(set) var isEnabled: Bool = false
+	private var isEnabledCache = false
 	private(set) var lastError: String?
 
 	init() {
 		refreshStatus()
 	}
 
+	var isEnabled: Bool {
+		get { isEnabledCache }
+		set { setEnabled(newValue) }
+	}
+
 	/// Actualiza el estado actual consultando a macOS.
 	func refreshStatus() {
-		isEnabled = (SMAppService.mainApp.status == .enabled)
+		isEnabledCache = (SMAppService.mainApp.status == .enabled)
 	}
 
 	/// Activa o desactiva el inicio al arrancar el Mac.

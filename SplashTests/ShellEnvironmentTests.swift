@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 // MARK: - P-09 / H-09 (consentimiento) y P-13 (política única de entorno)
 

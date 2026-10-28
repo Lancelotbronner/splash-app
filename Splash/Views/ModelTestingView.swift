@@ -2,8 +2,7 @@ import SwiftUI
 import AppKit
 
 struct ModelTestingView: View {
-	@StateObject private var diagnosticService = ModelDiagnosticService()
-
+	@Environment(ModelDiagnosticService.self) private var diagnosticService
 	@State private var selectedSubTab: Int = 0 // 0: Smoke Test, 1: Benchmark, 2: Playground
 
 	// Playground inputs
@@ -23,12 +22,13 @@ struct ModelTestingView: View {
 			headerView
 
 			// Segmented Selector
-			Picker("empty", selection: $selectedSubTab) {
+			Picker("Tab", selection: $selectedSubTab) {
 				Label("Smoke Test", systemImage: "stethoscope").tag(0)
 				Label("Benchmark & Cache", systemImage: "bolt.fill").tag(1)
 				Label("Playground", systemImage: "terminal.fill").tag(2)
 			}
 			.pickerStyle(.segmented)
+			.labelsHidden()
 
 			// Active Server Warning if offline
 			if !SplashService.shared.isRunning {

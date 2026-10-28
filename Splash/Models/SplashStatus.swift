@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Splash Native Status Models
 
-struct SplashStatus: Codable {
+struct SplashStatus: Codable, Equatable {
 	let ready: Bool?
 	let maximumContextTokens: Int?
 	let memoryPressure: String?
@@ -47,7 +47,7 @@ struct SplashStatus: Codable {
 	}
 }
 
-struct InstanceInfo: Codable {
+struct InstanceInfo: Codable, Equatable {
 	let id: String?
 	let pid: Int?
 	let model: String?
@@ -61,13 +61,13 @@ struct InstanceInfo: Codable {
 	}
 }
 
-struct MemoryPlan: Codable {
+struct MemoryPlan: Codable, Equatable {
 	let device: DeviceInfo?
 	let model: ModelInfo?
 	let budget: MemoryBudget?
 }
 
-struct DeviceInfo: Codable {
+struct DeviceInfo: Codable, Equatable {
 	let deviceName: String?
 	let macosVersion: String?
 	let gpuCoreCount: Int?
@@ -83,7 +83,7 @@ struct DeviceInfo: Codable {
 	}
 }
 
-struct ModelInfo: Codable {
+struct ModelInfo: Codable, Equatable {
 	let modelName: String?
 	let maximumContextTokens: Int?
 	let attentionLayers: Int?
@@ -95,7 +95,7 @@ struct ModelInfo: Codable {
 	}
 }
 
-struct MemoryBudget: Codable {
+struct MemoryBudget: Codable, Equatable {
 	let physicalMemoryBytes: Int64?
 	let hardBudgetBytes: Int64?
 	let targetWeightsBytes: Int64?
@@ -111,7 +111,7 @@ struct MemoryBudget: Codable {
 	}
 }
 
-struct MemoryActual: Codable {
+struct MemoryActual: Codable, Equatable {
 	let currentBytes: Int64?
 	let peakBytes: Int64?
 	let denseBytes: Int64?
@@ -125,7 +125,7 @@ struct MemoryActual: Codable {
 	}
 }
 
-struct MemoryGovernor: Codable {
+struct MemoryGovernor: Codable, Equatable {
 	let limitBytes: Int64?
 	let observedResidentBytes: Int64?
 	let headroomBytes: Int64?
@@ -141,7 +141,7 @@ struct MemoryGovernor: Codable {
 	}
 }
 
-struct CacheMetrics: Codable {
+struct CacheMetrics: Codable, Equatable {
 	let lookups: Int?
 	let hits: Int?
 	let coldMisses: Int?
@@ -160,7 +160,7 @@ struct CacheMetrics: Codable {
 	}
 }
 
-struct SchedulerMetrics: Codable {
+struct SchedulerMetrics: Codable, Equatable {
 	let queued: Int?
 	let prefilling: Int?
 	let decoding: Int?
@@ -174,14 +174,14 @@ struct SchedulerMetrics: Codable {
 	}
 }
 
-struct RequestMetrics: Codable {
+struct RequestMetrics: Codable, Equatable {
 	let submitted: Int?
 	let completed: Int?
 	let cancelled: Int?
 	let failed: Int?
 }
 
-struct PerformanceMetrics: Codable {
+struct PerformanceMetrics: Codable, Equatable {
 	let prefillInputTokens: Int64?
 	let prefillTokensPerSecond: Double?
 	let decodeOutputTokens: Int64?
@@ -205,13 +205,13 @@ struct PerformanceMetrics: Codable {
 	}
 }
 
-struct PercentileMetric: Codable {
+struct PercentileMetric: Codable, Equatable {
 	let p50: Double?
 	let p95: Double?
 	let samples: Int?
 }
 
-struct AneFfnMetrics: Codable {
+struct AneFfnMetrics: Codable, Equatable {
 	let state: String?
 	let share: Double?
 	let minPromptChunk: Int?
@@ -225,7 +225,7 @@ struct AneFfnMetrics: Codable {
 	}
 }
 
-struct WeightsStatus: Codable {
+struct WeightsStatus: Codable, Equatable {
 	let idleReleaseSeconds: Double?
 	let released: Bool?
 	let restores: Int?
@@ -238,7 +238,7 @@ struct WeightsStatus: Codable {
 
 // MARK: - Splash 1.4.0+ Streaming & KV Spill Models
 
-struct StreamingStatus: Codable {
+struct StreamingStatus: Codable, Equatable {
 	let enabled: Bool?
 	let expertMemoryBytes: Int64?
 	let pleMemoryBytes: Int64?
@@ -252,7 +252,7 @@ struct StreamingStatus: Codable {
 	}
 }
 
-struct KvSpillStatus: Codable {
+struct KvSpillStatus: Codable, Equatable {
 	let active: Bool?
 	let spilledTokens: Int?
 	let spilledBytes: Int64?
@@ -268,7 +268,7 @@ struct KvSpillStatus: Codable {
 
 // MARK: - Lock file model
 
-struct ServeLock: Codable {
+struct ServeLock: Codable, Equatable {
 	let pid: Int
 	let model: String
 	let port: Int
@@ -276,7 +276,7 @@ struct ServeLock: Codable {
 
 // MARK: - Hugging Face & Local Model Info
 
-struct HuggingFaceModelItem: Codable, Identifiable {
+struct HuggingFaceModelItem: Codable, Equatable, Identifiable {
 	var id: String
 	let likes: Int?
 	let downloads: Int?
@@ -314,7 +314,7 @@ struct HuggingFaceModelItem: Codable, Identifiable {
 	}
 }
 
-struct InstalledSplashModel: Identifiable, Hashable {
+struct InstalledSplashModel: Identifiable, Equatable, Hashable {
 	var id: String { repoId }
 	let repoId: String
 	let localPath: URL

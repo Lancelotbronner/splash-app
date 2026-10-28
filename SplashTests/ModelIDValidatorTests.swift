@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 // MARK: - P-03 / H-03: validación de identificadores de modelo
 

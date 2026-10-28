@@ -1,12 +1,11 @@
-import Foundation
+import SwiftUI
 import UserNotifications
-import AppKit
 
 /// Servicio centralizado de notificaciones locales de macOS para Splash Monitor.
 /// Maneja alertas de estado del servidor, avisos de modelos y presión de memoria crítica.
 @MainActor @Observable
 final class NotificationService {
-	static let shared = NotificationService()
+	@Bindable static private(set) var shared = NotificationService()
 
 	private var center: UNUserNotificationCenter? {
 		guard let bundleId = Bundle.main.bundleIdentifier, !bundleId.isEmpty else { return nil }

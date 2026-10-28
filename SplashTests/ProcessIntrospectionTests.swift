@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 // MARK: - P-01 / H-02 y H-04: a quién es lícito señalizar
 

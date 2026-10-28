@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 // MARK: - P-08 / H-07: ficheros de bloqueo del motor
 

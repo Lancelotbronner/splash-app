@@ -8,9 +8,10 @@ struct AppIconView: View {
 		self.size = size
 	}
 
+	private static let cachedImage: NSImage? = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap { NSImage(contentsOf: $0) }
+
 	var body: some View {
-		if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-		   let nsImage = NSImage(contentsOf: iconURL) {
+		if let nsImage = Self.cachedImage {
 			Image(nsImage: nsImage)
 				.resizable()
 				.scaledToFit()

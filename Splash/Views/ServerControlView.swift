@@ -3,6 +3,7 @@ import AppKit
 
 struct ServerControlView: View {
 	@State private var portString: String = "8000"
+	@FocusState private var portFocused: Bool
 	@State private var isCustomModel: Bool = false
 	@State private var customModelText: String = ""
 	@State private var copiedMessage: String? = nil
@@ -414,6 +415,13 @@ struct ServerControlView: View {
 						.textFieldStyle(.roundedBorder)
 						.font(.system(size: 11, design: .monospaced))
 						.frame(width: 65)
+						.focused($portFocused)
+						.onSubmit { commitPort() }
+						.onChange(of: portFocused) { _, focused in
+							if !focused {
+								commitPort()
+							}
+						}
 
 					Button {
 						let suggested = SplashService.shared.findSuggestedFreePort()
@@ -507,7 +515,8 @@ struct ServerControlView: View {
 						.background(Color.secondary.opacity(0.08))
 						.cornerRadius(5)
 					}
-					.menuStyle(.borderlessButton)
+					.menuStyle(.button)
+					.buttonStyle(.borderless)
 					.fixedSize()
 					.help("127.0.0.1 only accepts connections from this Mac. 0.0.0.0 exposes the server to your local network (LAN) for other devices to connect.")
 				}
@@ -532,7 +541,7 @@ struct ServerControlView: View {
 								Preferences.maxContext = ctx
 							} label: {
 								HStack {
-									Text("1M tokens (YaRN)")
+									Text(ctx == "1M" ? "\(ctx) tokens (YaRN)" : "\(ctx) tokens")
 									if Preferences.maxContext == ctx {
 										Image(systemName: "checkmark")
 									}
@@ -553,7 +562,8 @@ struct ServerControlView: View {
 						.background(Color.secondary.opacity(0.08))
 						.cornerRadius(5)
 					}
-					.menuStyle(.borderlessButton)
+					.menuStyle(.button)
+					.buttonStyle(.borderless)
 					.fixedSize()
 					.help("Maximum context token limit (--max-context) for Splash inference.")
 
@@ -587,7 +597,7 @@ struct ServerControlView: View {
 							Image(systemName: Preferences.languageOnly ? "doc.text" : "eye")
 								.font(.system(size: 10))
 								.foregroundColor(Preferences.languageOnly ? .orange : .teal)
-							Text("Text Only")
+							Text(Preferences.languageOnly ? "Text-Only" : "Multimodal")
 								.font(.system(size: 10, design: .monospaced))
 								.lineLimit(1)
 						}
@@ -596,7 +606,8 @@ struct ServerControlView: View {
 						.background(Color.secondary.opacity(0.08))
 						.cornerRadius(5)
 					}
-					.menuStyle(.borderlessButton)
+					.menuStyle(.button)
+					.buttonStyle(.borderless)
 					.fixedSize()
 					.help("Configures whether Splash should initialize multimodal image support or text-only mode (--language-only, required for Coder models without mmproj projectors).")
 
@@ -638,7 +649,8 @@ struct ServerControlView: View {
 						.background(Color.secondary.opacity(0.08))
 						.cornerRadius(5)
 					}
-					.menuStyle(.borderlessButton)
+					.menuStyle(.button)
+					.buttonStyle(.borderless)
 					.fixedSize()
 					.help("Idle time before unwiring and releasing Metal unified memory weights (--idle-release). Weights are restored automatically on incoming requests.")
 
@@ -684,7 +696,8 @@ struct ServerControlView: View {
 						.background(Color.secondary.opacity(0.08))
 						.cornerRadius(5)
 					}
-					.menuStyle(.borderlessButton)
+					.menuStyle(.button)
+					.buttonStyle(.borderless)
 					.fixedSize()
 					.help("Maximum Metal memory budget (--max-memory) to prevent hogging all unified memory.")
 
@@ -744,7 +757,7 @@ struct ServerControlView: View {
 						.buttonStyle(.borderedProminent)
 						.tint(.green)
 						.controlSize(.regular)
-						.disabled(targetModel.isEmpty || customFlagsError != nil)
+						.disabled(targetModel.isEmpty || customModelError != nil || customFlagsError != nil)
 						.fixedSize()
 					}
 				}
@@ -779,7 +792,7 @@ struct ServerControlView: View {
 						Image(systemName: "sparkles")
 							.font(.system(size: 10))
 							.foregroundColor(.pink)
-						Text("GDN: BF16 (-50%)")
+						Text(Preferences.stateFormat == "bf16" ? "GDN: BF16 (-50%)" : "GDN: FP32")
 							.font(.system(size: 10, design: .monospaced))
 							.lineLimit(1)
 					}
@@ -788,7 +801,8 @@ struct ServerControlView: View {
 					.background(Color.secondary.opacity(0.08))
 					.cornerRadius(5)
 				}
-				.menuStyle(.borderlessButton)
+				.menuStyle(.button)
+				.buttonStyle(.borderless)
 				.fixedSize()
 				.help("Storage format for GDN recurrent states (--state-format). BF16 halves state memory in RAM (from 153 to 81 MiB on 27B) while keeping computation in FP32.")
 
@@ -845,7 +859,8 @@ struct ServerControlView: View {
 					.background(Color.secondary.opacity(0.08))
 					.cornerRadius(5)
 				}
-				.menuStyle(.borderlessButton)
+				.menuStyle(.button)
+				.buttonStyle(.borderless)
 				.fixedSize()
 				.help("Maximum reasoning / thinking token budget (--thinking-token-budget) for chain-of-thought models.")
 
@@ -895,7 +910,7 @@ struct ServerControlView: View {
 						Image(systemName: "gauge.with.needle")
 							.font(.system(size: 10))
 							.foregroundColor(.indigo)
-						Text("Verify: Auto")
+						Text(Preferences.verifyRows == "all" ? "Verify: All" : "Verify: Auto")
 							.font(.system(size: 10, design: .monospaced))
 							.lineLimit(1)
 					}
@@ -904,7 +919,8 @@ struct ServerControlView: View {
 					.background(Color.secondary.opacity(0.08))
 					.cornerRadius(5)
 				}
-				.menuStyle(.borderlessButton)
+				.menuStyle(.button)
+				.buttonStyle(.borderless)
 				.fixedSize()
 				.help("Speculative draft verification mode (--verify-rows). 'auto' adapts verification boosting decode speed. 'all' verifies all rows for determinism.")
 
@@ -971,12 +987,14 @@ struct ServerControlView: View {
 		.padding(10)
 		.background(Color(nsColor: .controlBackgroundColor))
 		.cornerRadius(8)
-		.onChange(of: portString) { _, newValue in
-			guard let newPort = Int(newValue), newPort > 1024, newPort <= 65535 else { return }
-			// If server is running on a different port, auto-restart on new port
-			if SplashService.shared.isRunning && newPort != SplashService.shared.activePort {
-				SplashService.shared.startServer(model: SplashService.shared.activeModel, port: newPort)
-			}
+	}
+
+	/// Aplica el puerto sólo al confirmar (Enter o al perder el foco): si el
+	/// servidor está corriendo en otro puerto, se reinicia sobre el nuevo.
+	private func commitPort() {
+		guard let newPort = Int(portString), newPort > 1024, newPort <= 65535 else { return }
+		if SplashService.shared.isRunning && newPort != SplashService.shared.activePort {
+			SplashService.shared.startServer(model: SplashService.shared.activeModel, port: newPort)
 		}
 	}
 

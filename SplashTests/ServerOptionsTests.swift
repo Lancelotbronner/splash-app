@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 @MainActor
 final class ServerOptionsTests: XCTestCase {

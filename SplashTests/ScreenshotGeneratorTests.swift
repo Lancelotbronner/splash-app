@@ -1,7 +1,7 @@
 import XCTest
 import SwiftUI
 import AppKit
-@testable import SplashMonitor
+@testable import Splash
 
 final class ScreenshotGeneratorTests: XCTestCase {
 

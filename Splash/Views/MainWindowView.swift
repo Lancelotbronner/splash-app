@@ -2,50 +2,12 @@ import SwiftUI
 import AppKit
 
 struct MainWindowView: View {
-	@State private var notifications = NotificationService.shared
-	@State private var autoLaunch = AutoLaunchService.shared
-	@State private var selectedSidebarItem: SidebarItem = .dashboard
-	@State private var showOptimalAppliedFeedback: Bool = false
-
-
-	enum SidebarItem: String, CaseIterable, Identifiable {
-		case dashboard
-		case connectedApps
-		case models
-		case server
-		case modelTesting
-		case settings
-		case about
-
-		var id: String { rawValue }
-
-		var title: LocalizedStringResource {
-			switch self {
-			case .dashboard: return LocalizedStringResource("Token Dashboard")
-			case .connectedApps: return LocalizedStringResource("Connected Apps")
-			case .models: return LocalizedStringResource("Model Manager")
-			case .server: return LocalizedStringResource("Server & Agents")
-			case .modelTesting: return LocalizedStringResource("Model Testing")
-			case .settings: return LocalizedStringResource("Configuration")
-			case .about: return LocalizedStringResource("About")
-			}
-		}
-
-		var icon: String {
-			switch self {
-			case .dashboard: return "speedometer"
-			case .connectedApps: return "app.connected.to.app.below.fill"
-			case .models: return "shippingbox"
-			case .server: return "server.rack"
-			case .modelTesting: return "testtube.2"
-			case .settings: return "gearshape"
-			case .about: return "info.circle"
-			}
-		}
-	}
+	@State private var diagnosticService = ModelDiagnosticService()
+	@State private var selectedSidebarItem: SidebarItem
+	@State private var showOptimalAppliedFeedback = false
 
 	init(initialTab: SidebarItem = .dashboard) {
-		self._selectedSidebarItem = State(initialValue: initialTab)
+		self.selectedSidebarItem = initialTab
 	}
 
 	var body: some View {
@@ -208,6 +170,7 @@ struct MainWindowView: View {
 				selectedSidebarItem = .about
 			}
 		}
+		.environment(diagnosticService)
 	}
 
 	// MARK: - Splash CLI Engine Update Available Banner
@@ -594,10 +557,7 @@ struct MainWindowView: View {
 				Text("System Startup")
 					.font(.system(size: 13, weight: .semibold))
 
-				Toggle(isOn: Binding(
-					get: { autoLaunch.isEnabled },
-					set: { autoLaunch.setEnabled($0) }
-				)) {
+				Toggle(isOn: AutoLaunchService.$shared.isEnabled) {
 					VStack(alignment: .leading, spacing: 2) {
 						Text("Launch Splash Monitor at startup")
 							.font(.system(size: 12))
@@ -617,7 +577,7 @@ struct MainWindowView: View {
 				Text("macOS Notifications")
 					.font(.system(size: 13, weight: .semibold))
 
-				Toggle(isOn: $notifications.isNotificationsEnabled) {
+				Toggle(isOn: NotificationService.$shared.isNotificationsEnabled) {
 					VStack(alignment: .leading, spacing: 2) {
 						Text("System alerts and notifications")
 							.font(.system(size: 12))
@@ -1033,6 +993,42 @@ struct MainWindowView: View {
 			.padding(14)
 			.background(Color(nsColor: .controlBackgroundColor))
 			.cornerRadius(10)
+		}
+	}
+}
+
+enum SidebarItem: String, CaseIterable, Identifiable {
+	case dashboard
+	case connectedApps
+	case models
+	case server
+	case modelTesting
+	case settings
+	case about
+
+	var id: String { rawValue }
+
+	var title: LocalizedStringResource {
+		switch self {
+		case .dashboard: return LocalizedStringResource("Token Dashboard")
+		case .connectedApps: return LocalizedStringResource("Connected Apps")
+		case .models: return LocalizedStringResource("Model Manager")
+		case .server: return LocalizedStringResource("Server & Agents")
+		case .modelTesting: return LocalizedStringResource("Model Testing")
+		case .settings: return LocalizedStringResource("Configuration")
+		case .about: return LocalizedStringResource("About")
+		}
+	}
+
+	var icon: String {
+		switch self {
+		case .dashboard: return "speedometer"
+		case .connectedApps: return "app.connected.to.app.below.fill"
+		case .models: return "shippingbox"
+		case .server: return "server.rack"
+		case .modelTesting: return "testtube.2"
+		case .settings: return "gearshape"
+		case .about: return "info.circle"
 		}
 	}
 }

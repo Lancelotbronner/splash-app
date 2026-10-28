@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 // MARK: - P-05 del plan 1.0.1: rutas sin versión fija
 

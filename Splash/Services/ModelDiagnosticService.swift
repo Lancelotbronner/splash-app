@@ -9,8 +9,8 @@ import Combine
 /// Basado en las suites oficiales de Splash:
 /// - `smoke_real.py`: Health, ready, Jinja templates, OpenAI Chat, Anthropic Messages y Tool calling.
 /// - `http_regression.py`: Medición de TTFT (ms), velocidad de decodificación (tok/s) y aceleración por KV Cache.
-@MainActor
-final class ModelDiagnosticService: ObservableObject {
+@MainActor @Observable
+final class ModelDiagnosticService {
 
 	// MARK: - Tipos de Diagnóstico
 
@@ -54,22 +54,22 @@ final class ModelDiagnosticService: ObservableObject {
 
 	// MARK: - Estado Observable
 
-	@Published var isRunningSmokeTest: Bool = false
-	@Published var smokeTestResults: [SmokeTestResult] = []
+	var isRunningSmokeTest: Bool = false
+	var smokeTestResults: [SmokeTestResult] = []
 
-	@Published var isRunningBenchmark: Bool = false
-	@Published var benchmarkProgress: Double = 0.0
-	@Published var currentBenchmarkPhase: String = ""
-	@Published var latestBenchmark: BenchmarkResult? = nil
+	var isRunningBenchmark: Bool = false
+	var benchmarkProgress: Double = 0.0
+	var currentBenchmarkPhase: String = ""
+	var latestBenchmark: BenchmarkResult? = nil
 
 	// Playground State
-	@Published var isGeneratingPlayground: Bool = false
-	@Published var playgroundOutput: String = ""
-	@Published var playgroundTTFTMs: Double = 0.0
-	@Published var playgroundTokPerSec: Double = 0.0
-	@Published var playgroundTokensGenerated: Int = 0
-	@Published var playgroundRawResponse: String = ""
-	@Published var playgroundLastError: String? = nil
+	var isGeneratingPlayground: Bool = false
+	var playgroundOutput: String = ""
+	var playgroundTTFTMs: Double = 0.0
+	var playgroundTokPerSec: Double = 0.0
+	var playgroundTokensGenerated: Int = 0
+	var playgroundRawResponse: String = ""
+	var playgroundLastError: String? = nil
 
 	private let session: URLSession
 

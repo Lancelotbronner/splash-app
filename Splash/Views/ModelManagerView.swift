@@ -14,13 +14,13 @@ struct ModelManagerView: View {
 
 	var body: some View {
 		VStack(spacing: 12) {
-			// Segmented Picker
-			Picker("empty", selection: $selectedTab) {
+			Picker("Tab", selection: $selectedTab) {
 				Text("Installed Models (\(SplashService.shared.installedModels.count))").tag(0)
 				Text("Hugging Face").tag(1)
 				Text("Install").tag(2)
 			}
 			.pickerStyle(.segmented)
+			.labelsHidden()
 
 			// Tab Content
 			switch selectedTab {

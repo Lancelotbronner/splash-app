@@ -44,8 +44,4 @@ enum Preferences {
 	// MARK: - Notification Service
 
 	@AppStorage("systemNotificationsEnabled") static var systemNotificationsEnabled = true
-
-	// MARK: - App Settings
-
-	@AppStorage("appLanguageMode") static var appLanguageMode = "es"
 }

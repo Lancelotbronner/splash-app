@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 /// F0.1 — El objetivo de pruebas puede importar el módulo del ejecutable.
 /// Confirma que no hace falta extraer un target de librería para probar la app.

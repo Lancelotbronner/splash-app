@@ -2,22 +2,7 @@ import SwiftUI
 import AppKit
 
 struct ConnectedAppsView: View {
-	@State private var copiedMessage: String? = nil
 	@State private var selectedTab: ConnectedAppsTab = .detected
-
-	enum ConnectedAppsTab: String, CaseIterable, Identifiable {
-		case detected
-		case quickConnect
-
-		var id: String { rawValue }
-
-		var title: LocalizedStringResource {
-			switch self {
-			case .detected: return LocalizedStringResource("Detected Apps")
-			case .quickConnect: return LocalizedStringResource("Integration Guide")
-			}
-		}
-	}
 
 	init(initialTab: ConnectedAppsTab = .detected) {
 		self._selectedTab = State(initialValue: initialTab)
@@ -25,13 +10,9 @@ struct ConnectedAppsView: View {
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 16) {
-			// Header
-			headerView
+			Header()
+			MetricsSummaryRow()
 
-			// Metrics Summary
-			metricsSummaryRow
-
-			// Tab Picker
 			Picker("empty", selection: $selectedTab) {
 				ForEach(ConnectedAppsTab.allCases) { tab in
 					Text(tab.title).tag(tab)
@@ -40,17 +21,32 @@ struct ConnectedAppsView: View {
 			.pickerStyle(.segmented)
 			.padding(.vertical, 2)
 
-			// Content according to tab
-			if selectedTab == .detected {
-				detectedAppsListSection
-			} else {
-				quickConnectGuideSection
+			switch selectedTab {
+			case .detected:
+				DetectedAppsListSection(selectedTab: $selectedTab)
+			case .quickConnect:
+				QuickConnectGuideSection()
 			}
 		}
 	}
+}
 
-	// MARK: - Header
-	private var headerView: some View {
+enum ConnectedAppsTab: String, CaseIterable, Identifiable {
+	case detected
+	case quickConnect
+
+	var id: String { rawValue }
+
+	var title: LocalizedStringResource {
+		switch self {
+		case .detected: return LocalizedStringResource("Detected Apps")
+		case .quickConnect: return LocalizedStringResource("Integration Guide")
+		}
+	}
+}
+
+private struct Header: View {
+	var body: some View {
 		HStack {
 			VStack(alignment: .leading, spacing: 3) {
 				HStack(spacing: 8) {
@@ -92,9 +88,10 @@ struct ConnectedAppsView: View {
 			.controlSize(.small)
 		}
 	}
+}
 
-	// MARK: - Metrics Summary Row
-	private var metricsSummaryRow: some View {
+private struct MetricsSummaryRow: View {
+	var body: some View {
 		HStack(spacing: 12) {
 			let activeCount = SplashService.shared.connectedApps.filter { $0.status == .active || $0.status == .idle }.count
 			let totalSockets = SplashService.shared.connectedApps.reduce(0) { $0 + $1.connectionCount }
@@ -136,14 +133,17 @@ struct ConnectedAppsView: View {
 			)
 		}
 	}
+}
 
-	// MARK: - Detected Apps List Section
-	private var detectedAppsListSection: some View {
+private struct DetectedAppsListSection: View {
+	@Binding var selectedTab: ConnectedAppsTab
+
+	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {
 			if !SplashService.shared.isRunning {
-				serverOfflinePlaceholder
+				ServerOfflinePlaceholder()
 			} else if SplashService.shared.connectedApps.isEmpty {
-				emptyAppsPlaceholder
+				EmptyAppsPlaceholder(selectedTab: $selectedTab)
 			} else {
 				VStack(spacing: 10) {
 					ForEach(SplashService.shared.connectedApps) { app in
@@ -153,9 +153,10 @@ struct ConnectedAppsView: View {
 			}
 		}
 	}
+}
 
-	// MARK: - Server Offline Placeholder
-	private var serverOfflinePlaceholder: some View {
+private struct ServerOfflinePlaceholder: View {
+	var body: some View {
 		VStack(spacing: 12) {
 			Image(systemName: "server.rack")
 				.font(.system(size: 36))
@@ -186,9 +187,13 @@ struct ConnectedAppsView: View {
 		.background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
 		.cornerRadius(10)
 	}
+}
 
-	// MARK: - Empty Apps Placeholder
-	private var emptyAppsPlaceholder: some View {
+private struct EmptyAppsPlaceholder: View {
+	@State private var copiedMessage: String? = nil
+	@Binding var selectedTab: ConnectedAppsTab
+
+	var body: some View {
 		VStack(spacing: 12) {
 			Image(systemName: "antenna.radiowaves.left.and.right")
 				.font(.system(size: 34))
@@ -239,11 +244,32 @@ struct ConnectedAppsView: View {
 		.cornerRadius(10)
 	}
 
-	// MARK: - Quick Connect Guide Section
-	private var quickConnectGuideSection: some View {
-		let host = SplashService.shared.preferredHostOrIP
 
-		return VStack(alignment: .leading, spacing: 14) {
+	private func copyToClipboard(_ string: String) {
+		let pasteboard = NSPasteboard.general
+		pasteboard.clearContents()
+		pasteboard.setString(string, forType: .string)
+	}
+
+	private func showCopied(_ message: LocalizedStringResource) {
+		let message = String(localized: message)
+		withAnimation {
+			copiedMessage = message
+		}
+		DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+			withAnimation {
+				if copiedMessage == message {
+					copiedMessage = nil
+				}
+			}
+		}
+	}
+}
+
+private struct QuickConnectGuideSection: View {
+	var body: some View {
+		let host = SplashService.shared.preferredHostOrIP
+		VStack(alignment: .leading, spacing: 14) {
 			Text("Connect Your Favorite Apps & IDEs")
 				.font(.system(size: 14, weight: .bold))
 
@@ -407,26 +433,6 @@ struct ConnectedAppsView: View {
 			}
 		}
 	}
-
-	private func copyToClipboard(_ string: String) {
-		let pasteboard = NSPasteboard.general
-		pasteboard.clearContents()
-		pasteboard.setString(string, forType: .string)
-	}
-
-	private func showCopied(_ message: LocalizedStringResource) {
-		let message = String(localized: message)
-		withAnimation {
-			copiedMessage = message
-		}
-		DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-			withAnimation {
-				if copiedMessage == message {
-					copiedMessage = nil
-				}
-			}
-		}
-	}
 }
 
 // MARK: - Subcomponents
@@ -517,7 +523,7 @@ struct ConnectedAppCard: View {
 
 					Spacer()
 
-					Text("Last seen: \(formattedTime(app.lastSeen))")
+					Text("Last seen: \(app.lastSeen, format: .dateTime.hour().minute().second())")
 						.font(.system(size: 9))
 						.foregroundColor(.secondary)
 				}
@@ -612,12 +618,6 @@ struct ConnectedAppCard: View {
 		case .idle: return .blue
 		case .recent: return .secondary
 		}
-	}
-
-	private func formattedTime(_ date: Date) -> String {
-		let formatter = DateFormatter()
-		formatter.timeStyle = .medium
-		return formatter.string(from: date)
 	}
 }
 

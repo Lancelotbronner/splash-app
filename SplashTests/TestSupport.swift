@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 // MARK: - Utilidades comunes de prueba
 

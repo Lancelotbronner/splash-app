@@ -228,7 +228,7 @@ struct TokenMetricsView: View {
 						}
 						Spacer()
 						if let share = ane.share {
-							Text("\(state.capitalized) · \(Int(share * 100))%% share")
+							Text("\(state.capitalized) · \(Int(share * 100))% share")
 								.font(.system(size: 10, weight: .medium, design: .monospaced))
 								.foregroundColor(.secondary)
 						} else {

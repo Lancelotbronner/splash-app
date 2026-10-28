@@ -1,5 +1,5 @@
 import XCTest
-@testable import SplashMonitor
+@testable import Splash
 
 // MARK: - Sonda V-4: contrato real de `/status` frente al modelo Swift
 
