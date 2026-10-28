@@ -51,20 +51,8 @@ struct ModelManagerView: View {
 		} message: { model in
 			Text("Are you sure you want to delete '\(model.shortName)'? It will be unlinked from the Splash engine to free up disk space (\(model.formattedSize)).")
 		}
-		.alert(
-			item: SplashService.$shared.portConflict
-		) { conflict in
-			Alert(
-				title: Text("⚠️ Port \(conflict.port) In Use"),
-				message: Text("Process '\(conflict.processName)' (PID \(conflict.pid)) is currently using port \(conflict.port).\n\nWould you like to switch to suggested free port \(conflict.suggestedPort) or free port \(conflict.port)?"),
-				primaryButton: .default(Text("Use port \(conflict.suggestedPort)")) {
-					SplashService.shared.useSuggestedPort(conflict.suggestedPort)
-				},
-				secondaryButton: .destructive(Text("Free port \(conflict.port)")) {
-					SplashService.shared.resolvePortConflict(killProcess: true)
-				}
-			)
-		}
+		// §5.2: alerta de conflicto de puerto compartida (PortConflictAlertModifier).
+		.portConflictAlert()
 	}
 
 	// MARK: - Installed Models Tab

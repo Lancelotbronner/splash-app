@@ -231,13 +231,9 @@ equality (`[specialist]` F-CA-6) — the narrow-input fix covers this.
   but every row label is hardcoded `Text("1M tokens (YaRN)")`. **Fix:**
   `Text("\(ctx) tokens")` + the YaRN note for 1M only.
 - **Three menu labels ignore their stored state · Medium** `[swiftui-way]` addendum 4, `[specialist]` F-SC-3 —
-  GDN label "GDN: BF16 (-50%)" vs `Preferences.stateFormat`, modality label
-  "Text Only" vs `Preferences.languageOnly`, Verify label "Verify: Auto" vs
-  `Preferences.verifyRows` (`ServerControlView.swift`, ~:580/:698/:880).
-  **Fix:** interpolate the stored preference into each label.
+  **Resolved by W3 (2026-10-28):** already applied in-tree (commit `2a47963`) — GDN, modality and Verify menu labels now interpolate `Preferences.stateFormat` / `Preferences.languageOnly` / `Preferences.verifyRows`; verified in `ServerControlView.swift`.
 - **Inconsistent validation gating · Medium** `[swiftui-way]` addendum 3 —
-  "Switch Model" disables on `customModelError` (`ServerControlView.swift:733`)
-  but plain "Start Server" (`:747`) does not.
+  **Resolved by W3 (2026-10-28):** already applied in-tree (commit `2a47963`) — "Start Server" is now gated on the same `customModelError` validation as "Switch Model"; verified in `ServerControlView.swift`.
 - **Fabricated benchmark TTFT presented as measured · Medium (data-truthfulness)** `[swiftui-way]` addendum 5 —
   `Splash/Services/ModelDiagnosticService.swift`: `estimatedTTFTMs =
   max(15, totalElapsed * 0.35 * 1000)`, `playgroundTTFTMs = max(10, elapsed *
@@ -262,35 +258,10 @@ slider sites, restart polling on `onEditingChanged` end instead of per slider
 step.
 
 ### 5.2 `Alert`-returning `.alert(item:)` — duplicated in two tabs · **High** `[whats-new-27]` P1-1, `[specialist]` F-SC-1/F-MM-1, *conflicts with* `[swiftui-way]` (listed as a "good pattern")
-`ServerControlView.swift:95-108` (verified) and `ModelManagerView.swift:57-70`
-(verified) carry **near-identical** copies of
-`.alert(item: SplashService.$shared.portConflict) { Alert(…) }` presenting the
-same optional from two tabs. Both the `.alert(item:)`-returning-`Alert`
-overload and the `Alert` struct are on the SDK-27 soft-deprecation list; the
-27 item-binding reference names this exact form as the one not to reach for.
-Any copy-paste drift between the two already silently changes behavior in one
-tab.
-**Resolution (per precedence: `[whats-new-27]` + `[specialist]` override the
-`[swiftui-way]` "good pattern" note):** factor into **one shared
-`PortConflictAlertModifier`** with a dual path —
-```swift
-if #available(macOS 27, *) {
-    content.alert("Port in use", item: $service.portConflict) { conflict in
-        Button("Use port \(conflict.suggestedPort)") { … }      // default focus
-        Button("Free port \(conflict.port)", role: .destructive) { … }
-    } message: { conflict in Text("…") }
-} else {
-    content.alert(item: $service.portConflict) { conflict in Alert(…) } // existing fallback
-}
-```
-`PortConflictInfo` (`SplashService.swift:8`) is `Identifiable + Equatable`, so
-the fallback keeps working. Remove the gate + fallback only when the target
-moves to 27.
+**Resolved by W3 (2026-10-28):** factored into the shared `PortConflictAlertModifier` (`Splash/Views/PortConflictAlertModifier.swift`) with the dual `if #available(macOS 27, *)` path (27 `alert(_:item:actions:message:)` form, old `Alert`-returning form as fallback) and an optional `onUseSuggestedPort` hook; both `ServerControlView` and `ModelManagerView` now call `.portConflictAlert()` and the inline copies are deleted.
 
 ### 5.3 `.menuStyle(.borderlessButton)` ×~8 · **Medium** `[specialist]` F-SC-4
-`ServerControlView.swift` (~:505, 560, 655, 710, 750, 815, 890).
-`BorderlessButtonMenuStyle` is soft-deprecated. **Fix:** `.menuStyle(.button)`
-+ `.buttonStyle(.borderless)`, or drop the style.
+**Resolved by W3 (2026-10-28):** already applied in-tree (commit `2a47963`) — all `.menuStyle(.borderlessButton)` sites converted to `.menuStyle(.button)` + `.buttonStyle(.borderless)`; verified no remaining matches in `Splash/Views/`.
 
 ### 5.4 `Picker("empty", …)` ×~7 · **Low** `[specialist]` F-MW-8, `[swiftui-way]` P3
 `Picker("empty", selection:).labelsHidden()` app-wide — the literal `"empty"`

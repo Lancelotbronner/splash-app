@@ -52,11 +52,15 @@ final class AgentLaunchTests {
 				"El resultado de isAgentInstalled debe ser estable para \(agent)")
 	}
 
+	/// §3.5: `isAgentInstalled` ahora lee solo el cache `installedAgents`
+	/// (antes hacía 20–40 `stat` síncronos por llamada), por lo que la
+	/// detección hay que desencadenarla con `refreshAgentAvailability()`.
 	@Test(.enabled(if: FileManager.default.fileExists(atPath: "/Applications/DeepSeek Harness.app")))
-	func testIsAgentInstalledDetectsDeepSeekHarnessApp() throws {
+	func testIsAgentInstalledDetectsDeepSeekHarnessApp() async throws {
 		let dir = try TempDirectory()
 		let service = makeTestService(pollInterval: 60, directory: dir.url)
-		#expect(service.isAgentInstalled(agent: "dsh"),
-				"Debe detectar /Applications/DeepSeek Harness.app cuando está instalada")
+		service.refreshAgentAvailability()
+		try await waitFor(where: { service.isAgentInstalled(agent: "dsh") },
+						  message: "Debe detectar /Applications/DeepSeek Harness.app tras refrescar el cache")
 	}
 }

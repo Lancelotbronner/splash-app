@@ -142,8 +142,16 @@ class SplashService {
 	var memoryReliefNotice: String? = nil
 
 	/// Dirección IPv4 primaria en la red de área local (ej. "192.168.1.49").
-	var localNetworkIP: String? {
-		NetworkInterfaceHelper.primaryLocalIPv4()
+	///
+	/// Valor almacenado (§3.5): se refresca durante el sondeo y al cambiar la
+	/// configuración LAN. Antes era una propiedad calculada que ejecutaba
+	/// `getifaddrs`/`getnameinfo` en cada lectura, y se leía directamente
+	/// desde cuerpos de SwiftUI.
+	private(set) var localNetworkIP: String?
+
+	/// Refresca `localNetworkIP` consultando las interfaces del sistema.
+	func refreshLocalNetworkIP() {
+		localNetworkIP = NetworkInterfaceHelper.primaryLocalIPv4()
 	}
 
 	/// Host o IP preferida para clientes e integraciones según la configuración activa.
@@ -282,6 +290,7 @@ class SplashService {
 			.appendingPathComponent("Library/Application Support/Splash")
 
 		self.activePort = Preferences.lastUsedPort
+		refreshLocalNetworkIP()
 		checkDependencies()
 		startPolling()
 		refreshInstalledModels()
@@ -625,6 +634,10 @@ class SplashService {
 		// Scan active connected apps/clients
 		await scanConnectedClients()
 
+		// §3.5: mantener la IP LAN almacenada fresca en cada ciclo (era un
+		// `getifaddrs` por lectura en el cuerpo de la vista).
+		refreshLocalNetworkIP()
+
 		// 3. Reescaneo del catálogo local: como mucho una vez cada 10 ciclos (P-12).
 		//    El tamaño en disco no cambia entre ciclos y resolver 215 ficheros con
 		//    symlinks costaba 7,5 ms de E/S síncrona sobre el @MainActor cada 1,5 s.
@@ -632,6 +645,9 @@ class SplashService {
 		if ticksSinceModelRefresh >= 10 || installedModels.isEmpty {
 			ticksSinceModelRefresh = 0
 			refreshInstalledModels()
+			// El cache de agentes (incluida la presencia de apps) puede quedar
+			// obsoleto si el usuario instala/desinstala con la app abierta (§3.5).
+			refreshAgentAvailability()
 		}
 	}
 
@@ -2129,33 +2145,13 @@ class SplashService {
 
 	// MARK: - Agent Launcher Helpers
 
-	/// Fast check using filesystem only — no Process, no blocking
+	/// Fast check against the `installedAgents` cache — no filesystem scan,
+	/// no Process (§3.5). La detección completa (binarios + presencia de apps
+	/// en `/Applications`) la hace `refreshAgentAvailability()` fuera del
+	/// hilo principal; antes este método repetía 20–40 `stat` síncronos por
+	/// cada evaluación del body de `ServerControlView`.
 	func isAgentInstalled(agent: String) -> Bool {
-		if agent == "claude-cowork" {
-			let home = FileManager.default.homeDirectoryForCurrentUser.path
-			return installedAgents.contains("claude-cowork")
-			|| FileManager.default.fileExists(atPath: "/Applications/Claude.app")
-			|| FileManager.default.fileExists(atPath: "\(home)/Applications/Claude.app")
-		}
-		if agent == "chatgpt" {
-			let home = FileManager.default.homeDirectoryForCurrentUser.path
-			return installedAgents.contains("chatgpt")
-			|| FileManager.default.fileExists(atPath: "/Applications/ChatGPT.app")
-			|| FileManager.default.fileExists(atPath: "\(home)/Applications/ChatGPT.app")
-		}
-		if agent == "dsh" {
-			let home = FileManager.default.homeDirectoryForCurrentUser.path
-			return installedAgents.contains("dsh")
-			|| FileManager.default.fileExists(atPath: "/Applications/DeepSeek Harness.app")
-			|| FileManager.default.fileExists(atPath: "\(home)/Applications/DeepSeek Harness.app")
-			|| FileManager.default.fileExists(atPath: "/Applications/DeepSeekHarness.app")
-			|| FileManager.default.fileExists(atPath: "\(home)/Applications/DeepSeekHarness.app")
-			|| FileManager.default.isExecutableFile(atPath: "/opt/homebrew/bin/dsh")
-			|| FileManager.default.isExecutableFile(atPath: "/usr/local/bin/dsh")
-			|| FileManager.default.isExecutableFile(atPath: "\(home)/.npm-global/bin/dsh")
-			|| FileManager.default.isExecutableFile(atPath: "\(home)/.local/bin/dsh")
-		}
-		return installedAgents.contains(agent)
+		installedAgents.contains(agent)
 	}
 
 	/// Background check — safe to call from any thread

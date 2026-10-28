@@ -6,15 +6,20 @@ struct ServerControlView: View {
 	@FocusState private var portFocused: Bool
 	@State private var isCustomModel: Bool = false
 	@State private var customModelText: String = ""
-	@State private var copiedMessage: String? = nil
 	@State private var showOptimalAppliedBanner: Bool = false
+	/// Clave que reinicia el `.task` que auto-oculta el banner de
+	/// «Optimal Profile» (§7: sustituye al `DispatchQueue.main.asyncAfter`
+	/// sin gestión, que sobrevivía a la desaparición de la vista).
+	@State private var optimalBannerRequest: UUID? = nil
+	/// Puerto en uso, cached fuera del body (§3.5): se refresca con
+	/// `.task(id: portString)` en vez de hacer el socket `bind()` por
+	/// evaluación del body.
+	@State private var portInUse: Bool? = nil
 
-	// Agent alert state
-	@State private var showingAgentOfflineAlert: Bool = false
-	@State private var showingAgentNotInstalledAlert: Bool = false
+	// Log sheet state
 	@State private var showingLogsSheet: Bool = false
-	@State private var pendingAgentName: String = ""
-	@State private var pendingAgentCommand: String = ""
+	/// Contenido del log, leído una sola vez al abrir el sheet (§3.5).
+	@State private var serverLogsText: String = ""
 
 	/// Error de validación del identificador personalizado (P-03).
 	/// `nil` = válido o campo no utilizado. Misma regla que aplica el servicio.
@@ -46,11 +51,21 @@ struct ServerControlView: View {
 			// 2. Model Selection & Launch Section (FEATURED)
 			modelSelectionAndLaunchView
 
-			// 3. Coding Agents Launcher
-			agentsLauncherView
+			// 3. Coding Agents Launcher (§3.2: límite de invalidación propio,
+			//    entradas de valor estrechas)
+			AgentsLauncherView(
+				isServerRunning: SplashService.shared.isRunning,
+				installedAgents: SplashService.shared.installedAgents,
+				startModel: isCustomModel ? customModelText.trimmingCharacters(in: .whitespacesAndNewlines) : SplashService.shared.selectedModelForLaunch,
+				startPort: Int(portString) ?? SplashService.shared.activePort
+			)
 
-			// 4. API Endpoints & Copy Helpers
-			apiEndpointsView
+			// 4. API Endpoints & Copy Helpers (§3.2: límite de invalidación propio,
+			//    entradas de valor estrechas)
+			APIEndpointsView(
+				host: SplashService.shared.preferredHostOrIP,
+				port: SplashService.shared.activePort
+			)
 		}
 		.onAppear {
 			portString = "\(SplashService.shared.activePort)"
@@ -58,53 +73,26 @@ struct ServerControlView: View {
 		.onChange(of: SplashService.shared.activePort) { _, newPort in
 			portString = "\(newPort)"
 		}
-		.alert(
-			"Splash Server Offline",
-			isPresented: $showingAgentOfflineAlert
-		) {
-			Button("Start Server First") {
-				let targetModel = isCustomModel ? customModelText.trimmingCharacters(in: .whitespacesAndNewlines) : SplashService.shared.selectedModelForLaunch
-				let targetPort = Int(portString) ?? SplashService.shared.activePort
-				SplashService.shared.startServer(model: targetModel, port: targetPort)
-			}
-			Button("Cancel", role: .cancel) {}
-		} message: {
-			Text("To connect \(pendingAgentName), the local Splash inference server must be running. Start the server first.")
+		// §3.5: el socket `bind()` sale del body; se refresca el resultado
+		// almacenado cuando cambia el texto del puerto.
+		.task(id: portString) {
+			portInUse = Int(portString).map { SplashService.shared.isPortListening(port: $0) }
 		}
-		.alert(
-			"\(pendingAgentName) Not Found",
-			isPresented: $showingAgentNotInstalledAlert
-		) {
-			Button("Open Installation Guide") {
-				let url = SplashService.shared.agentInstallURL(agent: pendingAgentCommand)
-				NSWorkspace.shared.open(url)
+		// §7: el banner de «Optimal Profile» se oculta vía task cancelable
+		// (se cancela al desaparecer la vista).
+		.task(id: optimalBannerRequest) {
+			guard optimalBannerRequest != nil else { return }
+			withAnimation {
+				showOptimalAppliedBanner = true
 			}
-
-			Button(
-				pendingAgentCommand == "claude-cowork" ? LocalizedStringResource("Open Claude Anyway") : (pendingAgentCommand == "chatgpt" ? LocalizedStringResource("Open ChatGPT Anyway") : (pendingAgentCommand == "dsh" ? LocalizedStringResource("Open DeepSeek Harness Anyway") : LocalizedStringResource("Launch in Terminal Anyway")))
-			) {
-				SplashService.shared.launchAgent(agent: pendingAgentCommand)
+			try? await Task.sleep(for: .seconds(4))
+			guard !Task.isCancelled else { return }
+			withAnimation {
+				showOptimalAppliedBanner = false
 			}
-			Button("Cancel", role: .cancel) {}
-		} message: {
-			Text(
-				pendingAgentCommand == "claude-cowork" ? "Claude for Mac application was not detected on your system (/Applications/Claude.app). You can download it from the official Claude website." : (pendingAgentCommand == "chatgpt" ? "ChatGPT for Mac application was not detected on your system (/Applications/ChatGPT.app). You can download it from the official OpenAI website." : (pendingAgentCommand == "dsh" ? "DeepSeek Harness app (/Applications/DeepSeek Harness.app) or binary 'dsh' was not detected on your system. You can download the official app or install the CLI via 'npm i -g @deepseek-ai/dsh'." : "Command '\(pendingAgentCommand)' was not detected on your system. You can install it following the official guide."))
-			)
 		}
-		.alert(
-			item: SplashService.$shared.portConflict
-		) { conflict in
-			Alert(
-				title: Text("⚠️ Port \(conflict.port) In Use"),
-				message: Text("Process '\(conflict.processName)' (PID \(conflict.pid)) is currently using port \(conflict.port).\n\nWould you like to switch to suggested free port \(conflict.suggestedPort) or free port \(conflict.port)?"),
-				primaryButton: .default(Text("Use port \(conflict.suggestedPort)")) {
-					portString = "\(conflict.suggestedPort)"
-					SplashService.shared.useSuggestedPort(conflict.suggestedPort)
-				},
-				secondaryButton: .destructive(Text("Free port \(conflict.port)")) {
-					SplashService.shared.resolvePortConflict(killProcess: true)
-				}
-			)
+		.portConflictAlert { suggestedPort in
+			portString = "\(suggestedPort)"
 		}
 		.alert(
 			"Configure your shell",
@@ -136,9 +124,10 @@ struct ServerControlView: View {
 					.buttonStyle(.bordered)
 				}
 
-				let logs = SplashService.shared.readRecentServerLogs(lines: 100)
+				// §3.5: el log se carga una sola vez al abrir el sheet, no de
+				// forma síncrona en cada evaluación del body.
 				ScrollView {
-					Text(logs.isEmpty ? String(localized: "No logs available yet.") : logs)
+					Text(serverLogsText.isEmpty ? String(localized: "No logs available yet.") : serverLogsText)
 						.font(.system(size: 10, design: .monospaced))
 						.frame(maxWidth: .infinity, alignment: .leading)
 						.padding(10)
@@ -302,14 +291,8 @@ struct ServerControlView: View {
 				Button {
 					SplashService.shared.restoreOptimalProfile()
 					portString = "\(Preferences.lastUsedPort)"
-					withAnimation {
-						showOptimalAppliedBanner = true
-					}
-					DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-						withAnimation {
-							showOptimalAppliedBanner = false
-						}
-					}
+					// §7: el `.task(id:)` del body muestra y auto-oculta el banner.
+					optimalBannerRequest = UUID()
 				} label: {
 					HStack(spacing: 4) {
 						Image(systemName: "sparkles")
@@ -385,7 +368,7 @@ struct ServerControlView: View {
 						.background(Color(nsColor: .quaternaryLabelColor).opacity(0.15))
 						.cornerRadius(6)
 					} else {
-						Picker("empty", selection: SplashService.$shared.selectedModelForLaunch) {
+						Picker("Inference Model", selection: SplashService.$shared.selectedModelForLaunch) {
 							ForEach(SplashService.shared.installedModels) { model in
 								HStack {
 									Text(model.shortName)
@@ -439,8 +422,8 @@ struct ServerControlView: View {
 					.fixedSize()
 					.help("Scan and automatically suggest a free port on your system")
 
-					if let p = Int(portString) {
-						if SplashService.shared.isPortListening(port: p) && (!SplashService.shared.isRunning || p != SplashService.shared.activePort) {
+					if let p = Int(portString), let inUse = portInUse {
+						if inUse && (!SplashService.shared.isRunning || p != SplashService.shared.activePort) {
 							HStack(spacing: 3) {
 								Image(systemName: "exclamationmark.circle.fill")
 									.font(.system(size: 9))
@@ -481,11 +464,14 @@ struct ServerControlView: View {
 						}
 						Button {
 							Preferences.listenOnAllInterfaces = true
+							// §3.5: la IP LAN es ahora un valor almacenado; se
+							// refresca al cambiar la configuración de red.
+							SplashService.shared.refreshLocalNetworkIP()
 						} label: {
 							HStack {
-								let label: LocalizedStringResource = SplashService.shared.localNetworkIP != nil
-								? LocalizedStringResource("0.0.0.0 (LAN: \(SplashService.shared.localNetworkIP!))")
-								: LocalizedStringResource("0.0.0.0 (LAN Access)")
+								let label: LocalizedStringResource = SplashService.shared.localNetworkIP
+									.map { LocalizedStringResource("0.0.0.0 (LAN: \($0))") }
+									?? LocalizedStringResource("0.0.0.0 (LAN Access)")
 								Text(label)
 								if Preferences.listenOnAllInterfaces {
 									Image(systemName: "checkmark")
@@ -971,6 +957,8 @@ struct ServerControlView: View {
 				Spacer()
 
 				Button {
+					// §3.5: se lee el log una sola vez al abrir el sheet.
+					serverLogsText = SplashService.shared.readRecentServerLogs(lines: 100)
 					showingLogsSheet = true
 				} label: {
 					HStack(spacing: 4) {
@@ -998,8 +986,78 @@ struct ServerControlView: View {
 		}
 	}
 
-	// MARK: - 3. Coding Agents Launcher
-	private var agentsLauncherView: some View {
+	// MARK: - 4. API Endpoints & Copy Helpers (extracted: APIEndpointsView)
+}
+
+/// Agentes de código soportados (revisión §7 / F-SC-7): enum `Equatable` con
+/// los datos de cada botón. Sustituye a la antigua closure
+/// `action: () -> Void` de `AgentButton`, que impedía que SwiftUI saltara
+/// los 8 botones cuando el padre re-evaluaba sin cambios reales.
+enum CodingAgent: String, CaseIterable, Identifiable {
+	case claude = "claude"
+	case claudeCowork = "claude-cowork"
+	case chatgpt = "chatgpt"
+	case opencode = "opencode"
+	case codex = "codex"
+	case hermes = "hermes"
+	case pi = "pi"
+	case dsh = "dsh"
+
+	var id: String { rawValue }
+
+	var displayName: LocalizedStringResource {
+		switch self {
+		case .claude: "Claude Code"
+		case .claudeCowork: "Claude Cowork"
+		case .chatgpt: "ChatGPT Desktop"
+		case .opencode: "OpenCode"
+		case .codex: "Codex"
+		case .hermes: "Hermes"
+		case .pi: "Pi Agent"
+		case .dsh: "DeepSeek Harness"
+		}
+	}
+
+	var icon: String {
+		switch self {
+		case .claude: "brain.head.profile"
+		case .claudeCowork: "person.2.badge.gearshape"
+		case .chatgpt: "sparkles"
+		case .opencode: "chevron.left.forwardslash.chevron.right"
+		case .codex: "terminal"
+		case .hermes: "bolt.horizontal"
+		case .pi: "character.cursor.ibeam"
+		case .dsh: "cpu.fill"
+		}
+	}
+
+	var subtitle: LocalizedStringResource? {
+		switch self {
+		case .claudeCowork: "Claude for Mac"
+		case .chatgpt: "Codex & OWL (macOS)"
+		case .pi: "pi.dev (Splash 1.3+)"
+		case .dsh: "App / dsh (DeepSeek AI)"
+		default: nil
+		}
+	}
+}
+
+/// Launcher de agentes de código (revisión §3.2): extraído de
+/// `ServerControlView` con entradas de valor estrechas — solo se re-evalúa si
+/// cambia `isServerRunning`, el cache `installedAgents`, el modelo o el
+/// puerto — y ahora incluye sus propias alertas (offline / no instalado).
+private struct AgentsLauncherView: View {
+	let isServerRunning: Bool
+	let installedAgents: Set<String>
+	let startModel: String
+	let startPort: Int
+
+	@State private var showingAgentOfflineAlert = false
+	@State private var showingAgentNotInstalledAlert = false
+	@State private var pendingAgentName: String = ""
+	@State private var pendingAgentCommand: String = ""
+
+	var body: some View {
 		VStack(alignment: .leading, spacing: 6) {
 			HStack {
 				Text("Connect Coding Agents")
@@ -1008,7 +1066,7 @@ struct ServerControlView: View {
 
 				Spacer()
 
-				if !SplashService.shared.isRunning {
+				if !isServerRunning {
 					HStack(spacing: 3) {
 						Image(systemName: "info.circle")
 						Text("Server offline")
@@ -1019,120 +1077,91 @@ struct ServerControlView: View {
 			}
 
 			LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-				AgentButton(
-					name: LocalizedStringResource("Claude Code"),
-					icon: "brain.head.profile",
-					command: "claude",
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "claude"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "Claude Code", command: "claude")
-				}
-
-				AgentButton(
-					name: LocalizedStringResource("Claude Cowork"),
-					icon: "person.2.badge.gearshape",
-					command: "claude-cowork",
-					subtitle: LocalizedStringResource("Claude for Mac"),
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "claude-cowork"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "Claude Cowork", command: "claude-cowork")
-				}
-
-				AgentButton(
-					name: LocalizedStringResource("ChatGPT Desktop"),
-					icon: "sparkles",
-					command: "chatgpt",
-					subtitle: LocalizedStringResource("Codex & OWL (macOS)"),
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "chatgpt"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "ChatGPT Desktop", command: "chatgpt")
-				}
-
-				AgentButton(
-					name: LocalizedStringResource("OpenCode"),
-					icon: "chevron.left.forwardslash.chevron.right",
-					command: "opencode",
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "opencode"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "OpenCode", command: "opencode")
-				}
-
-				AgentButton(
-					name: LocalizedStringResource("Codex"),
-					icon: "terminal",
-					command: "codex",
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "codex"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "Codex", command: "codex")
-				}
-
-				AgentButton(
-					name: LocalizedStringResource("Hermes"),
-					icon: "bolt.horizontal",
-					command: "hermes",
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "hermes"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "Hermes", command: "hermes")
-				}
-
-				AgentButton(
-					name: LocalizedStringResource("Pi Agent"),
-					icon: "character.cursor.ibeam",
-					command: "pi",
-					subtitle: LocalizedStringResource("pi.dev (Splash 1.3+)"),
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "pi"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "Pi Agent", command: "pi")
-				}
-
-				AgentButton(
-					name: LocalizedStringResource("DeepSeek Harness"),
-					icon: "cpu.fill",
-					command: "dsh",
-					subtitle: LocalizedStringResource("App / dsh (DeepSeek AI)"),
-					isInstalled: SplashService.shared.isAgentInstalled(agent: "dsh"),
-					isServerRunning: SplashService.shared.isRunning
-				) {
-					handleAgentLaunch(name: "DeepSeek Harness", command: "dsh")
+				ForEach(CodingAgent.allCases) { agent in
+					Button {
+						handleAgentLaunch(agent)
+					} label: {
+						AgentButton(
+							command: agent,
+							isInstalled: installedAgents.contains(agent.rawValue),
+							isServerRunning: isServerRunning
+						)
+					}
+					.buttonStyle(.plain)
 				}
 			}
 		}
+		.alert(
+			"Splash Server Offline",
+			isPresented: $showingAgentOfflineAlert
+		) {
+			Button("Start Server First") {
+				SplashService.shared.startServer(model: startModel, port: startPort)
+			}
+			Button("Cancel", role: .cancel) {}
+		} message: {
+			Text("To connect \(pendingAgentName), the local Splash inference server must be running. Start the server first.")
+		}
+		.alert(
+			"\(pendingAgentName) Not Found",
+			isPresented: $showingAgentNotInstalledAlert
+		) {
+			Button("Open Installation Guide") {
+				let url = SplashService.shared.agentInstallURL(agent: pendingAgentCommand)
+				NSWorkspace.shared.open(url)
+			}
+
+			Button(
+				pendingAgentCommand == "claude-cowork" ? LocalizedStringResource("Open Claude Anyway") : (pendingAgentCommand == "chatgpt" ? LocalizedStringResource("Open ChatGPT Anyway") : (pendingAgentCommand == "dsh" ? LocalizedStringResource("Open DeepSeek Harness Anyway") : LocalizedStringResource("Launch in Terminal Anyway")))
+			) {
+				SplashService.shared.launchAgent(agent: pendingAgentCommand)
+			}
+			Button("Cancel", role: .cancel) {}
+		} message: {
+			Text(
+				pendingAgentCommand == "claude-cowork" ? "Claude for Mac application was not detected on your system (/Applications/Claude.app). You can download it from the official Claude website." : (pendingAgentCommand == "chatgpt" ? "ChatGPT for Mac application was not detected on your system (/Applications/ChatGPT.app). You can download it from the official OpenAI website." : (pendingAgentCommand == "dsh" ? "DeepSeek Harness app (/Applications/DeepSeek Harness.app) or binary 'dsh' was not detected on your system. You can download the official app or install the CLI via 'npm i -g @deepseek-ai/dsh'." : "Command '\(pendingAgentCommand)' was not detected on your system. You can install it following the official guide."))
+			)
+		}
 	}
 
-	private func handleAgentLaunch(name: String, command: String) {
-		pendingAgentName = name
-		pendingAgentCommand = command
+	private func handleAgentLaunch(_ agent: CodingAgent) {
+		pendingAgentName = String(localized: agent.displayName)
+		pendingAgentCommand = agent.rawValue
 
 		guard SplashService.shared.isRunning else {
 			showingAgentOfflineAlert = true
 			return
 		}
 
-		if !SplashService.shared.isAgentInstalled(agent: command) {
+		if !SplashService.shared.isAgentInstalled(agent: agent.rawValue) {
 			showingAgentNotInstalledAlert = true
 			return
 		}
 
-		SplashService.shared.launchAgent(agent: command)
+		SplashService.shared.launchAgent(agent: agent.rawValue)
 	}
+}
 
-	// MARK: - 4. API Endpoints & Copy Helpers
-	private var apiEndpointsView: some View {
+/// Endpoints de API con botones de copiar (revisión §3.2 + §7 / F-SC-9):
+/// extraído de `ServerControlView` como vista con inputs de valor estrechos
+/// (`host`, `port`). El parpadeo «copiado» usa la extensión compartida
+/// `copyToClipboard`/`copiedFlashAutoClear` (`.task(id:)` cancelable).
+private struct APIEndpointsView: View {
+	let host: String
+	let port: Int
+
+	/// Mensaje «copiado» activo (autolimpieza a los 2 s, cancelable — §7).
+	@State private var copiedFlash: CopiedFlash?
+
+	var body: some View {
 		VStack(alignment: .leading, spacing: 6) {
 			HStack {
 				Text("Integration Endpoints")
 					.font(.system(size: 11, weight: .semibold))
 					.foregroundColor(.secondary)
 				Spacer()
-				if let msg = copiedMessage {
-					Text(msg)
+				if let flash = copiedFlash {
+					Text(flash.message)
 						.font(.system(size: 10, weight: .medium))
 						.foregroundColor(.green)
 						.transition(.opacity)
@@ -1141,9 +1170,9 @@ struct ServerControlView: View {
 
 			HStack(spacing: 8) {
 				Button {
-					let host = SplashService.shared.preferredHostOrIP
-					copyToClipboard("http://\(host):\(SplashService.shared.activePort)/v1")
-					showCopied("OpenAI URL copied!")
+					copyToClipboard("http://\(host):\(port)/v1",
+									flash: "OpenAI URL copied!",
+									into: $copiedFlash)
 				} label: {
 					Label("Copy OpenAI URL", systemImage: "doc.on.doc")
 						.font(.system(size: 10))
@@ -1152,9 +1181,9 @@ struct ServerControlView: View {
 				.controlSize(.small)
 
 				Button {
-					let host = SplashService.shared.preferredHostOrIP
-					copyToClipboard("export OPENAI_BASE_URL=http://\(host):\(SplashService.shared.activePort)/v1\nexport ANTHROPIC_BASE_URL=http://\(host):\(SplashService.shared.activePort)")
-					showCopied("Env Vars copied!")
+					copyToClipboard("export OPENAI_BASE_URL=http://\(host):\(port)/v1\nexport ANTHROPIC_BASE_URL=http://\(host):\(port)",
+									flash: "Env Vars copied!",
+									into: $copiedFlash)
 				} label: {
 					Label("Copy Env Vars", systemImage: "terminal")
 						.font(.system(size: 10))
@@ -1163,71 +1192,49 @@ struct ServerControlView: View {
 				.controlSize(.small)
 			}
 		}
-	}
-
-	private func copyToClipboard(_ string: String) {
-		let pasteboard = NSPasteboard.general
-		pasteboard.clearContents()
-		pasteboard.setString(string, forType: .string)
-	}
-
-	private func showCopied(_ message: LocalizedStringResource) {
-		let message = String(localized: message)
-		withAnimation {
-			copiedMessage = message
-		}
-		DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-			withAnimation {
-				if copiedMessage == message {
-					copiedMessage = nil
-				}
-			}
-		}
+		.copiedFlashAutoClear($copiedFlash)
 	}
 }
 
+/// Botón de agente de código, solo etiqueta (revisión §7 / F-SC-7): `command`
+/// es el enum `Equatable` `CodingAgent`, de modo que SwiftUI compara los
+/// parámetros y salta los botones sin cambios; la acción vive en el `Button`
+/// de `AgentsLauncherView`.
 struct AgentButton: View {
-	let name: LocalizedStringResource
-	let icon: String
-	let command: String
-	var subtitle: LocalizedStringResource? = nil
+	let command: CodingAgent
 	let isInstalled: Bool
 	let isServerRunning: Bool
-	let action: () -> Void
 
 	var body: some View {
-		Button(action: action) {
-			HStack(spacing: 6) {
-				Image(systemName: icon)
-					.font(.system(size: 11))
-					.foregroundColor(isServerRunning ? .accentColor : .secondary)
+		HStack(spacing: 6) {
+			Image(systemName: command.icon)
+				.font(.system(size: 11))
+				.foregroundColor(isServerRunning ? .accentColor : .secondary)
 
-				VStack(alignment: .leading, spacing: 1) {
-					HStack(spacing: 4) {
-						Text(name)
-							.font(.system(size: 11, weight: .medium))
+			VStack(alignment: .leading, spacing: 1) {
+				HStack(spacing: 4) {
+					Text(command.displayName)
+						.font(.system(size: 11, weight: .medium))
 
-						Circle()
-							.fill(isInstalled ? Color.green : Color.secondary.opacity(0.4))
-							.frame(width: 5, height: 5)
-					}
-
-					Text(subtitle ?? "splash \(command)")
-						.font(.system(size: 9, design: .monospaced))
-						.foregroundColor(.secondary)
+					Circle()
+						.fill(isInstalled ? Color.green : Color.secondary.opacity(0.4))
+						.frame(width: 5, height: 5)
 				}
 
-				Spacer()
-
-				Image(systemName: "arrow.up.forward.app")
-					.font(.system(size: 9))
-					.foregroundColor(isServerRunning ? .secondary : .secondary.opacity(0.4))
+				Text(command.subtitle ?? "splash \(command.rawValue)")
+					.font(.system(size: 9, design: .monospaced))
+					.foregroundColor(.secondary)
 			}
-			.padding(6)
-			.background(Color(nsColor: .controlBackgroundColor))
-			.cornerRadius(6)
-			.opacity(isServerRunning ? 1.0 : 0.75)
+
+			Spacer()
+
+			Image(systemName: "arrow.up.forward.app")
+				.font(.system(size: 9))
+				.foregroundColor(isServerRunning ? .secondary : .secondary.opacity(0.4))
 		}
-		.buttonStyle(.plain)
+		.padding(6)
+		.background(Color(nsColor: .controlBackgroundColor))
+		.cornerRadius(6)
+		.opacity(isServerRunning ? 1.0 : 0.75)
 	}
 }
