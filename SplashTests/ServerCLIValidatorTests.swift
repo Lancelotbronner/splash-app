@@ -1,135 +1,144 @@
-import XCTest
+import Foundation
+import Testing
 @testable import Splash
 
 @MainActor
-final class ServerCLIValidatorTests: XCTestCase {
+@Suite
+final class ServerCLIValidatorTests {
 
-	func testAcceptsValidFlags() {
-		let (tokens, error) = ServerCLIValidator.validateAndTokenize("--no-webui --max-cache-disk 50GB")
-		XCTAssertNil(error)
-		XCTAssertEqual(tokens, ["--no-webui", "--max-cache-disk", "50GB"])
+	private enum Cases {
+		/// Entradas maliciosas que deben rechazar el validador y dejar la lista vacía.
+		static let maliciousInputs = [
+			"--no-webui ; rm -rf /",
+			"--draft $(whoami)",
+			"--draft `whoami`",
+			"--opt | nc 127.0.0.1 9000",
+			"--opt > /tmp/output",
+			"--opt \"value\"",
+			"--opt \\escape"
+		]
+
+		struct ValidationCase: Sendable {
+			let input: String
+			let expected: String?
+		}
+
+		static let idleRelease: [ValidationCase] = [
+			.init(input: "off", expected: "off"),
+			.init(input: "OFF", expected: "off"),
+			.init(input: "30s", expected: "30s"),
+			.init(input: "2m", expected: "2m"),
+			.init(input: "10M", expected: "10m"),
+			.init(input: "1h", expected: "1h"),
+			.init(input: "600", expected: "600"),
+			// Rechazos
+			.init(input: "10m; rm -rf /", expected: nil),
+			.init(input: "fast", expected: nil),
+			.init(input: "-5m", expected: nil)
+		]
+
+		static let maxMemory: [ValidationCase] = [
+			.init(input: "auto", expected: "auto"),
+			.init(input: "AUTO", expected: "auto"),
+			.init(input: "16G", expected: "16G"),
+			.init(input: "28g", expected: "28G"),
+			.init(input: "512M", expected: "512M"),
+			.init(input: "1024", expected: "1024"),
+			// Rechazos
+			.init(input: "28GB; whoami", expected: nil),
+			.init(input: "unlimited", expected: nil),
+			.init(input: "-16G", expected: nil)
+		]
+
+		static let stateFormat: [ValidationCase] = [
+			.init(input: "bf16", expected: "bf16"),
+			.init(input: "BF16", expected: "bf16"),
+			.init(input: "fp32", expected: "fp32"),
+			.init(input: "FP32", expected: "fp32"),
+			// Rechazos
+			.init(input: "fp16", expected: nil),
+			.init(input: "int8", expected: nil),
+			.init(input: "bf16; rm -rf /", expected: nil)
+		]
+
+		static let thinkingBudget: [ValidationCase] = [
+			.init(input: "auto", expected: "auto"),
+			.init(input: "-1", expected: "-1"),
+			.init(input: "off", expected: "-1"),
+			.init(input: "0", expected: "-1"),
+			.init(input: "4K", expected: "4000"),
+			.init(input: "16k", expected: "16000"),
+			.init(input: "8192", expected: "8192"),
+			// Rechazos
+			.init(input: "-2", expected: nil),
+			.init(input: "4K; whoami", expected: nil),
+			.init(input: "unlimited", expected: nil)
+		]
 	}
 
-	func testAcceptsComplexArguments() {
+	@Test func testAcceptsValidFlags() {
+		let (tokens, error) = ServerCLIValidator.validateAndTokenize("--no-webui --max-cache-disk 50GB")
+		#expect(error == nil)
+		#expect(tokens == ["--no-webui", "--max-cache-disk", "50GB"])
+	}
+
+	@Test func testAcceptsComplexArguments() {
 		let raw = "--draft-model incoai/Qwen3.6-35B-A3B-DFlash2 --revision f12a584 --temp=0.7 --cache-dir /tmp/splash_cache"
 		let (tokens, error) = ServerCLIValidator.validateAndTokenize(raw)
-		XCTAssertNil(error)
-		XCTAssertEqual(tokens.count, 7)
-		XCTAssertTrue(tokens.contains("--no-webui") == false)
-		XCTAssertTrue(tokens.contains("--temp=0.7"))
-		XCTAssertTrue(tokens.contains("/tmp/splash_cache"))
+		#expect(error == nil)
+		#expect(tokens.count == 7)
+		#expect(!tokens.contains("--no-webui"))
+		#expect(tokens.contains("--temp=0.7"))
+		#expect(tokens.contains("/tmp/splash_cache"))
 	}
 
-	func testEmptyAndWhitespaceReturnsEmptyListWithoutError() {
+	@Test func testEmptyAndWhitespaceReturnsEmptyListWithoutError() {
 		let (tokens1, error1) = ServerCLIValidator.validateAndTokenize("")
-		XCTAssertNil(error1)
-		XCTAssertTrue(tokens1.isEmpty)
+		#expect(error1 == nil)
+		#expect(tokens1.isEmpty)
 
 		let (tokens2, _) = ServerCLIValidator.validateAndTokenize("   \n\t  ")
-		XCTAssertTrue(tokens2.isEmpty)
+		#expect(tokens2.isEmpty)
 
 		let (tokens3, error3) = ServerCLIValidator.validateAndTokenize("    ")
-		XCTAssertNil(error3)
-		XCTAssertTrue(tokens3.isEmpty)
+		#expect(error3 == nil)
+		#expect(tokens3.isEmpty)
 	}
 
-	func testRejectsShellInjectionSemicolon() {
-		let (tokens, error) = ServerCLIValidator.validateAndTokenize("--no-webui ; rm -rf /")
-		XCTAssertNotNil(error)
-		XCTAssertTrue(tokens.isEmpty)
+	/// Inyección de shell: punto y coma, sustitución de comandos, tuberías,
+	/// redirecciones, comillas y barras invertidas.
+	@Test(arguments: Self.Cases.maliciousInputs)
+	func testRejectsShellInjection(_ input: String) {
+		let (tokens, error) = ServerCLIValidator.validateAndTokenize(input)
+		#expect(error != nil, "Debe rechazar: \(input)")
+		#expect(tokens.isEmpty, "No debe tokenizar la entrada maliciosa: \(input)")
 	}
 
-	func testRejectsCommandSubstitution() {
-		let (tokens1, error1) = ServerCLIValidator.validateAndTokenize("--draft $(whoami)")
-		XCTAssertNotNil(error1)
-		XCTAssertTrue(tokens1.isEmpty)
-
-		let (tokens2, error2) = ServerCLIValidator.validateAndTokenize("--draft `whoami`")
-		XCTAssertNotNil(error2)
-		XCTAssertTrue(tokens2.isEmpty)
-	}
-
-	func testRejectsPipesAndRedirections() {
-		let (tokens1, error1) = ServerCLIValidator.validateAndTokenize("--opt | nc 127.0.0.1 9000")
-		XCTAssertNotNil(error1)
-		XCTAssertTrue(tokens1.isEmpty)
-
-		let (tokens2, error2) = ServerCLIValidator.validateAndTokenize("--opt > /tmp/output")
-		XCTAssertNotNil(error2)
-		XCTAssertTrue(tokens2.isEmpty)
-	}
-
-	func testRejectsQuotesAndBackslashes() {
-		let (tokens1, error1) = ServerCLIValidator.validateAndTokenize("--opt \"value\"")
-		XCTAssertNotNil(error1)
-		XCTAssertTrue(tokens1.isEmpty)
-
-		let (tokens2, error2) = ServerCLIValidator.validateAndTokenize("--opt \\escape")
-		XCTAssertNotNil(error2)
-		XCTAssertTrue(tokens2.isEmpty)
-	}
-
-	func testSanitizedStringHelper() {
+	@Test func testSanitizedStringHelper() {
 		let valid = ServerCLIValidator.sanitizedString("--no-webui --max-cache-disk 50GB")
-		XCTAssertEqual(valid, "--no-webui --max-cache-disk 50GB")
+		#expect(valid == "--no-webui --max-cache-disk 50GB")
 
 		let malicious = ServerCLIValidator.sanitizedString("--no-webui ; evil")
-		XCTAssertEqual(malicious, "")
+		#expect(malicious == "")
 	}
 
-	func testValidateIdleReleaseAcceptsStandardDurations() {
-		XCTAssertEqual(ServerCLIValidator.validateIdleRelease("off"), "off")
-		XCTAssertEqual(ServerCLIValidator.validateIdleRelease("OFF"), "off")
-		XCTAssertEqual(ServerCLIValidator.validateIdleRelease("30s"), "30s")
-		XCTAssertEqual(ServerCLIValidator.validateIdleRelease("2m"), "2m")
-		XCTAssertEqual(ServerCLIValidator.validateIdleRelease("10M"), "10m")
-		XCTAssertEqual(ServerCLIValidator.validateIdleRelease("1h"), "1h")
-		XCTAssertEqual(ServerCLIValidator.validateIdleRelease("600"), "600")
-
-		// Rechazos
-		XCTAssertNil(ServerCLIValidator.validateIdleRelease("10m; rm -rf /"))
-		XCTAssertNil(ServerCLIValidator.validateIdleRelease("fast"))
-		XCTAssertNil(ServerCLIValidator.validateIdleRelease("-5m"))
+	@Test(arguments: Self.Cases.idleRelease)
+	private func testValidateIdleRelease(_ c: Cases.ValidationCase) {
+		#expect(ServerCLIValidator.validateIdleRelease(c.input) == c.expected, "validateIdleRelease(\(c.input))")
 	}
 
-	func testValidateMaxMemoryAcceptsStandardBudgets() {
-		XCTAssertEqual(ServerCLIValidator.validateMaxMemory("auto"), "auto")
-		XCTAssertEqual(ServerCLIValidator.validateMaxMemory("AUTO"), "auto")
-		XCTAssertEqual(ServerCLIValidator.validateMaxMemory("16G"), "16G")
-		XCTAssertEqual(ServerCLIValidator.validateMaxMemory("28g"), "28G")
-		XCTAssertEqual(ServerCLIValidator.validateMaxMemory("512M"), "512M")
-		XCTAssertEqual(ServerCLIValidator.validateMaxMemory("1024"), "1024")
-
-		// Rechazos
-		XCTAssertNil(ServerCLIValidator.validateMaxMemory("28GB; whoami"))
-		XCTAssertNil(ServerCLIValidator.validateMaxMemory("unlimited"))
-		XCTAssertNil(ServerCLIValidator.validateMaxMemory("-16G"))
+	@Test(arguments: Self.Cases.maxMemory)
+	private func testValidateMaxMemory(_ c: Cases.ValidationCase) {
+		#expect(ServerCLIValidator.validateMaxMemory(c.input) == c.expected, "validateMaxMemory(\(c.input))")
 	}
 
-	func testValidateStateFormat() {
-		XCTAssertEqual(ServerCLIValidator.validateStateFormat("bf16"), "bf16")
-		XCTAssertEqual(ServerCLIValidator.validateStateFormat("BF16"), "bf16")
-		XCTAssertEqual(ServerCLIValidator.validateStateFormat("fp32"), "fp32")
-		XCTAssertEqual(ServerCLIValidator.validateStateFormat("FP32"), "fp32")
-
-		// Rechazos
-		XCTAssertNil(ServerCLIValidator.validateStateFormat("fp16"))
-		XCTAssertNil(ServerCLIValidator.validateStateFormat("int8"))
-		XCTAssertNil(ServerCLIValidator.validateStateFormat("bf16; rm -rf /"))
+	@Test(arguments: Self.Cases.stateFormat)
+	private func testValidateStateFormat(_ c: Cases.ValidationCase) {
+		#expect(ServerCLIValidator.validateStateFormat(c.input) == c.expected, "validateStateFormat(\(c.input))")
 	}
 
-	func testValidateThinkingBudget() {
-		XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("auto"), "auto")
-		XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("-1"), "-1")
-		XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("off"), "-1")
-		XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("0"), "-1")
-		XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("4K"), "4000")
-		XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("16k"), "16000")
-		XCTAssertEqual(ServerCLIValidator.validateThinkingBudget("8192"), "8192")
-
-		// Rechazos
-		XCTAssertNil(ServerCLIValidator.validateThinkingBudget("-2"))
-		XCTAssertNil(ServerCLIValidator.validateThinkingBudget("4K; whoami"))
-		XCTAssertNil(ServerCLIValidator.validateThinkingBudget("unlimited"))
+	@Test(arguments: Self.Cases.thinkingBudget)
+	private func testValidateThinkingBudget(_ c: Cases.ValidationCase) {
+		#expect(ServerCLIValidator.validateThinkingBudget(c.input) == c.expected, "validateThinkingBudget(\(c.input))")
 	}
 }

@@ -1,135 +1,206 @@
-import XCTest
+import Foundation
+import Testing
 @testable import Splash
 
 @MainActor
-final class ServerOptionsTests: XCTestCase {
+@Suite(.serialized)
+final class ServerOptionsTests {
 
 	private let testPort = 58921
+	private let dir: TempDirectory
+	private let capturedCommand: Box<String?>
+	private let service: SplashService
 
-	private func makeService(directory: URL) -> (SplashService, Box<String?>) {
-		let capturedCommand = Box<String?>(nil)
-		let service = SplashService(transport: StubStatusTransport(),
-									terminator: RecordingServerTerminator(),
-									pollInterval: 60,
-									dataDirectoryRoot: directory,
-									bootstrapNetwork: false)
-		service.shellEnvironmentDirectory = directory
-		service.skipPortConflictCheck = true
-		service.isSplashInstalled = true
+	/// El contenedor es `throws` en Swift Testing: un fallo aquí falla cada test.
+	/// La closure captura un `Box` local (no `self`): se invoca desde un Task
+	/// detached dentro de `startServer` y `self` es aislado por `@MainActor`.
+	init() throws {
+		dir = try TempDirectory()
+		let box = Box<String?>(nil)
+		capturedCommand = box
+		service = makeTestService(pollInterval: 60, directory: dir.url)
 		service.serverLaunchOverride = { cmd, _, _ in
-			capturedCommand.value = cmd
+			box.value = cmd
 		}
-		return (service, capturedCommand)
 	}
 
-	private func waitForCommand(_ box: Box<String?>, attempts: Int = 30) async throws -> String? {
+	/// `startServer` (y `restoreOptimalProfile`) mutan ~17 preferencias en
+	/// `UserDefaults.standard`; se limpian al terminar cada test.
+	isolated deinit {
+		let keys = [
+			"listenOnAllInterfaces", "maxContext", "allowedHosts", "allowedOrigins",
+			"languageOnly", "customServerFlags", "idleRelease", "maxMemory",
+			"stateFormat", "thinkingTokenBudget", "persistentCache", "lastUsedPort",
+			"verifyRows", "expertMemory", "autoReleaseOnMemoryPressure",
+			"refreshInterval", "runInBackground"
+		]
+		for key in keys { UserDefaults.standard.removeObject(forKey: key) }
+	}
+
+	private enum LaunchCases {
+		struct Case: Sendable {
+			let name: String
+			let model: String
+			let configure: @MainActor @Sendable () -> Void
+			let expected: [String]
+			let unexpected: [String]
+		}
+
+		static let all: [Case] = [
+			Case(name: "default-localhost",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: {
+					 Preferences.listenOnAllInterfaces = false
+					 Preferences.maxContext = "auto"
+				 },
+				 expected: ["--host \"127.0.0.1\"", "Solo localhost"],
+				 unexpected: ["--host \"0.0.0.0\"", "--max-context"]),
+			Case(name: "all-interfaces",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: {
+					 Preferences.listenOnAllInterfaces = true
+					 Preferences.maxContext = "auto"
+				 },
+				 expected: ["--host \"0.0.0.0\"", "Toda la red local / LAN"],
+				 unexpected: ["--host \"127.0.0.1\""]),
+			Case(name: "custom-max-context",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: {
+					 Preferences.listenOnAllInterfaces = false
+					 Preferences.maxContext = "64K"
+				 },
+				 expected: ["--max-context \"64K\"", "🧠 Contexto: 64K"],
+				 unexpected: []),
+			Case(name: "malformed-context-sanitized",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: {
+					 Preferences.listenOnAllInterfaces = false
+					 Preferences.maxContext = "32K; rm -rf /"
+				 },
+				 expected: [],
+				 unexpected: ["rm -rf", "--max-context"]),
+			Case(name: "allowed-hosts",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: {
+					 Preferences.listenOnAllInterfaces = true
+					 Preferences.allowedHosts = "midominio.duckdns.org, mimac.local; test.com"
+				 },
+				 expected: ["--allowed-host \"midominio.duckdns.org\"",
+							  "--allowed-host \"mimac.local\"",
+							  "--allowed-host \"test.com\"",
+							  "🛡️ Dominios:"],
+				 unexpected: []),
+			Case(name: "allowed-origins",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: { Preferences.allowedOrigins = "*" },
+				 expected: ["--allowed-origin \"*\"", "🌍 Orígenes:"],
+				 unexpected: []),
+			Case(name: "model-aliases",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: { },
+				 // Verifica que se inyectan los alias requeridos por la pestaña Code (Codex / CCD)
+				 expected: ["--served-model-name \"claude-sonnet-4-6\"",
+							  "--served-model-name \"claude-sonnet-5\"",
+							  "--served-model-name \"claude-haiku-4-5-20251001\"",
+							  "--served-model-name \"claude-3-7-sonnet-20250219\"",
+							  "--served-model-name \"claude-sonnet-4-5\"",
+							  // Verifica alias para ChatGPT / OpenAI y Codex
+							  "--served-model-name \"gpt-4o\"",
+							  "--served-model-name \"codex\""],
+				 unexpected: []),
+			Case(name: "custom-flags",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: { Preferences.customServerFlags = "--no-webui --max-cache-disk 50GB" },
+				 expected: ["--no-webui",
+							  "--max-cache-disk 50GB",
+							  "🛠️ Flags CLI:  --no-webui --max-cache-disk 50GB"],
+				 unexpected: []),
+			Case(name: "malicious-flags-sanitized",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: { Preferences.customServerFlags = "--no-webui ; rm -rf /" },
+				 expected: [],
+				 unexpected: ["rm -rf", "--no-webui"]),
+			Case(name: "idle-release-and-max-memory",
+				 model: "incoai/Qwen3.6-35B-A3B-Splash",
+				 configure: {
+					 Preferences.idleRelease = "2m"
+					 Preferences.maxMemory = "24G"
+				 },
+				 expected: ["--idle-release \"2m\"",
+							  "--max-memory \"24G\"",
+							  "⏳ Inactividad: 2m",
+							  "💾 Límite RAM: 24G"],
+				 unexpected: []),
+			Case(name: "splash-132-features",
+				 model: "nvidia/Qwen3.8-27B-NVFP4",
+				 configure: {
+					 Preferences.stateFormat = "bf16"
+					 Preferences.thinkingTokenBudget = "8K"
+					 Preferences.persistentCache = true
+				 },
+				 expected: ["--state-format \"bf16\"",
+							  "--thinking-token-budget \"8000\"",
+							  "--persistent-cache",
+							  "⚡️ Estado GDN: BF16 (-50% RAM)",
+							  "💭 Thinking:  8K",
+							  "💾 Caché SSD:  Persistente activada"],
+				 unexpected: []),
+			Case(name: "splash-140-features",
+				 model: "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0",
+				 configure: {
+					 Preferences.maxContext = "1M"
+					 Preferences.verifyRows = "all"
+					 Preferences.expertMemory = "12G"
+				 },
+				 expected: ["--max-context \"1M\"",
+							  "--verify-rows \"all\"",
+							  "--expert-memory \"12g\"",
+							  "🎯 Verificación: Todas las filas (--verify-rows all)",
+							  "🧠 Memoria Expertos MoE: 12g"],
+				 unexpected: [])
+		]
+	}
+
+	/// Espera el comando capturado por `serverLaunchOverride` (condición, no sleep).
+	private func waitForCapturedCommand(attempts: Int = 150) async throws -> String {
 		for _ in 0..<attempts {
-			if let val = box.value { return val }
-			try await Task.sleep(nanoseconds: 20_000_000)
+			if let val = capturedCommand.value { return val }
+			try await Task.sleep(for: .milliseconds(20))
 		}
-		return box.value
+		return try #require(capturedCommand.value, "No command was captured in serverLaunchOverride")
 	}
 
-	func testDefaultServerLaunchBindsToLocalhostAndOmitsMaxContext() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.listenOnAllInterfaces = false
-		Preferences.maxContext = "auto"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-
-		// Dar tiempo al Task detached en startServer
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command was captured in serverLaunchOverride")
-			return
+	@Test(arguments: Self.LaunchCases.all)
+	private func testServerLaunchInjectsRequestedOptions(_ c: LaunchCases.Case) async throws {
+		await c.configure()
+		capturedCommand.value = nil
+		service.startServer(model: c.model, port: testPort)
+		let cmd = try await waitForCapturedCommand()
+		for token in c.expected {
+			#expect(cmd.contains(token), "Faltaba '\(token)' en: \(cmd)")
 		}
-
-		XCTAssertTrue(cmd.contains("--host \"127.0.0.1\""), "Debe enlazar a localhost por defecto: \(cmd)")
-		XCTAssertFalse(cmd.contains("--host \"0.0.0.0\""), "No debe enlazar a 0.0.0.0 por defecto: \(cmd)")
-		XCTAssertFalse(cmd.contains("--max-context"), "No debe inyectar --max-context si está en auto: \(cmd)")
-		XCTAssertTrue(cmd.contains("Solo localhost"), "El banner debe indicar localhost: \(cmd)")
+		for token in c.unexpected {
+			#expect(!cmd.contains(token), "Sobró '\(token)' en: \(cmd)")
+		}
 	}
 
-	func testServerLaunchWithAllInterfacesBindsToZeroZeroZeroZero() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.listenOnAllInterfaces = true
-		Preferences.maxContext = "auto"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command was captured in serverLaunchOverride")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--host \"0.0.0.0\""), "Debe enlazar a 0.0.0.0 cuando listenOnAllInterfaces es true: \(cmd)")
-		XCTAssertFalse(cmd.contains("--host \"127.0.0.1\""), "No debe contener 127.0.0.1 en las opciones del CLI: \(cmd)")
-		XCTAssertTrue(cmd.contains("Toda la red local / LAN"), "El banner debe indicar LAN: \(cmd)")
-	}
-
-	func testServerLaunchWithCustomMaxContextInjectsFlag() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.listenOnAllInterfaces = false
-		Preferences.maxContext = "64K"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command was captured in serverLaunchOverride")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--max-context \"64K\""), "Debe inyectar --max-context \"64K\": \(cmd)")
-		XCTAssertTrue(cmd.contains("🧠 Contexto: 64K"), "El banner debe mostrar 64K: \(cmd)")
-	}
-
-	func testServerLaunchSanitizesMalformedContextValue() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.listenOnAllInterfaces = false
-		Preferences.maxContext = "32K; rm -rf /"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command was captured in serverLaunchOverride")
-			return
-		}
-
-		XCTAssertFalse(cmd.contains("rm -rf"), "No debe contener comandos inyectados: \(cmd)")
-		XCTAssertFalse(cmd.contains("--max-context"), "Debe omitir el flag ante caracteres sospechosos: \(cmd)")
-	}
-
-	func testPreferredHostOrIPReflectsListenOnAllInterfaces() throws {
-		let dir = try TempDirectory()
-		let (service, _) = makeService(directory: dir.url)
-
+	@Test func testPreferredHostOrIPReflectsListenOnAllInterfaces() {
 		Preferences.allowedHosts = ""
 		Preferences.listenOnAllInterfaces = false
-		XCTAssertEqual(service.preferredHostOrIP, "127.0.0.1")
+		#expect(service.preferredHostOrIP == "127.0.0.1")
 
 		Preferences.listenOnAllInterfaces = true
 		if let ip = service.localNetworkIP {
-			XCTAssertEqual(service.preferredHostOrIP, ip)
+			#expect(service.preferredHostOrIP == ip)
 		} else {
-			XCTAssertEqual(service.preferredHostOrIP, "127.0.0.1")
+			#expect(service.preferredHostOrIP == "127.0.0.1")
 		}
 
 		Preferences.allowedHosts = "midominio.duckdns.org"
-		XCTAssertEqual(service.preferredHostOrIP, "midominio.duckdns.org")
+		#expect(service.preferredHostOrIP == "midominio.duckdns.org")
 	}
 
-	func testLanClientAppCategoryProperties() {
+	@Test func testLanClientAppCategoryProperties() {
 		let app = ConnectedApp(
 			pid: 91234,
 			name: "Cliente LAN (192.168.1.120)",
@@ -137,202 +208,44 @@ final class ServerOptionsTests: XCTestCase {
 			connectionCount: 2,
 			remoteAddress: "192.168.1.120:54321"
 		)
-		XCTAssertEqual(app.category, .lanClient)
-		XCTAssertEqual(app.category.iconName, "network")
+		#expect(app.category == .lanClient)
+		#expect(app.category.iconName == "network")
 		// `localizedName` es un `LocalizedStringResource` de un solo argumento: la
 		// traducción (es, etc.) vive en el catálogo de strings, no en la API.
-		XCTAssertEqual(app.category.localizedName, LocalizedStringResource("Remote Client / LAN Network"))
+		#expect(app.category.localizedName == LocalizedStringResource("Remote Client / LAN Network"))
 	}
 
-	func testServerLaunchWithAllowedHostsInjectsFlags() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.listenOnAllInterfaces = true
-		Preferences.allowedHosts = "midominio.duckdns.org, mimac.local; test.com"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--allowed-host \"midominio.duckdns.org\""), "Debe inyectar el host permitido: \(cmd)")
-		XCTAssertTrue(cmd.contains("--allowed-host \"mimac.local\""), "Debe inyectar mimac.local: \(cmd)")
-		XCTAssertTrue(cmd.contains("--allowed-host \"test.com\""), "Debe inyectar test.com: \(cmd)")
-		XCTAssertTrue(cmd.contains("🛡️ Dominios:"), "El banner debe incluir la sección de dominios: \(cmd)")
-	}
-
-	func testServerLaunchInjectsAllowedOriginFlags() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.allowedOrigins = "*"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-
-		guard let cmd = try await waitForCommand(capturedCommand) else {
-			XCTFail("No command captured")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--allowed-origin \"*\""), "Debe inyectar --allowed-origin \"*\": \(cmd)")
-		XCTAssertTrue(cmd.contains("🌍 Orígenes:"), "El banner debe incluir la sección de orígenes: \(cmd)")
-	}
-
-	func testServerLaunchInjectsClaudeCodeAndCoworkModelAliases() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-
-		// Verifica que se inyectan los alias requeridos por la pestaña Code (Codex / CCD)
-		XCTAssertTrue(cmd.contains("--served-model-name \"claude-sonnet-4-6\""), "Debe inyectar claude-sonnet-4-6 para la pestaña Code: \(cmd)")
-		XCTAssertTrue(cmd.contains("--served-model-name \"claude-sonnet-5\""), "Debe inyectar claude-sonnet-5: \(cmd)")
-		XCTAssertTrue(cmd.contains("--served-model-name \"claude-haiku-4-5-20251001\""), "Debe inyectar haiku-4-5-20251001: \(cmd)")
-		XCTAssertTrue(cmd.contains("--served-model-name \"claude-3-7-sonnet-20250219\""), "Debe inyectar 3-7-sonnet: \(cmd)")
-		XCTAssertTrue(cmd.contains("--served-model-name \"claude-sonnet-4-5\""), "Debe inyectar sonnet-4-5 para Cowork: \(cmd)")
-		// Verifica alias para ChatGPT / OpenAI y Codex
-		XCTAssertTrue(cmd.contains("--served-model-name \"gpt-4o\""), "Debe inyectar gpt-4o para ChatGPT Desktop: \(cmd)")
-		XCTAssertTrue(cmd.contains("--served-model-name \"codex\""), "Debe inyectar codex: \(cmd)")
-	}
-
-	func testServerLaunchInjectsLanguageOnlyFlag() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-
+	@Test func testServerLaunchInjectsLanguageOnlyFlag() async throws {
 		// Sin flag activo
 		Preferences.languageOnly = false
+		capturedCommand.value = nil
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmdNormal = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-		XCTAssertFalse(cmdNormal.contains("--language-only"), "No debe inyectar --language-only si está desactivado")
-		XCTAssertTrue(cmdNormal.contains("👁️ Modalidad: Multimodal (Texto y Visión)"))
+		let cmdNormal = try await waitForCapturedCommand()
+		#expect(!cmdNormal.contains("--language-only"), "No debe inyectar --language-only si está desactivado")
+		#expect(cmdNormal.contains("👁️ Modalidad: Multimodal (Texto y Visión)"))
 
 		// Con flag activo
 		Preferences.languageOnly = true
+		capturedCommand.value = nil
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmdLangOnly = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-		XCTAssertTrue(cmdLangOnly.contains("--language-only"), "Debe inyectar --language-only cuando está activado: \(cmdLangOnly)")
-		XCTAssertTrue(cmdLangOnly.contains("👁️ Modalidad: Solo Texto / Código (--language-only)"))
+		let cmdLangOnly = try await waitForCapturedCommand()
+		#expect(cmdLangOnly.contains("--language-only"), "Debe inyectar --language-only cuando está activado: \(cmdLangOnly)")
+		#expect(cmdLangOnly.contains("👁️ Modalidad: Solo Texto / Código (--language-only)"))
 	}
 
-	func testServerLaunchWithModelVariant() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-
+	@Test func testServerLaunchWithModelVariant() async throws {
 		// Modelo con variante GGUF (peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL)
 		let variantModel = "peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP:UD-Q4_K_XL"
+		capturedCommand.value = nil
 		service.startServer(model: variantModel, port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
+		let cmd = try await waitForCapturedCommand()
 
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command captured para modelo con variante")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--model \"\(variantModel)\""), "Debe interpolar el modelo completo con su variante: \(cmd)")
-		XCTAssertTrue(cmd.contains("📦 Modelo:   \(variantModel)"), "El banner debe incluir la variante: \(cmd)")
-		XCTAssertNil(service.lastError, "No debe registrar error de validación para un modelo con variante")
+		#expect(cmd.contains("--model \"\(variantModel)\""), "Debe interpolar el modelo completo con su variante: \(cmd)")
+		#expect(cmd.contains("📦 Modelo:   \(variantModel)"), "El banner debe incluir la variante: \(cmd)")
+		#expect(service.lastError == nil, "No debe registrar error de validación para un modelo con variante")
 	}
 
-	func testServerLaunchWithCustomServerFlagsInjectsTokens() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.customServerFlags = "--no-webui --max-cache-disk 50GB"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--no-webui"), "Debe inyectar el flag --no-webui: \(cmd)")
-		XCTAssertTrue(cmd.contains("--max-cache-disk 50GB"), "Debe inyectar --max-cache-disk 50GB: \(cmd)")
-		XCTAssertTrue(cmd.contains("🛠️ Flags CLI:  --no-webui --max-cache-disk 50GB"), "El banner debe mostrar los flags: \(cmd)")
-	}
-
-	func testServerLaunchSanitizesMaliciousCustomFlags() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.customServerFlags = "--no-webui ; rm -rf /"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-
-		XCTAssertFalse(cmd.contains("rm -rf"), "No debe inyectar comandos maliciosos: \(cmd)")
-		XCTAssertFalse(cmd.contains("--no-webui"), "Debe descartar toda la cadena de flags si contiene metacaracteres peligrosos: \(cmd)")
-	}
-
-	func testServerLaunchWithIdleReleaseAndMaxMemory() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.idleRelease = "2m"
-		Preferences.maxMemory = "24G"
-
-		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--idle-release \"2m\""), "Debe inyectar --idle-release 2m: \(cmd)")
-		XCTAssertTrue(cmd.contains("--max-memory \"24G\""), "Debe inyectar --max-memory 24G: \(cmd)")
-		XCTAssertTrue(cmd.contains("⏳ Inactividad: 2m"), "El banner debe reflejar inactividad: \(cmd)")
-		XCTAssertTrue(cmd.contains("💾 Límite RAM: 24G"), "El banner debe reflejar el límite de memoria: \(cmd)")
-	}
-
-	func testServerLaunchWithSplash132Features() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.stateFormat = "bf16"
-		Preferences.thinkingTokenBudget = "8K"
-		Preferences.persistentCache = true
-
-		service.startServer(model: "nvidia/Qwen3.8-27B-NVFP4", port: testPort)
-		try await Task.sleep(nanoseconds: 80_000_000)
-
-		guard let cmd = capturedCommand.value else {
-			XCTFail("No command captured")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--state-format \"bf16\""), "Debe inyectar --state-format bf16: \(cmd)")
-		XCTAssertTrue(cmd.contains("--thinking-token-budget \"8000\""), "Debe inyectar --thinking-token-budget 8000: \(cmd)")
-		XCTAssertTrue(cmd.contains("--persistent-cache"), "Debe inyectar --persistent-cache: \(cmd)")
-		XCTAssertTrue(cmd.contains("⚡️ Estado GDN: BF16 (-50% RAM)"), "El banner debe incluir el estado GDN: \(cmd)")
-		XCTAssertTrue(cmd.contains("💭 Thinking:  8K"), "El banner debe incluir el thinking token budget: \(cmd)")
-		XCTAssertTrue(cmd.contains("💾 Caché SSD:  Persistente activada"), "El banner debe indicar caché persistente: \(cmd)")
-	}
-
-	func testRestoreOptimalProfileSetsAllParametersAndPersistsToUserDefaults() async throws {
-		let dir = try TempDirectory()
-		let (service, _) = makeService(directory: dir.url)
-
+	@Test func testRestoreOptimalProfileSetsAllParametersAndPersistsToUserDefaults() {
 		// Mutar a valores distintos para comprobar la restauración
 		Preferences.stateFormat = "fp32"
 		Preferences.thinkingTokenBudget = "auto"
@@ -352,63 +265,42 @@ final class ServerOptionsTests: XCTestCase {
 		service.restoreOptimalProfile()
 
 		// Validar propiedades en SplashService
-		XCTAssertEqual(Preferences.stateFormat, "bf16")
-		XCTAssertEqual(Preferences.thinkingTokenBudget, "8K")
-		XCTAssertTrue(Preferences.persistentCache)
-		XCTAssertEqual(Preferences.maxContext, "128K")
-		XCTAssertEqual(Preferences.idleRelease, "off")
-		XCTAssertTrue(Preferences.languageOnly)
-		XCTAssertEqual(Preferences.maxMemory, "auto")
-		XCTAssertEqual(Preferences.verifyRows, "auto")
-		XCTAssertEqual(Preferences.expertMemory, "auto")
-		XCTAssertEqual(Preferences.lastUsedPort, 8005)
-		XCTAssertTrue(Preferences.listenOnAllInterfaces)
-		XCTAssertEqual(Preferences.allowedHosts, "jmgrepdevsrl.duckdns.org")
-		XCTAssertEqual(Preferences.allowedOrigins, "*")
-		XCTAssertTrue(Preferences.autoReleaseOnMemoryPressure)
-		XCTAssertEqual(Preferences.refreshInterval, 1.5)
-		XCTAssertTrue(Preferences.runInBackground)
+		#expect(Preferences.stateFormat == "bf16")
+		#expect(Preferences.thinkingTokenBudget == "8K")
+		#expect(Preferences.persistentCache)
+		#expect(Preferences.maxContext == "128K")
+		#expect(Preferences.idleRelease == "off")
+		#expect(Preferences.languageOnly)
+		#expect(Preferences.maxMemory == "auto")
+		#expect(Preferences.verifyRows == "auto")
+		#expect(Preferences.expertMemory == "auto")
+		#expect(Preferences.lastUsedPort == 8005)
+		#expect(Preferences.listenOnAllInterfaces)
+		#expect(Preferences.allowedHosts == "jmgrepdevsrl.duckdns.org")
+		#expect(Preferences.allowedOrigins == "*")
+		#expect(Preferences.autoReleaseOnMemoryPressure)
+		#expect(Preferences.refreshInterval == 1.5)
+		#expect(Preferences.runInBackground)
 
 		// Validar persistencia en UserDefaults
 		let defaults = UserDefaults.standard
-		XCTAssertEqual(defaults.string(forKey: "stateFormat"), "bf16")
-		XCTAssertEqual(defaults.string(forKey: "thinkingTokenBudget"), "8K")
-		XCTAssertTrue(defaults.bool(forKey: "persistentCache"))
-		XCTAssertEqual(defaults.string(forKey: "maxContext"), "128K")
-		XCTAssertEqual(defaults.string(forKey: "idleRelease"), "off")
-		XCTAssertTrue(defaults.bool(forKey: "languageOnly"))
-		XCTAssertEqual(defaults.string(forKey: "maxMemory"), "auto")
-		XCTAssertEqual(defaults.string(forKey: "verifyRows"), "auto")
-		XCTAssertEqual(defaults.string(forKey: "expertMemory"), "auto")
-		XCTAssertEqual(defaults.integer(forKey: "lastUsedPort"), 8005)
-		XCTAssertTrue(defaults.bool(forKey: "listenOnAllInterfaces"))
-		XCTAssertEqual(defaults.string(forKey: "allowedHosts"), "jmgrepdevsrl.duckdns.org")
-		XCTAssertEqual(defaults.string(forKey: "allowedOrigins"), "*")
-		XCTAssertTrue(defaults.bool(forKey: "showMenuBarIcon"))
-		XCTAssertTrue(defaults.bool(forKey: "autoReleaseOnMemoryPressure"))
-		XCTAssertEqual(defaults.double(forKey: "refreshInterval"), 1.5)
-		XCTAssertTrue(defaults.bool(forKey: "runInBackground"))
-	}
-
-	func testServerLaunchWithSplash140Features() async throws {
-		let dir = try TempDirectory()
-		let (service, capturedCommand) = makeService(directory: dir.url)
-		Preferences.maxContext = "1M"
-		Preferences.verifyRows = "all"
-		Preferences.expertMemory = "12G"
-
-		service.startServer(model: "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0", port: testPort)
-
-		guard let cmd = try await waitForCommand(capturedCommand) else {
-			XCTFail("No command captured")
-			return
-		}
-
-		XCTAssertTrue(cmd.contains("--max-context \"1M\""), "Debe inyectar --max-context 1M: \(cmd)")
-		XCTAssertTrue(cmd.contains("--verify-rows \"all\""), "Debe inyectar --verify-rows all: \(cmd)")
-		XCTAssertTrue(cmd.contains("--expert-memory \"12g\""), "Debe inyectar --expert-memory 12g: \(cmd)")
-		XCTAssertTrue(cmd.contains("🎯 Verificación: Todas las filas (--verify-rows all)"), "El banner debe incluir la verificación: \(cmd)")
-		XCTAssertTrue(cmd.contains("🧠 Memoria Expertos MoE: 12g"), "El banner debe incluir la memoria de expertos: \(cmd)")
+		#expect(defaults.string(forKey: "stateFormat") == "bf16")
+		#expect(defaults.string(forKey: "thinkingTokenBudget") == "8K")
+		#expect(defaults.bool(forKey: "persistentCache"))
+		#expect(defaults.string(forKey: "maxContext") == "128K")
+		#expect(defaults.string(forKey: "idleRelease") == "off")
+		#expect(defaults.bool(forKey: "languageOnly"))
+		#expect(defaults.string(forKey: "maxMemory") == "auto")
+		#expect(defaults.string(forKey: "verifyRows") == "auto")
+		#expect(defaults.string(forKey: "expertMemory") == "auto")
+		#expect(defaults.integer(forKey: "lastUsedPort") == 8005)
+		#expect(defaults.bool(forKey: "listenOnAllInterfaces"))
+		#expect(defaults.string(forKey: "allowedHosts") == "jmgrepdevsrl.duckdns.org")
+		#expect(defaults.string(forKey: "allowedOrigins") == "*")
+		#expect(defaults.bool(forKey: "showMenuBarIcon"))
+		#expect(defaults.bool(forKey: "autoReleaseOnMemoryPressure"))
+		#expect(defaults.double(forKey: "refreshInterval") == 1.5)
+		#expect(defaults.bool(forKey: "runInBackground"))
 	}
 }
 

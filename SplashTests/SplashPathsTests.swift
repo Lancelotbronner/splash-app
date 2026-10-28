@@ -1,57 +1,57 @@
-import XCTest
+import Foundation
+import Testing
 @testable import Splash
 
-// MARK: - P-05 del plan 1.0.1: rutas sin versión fija
+// MARK: - P-05 del plan 1.0.1: rutas del motor sin versión fija
 
 @MainActor
-final class SplashPathsTests: XCTestCase {
+@Suite
+final class SplashPathsTests {
 
-	func testFirstExistingPicksFirstAvailableCandidate() {
+	@Test func testFirstExistingPicksFirstAvailableCandidate() {
 		let candidates = ["/a", "/b", "/c"]
-		XCTAssertEqual(SplashPaths.firstExisting(candidates, exists: { $0 == "/b" }), "/b")
-		XCTAssertEqual(SplashPaths.firstExisting(candidates, exists: { $0 == "/c" }), "/c")
-		XCTAssertNil(SplashPaths.firstExisting(candidates, exists: { _ in false }))
-		XCTAssertNil(SplashPaths.firstExisting([], exists: { _ in true }))
+		#expect(SplashPaths.firstExisting(candidates, exists: { $0 == "/b" }) == "/b")
+		#expect(SplashPaths.firstExisting(candidates, exists: { $0 == "/c" }) == "/c")
+		#expect(SplashPaths.firstExisting(candidates, exists: { _ in false }) == nil)
+		#expect(SplashPaths.firstExisting([], exists: { _ in true }) == nil)
 	}
 
 	/// Regresión de la clase de errores corregida en 1.0.1: una versión fija en la ruta
 	/// rompe la app tras `brew upgrade splash`.
-	func testNoCandidatePathPinsAMotorVersion() {
+	@Test func testNoCandidatePathPinsAMotorVersion() {
 		let all = SplashPaths.brewExecutableCandidates()
 		+ SplashPaths.splashExecutableCandidates()
 		+ SplashPaths.pythonCandidates()
 		+ SplashPaths.modelsScriptCandidates()
 		for candidate in all {
-			XCTAssertFalse(candidate.contains("/Cellar/"),
-						   "Ruta con versión fija detectada: \(candidate)")
-			XCTAssertNil(candidate.range(of: #"/\d+\.\d+(\.\d+)?"#, options: .regularExpression),
-						 "Ruta con número de versión detectada: \(candidate)")
+			#expect(!candidate.contains("/Cellar/"), "Ruta con versión fija detectada: \(candidate)")
+			#expect(candidate.range(of: #"/\d+\.\d+(\.\d+)?"#, options: .regularExpression) == nil,
+					"Ruta con número de versión detectada: \(candidate)")
 		}
 	}
 
-	func testCellarCandidatesTryEveryInstalledVersionInDeterministicOrder() {
+	@Test func testCellarCandidatesTryEveryInstalledVersionInDeterministicOrder() {
 		let versions: [String: [String]] = ["/opt/homebrew/Cellar/splash": ["1.0.10", "1.0.2", "1.0.9"]]
 		let found = SplashPaths.firstCellarCandidate(
 			subpath: "libexec/install/models.py",
 			versions: { versions[$0] },
 			exists: { $0 == "/opt/homebrew/Cellar/splash/1.0.9/libexec/install/models.py" }
 		)
-		XCTAssertEqual(found, "/opt/homebrew/Cellar/splash/1.0.9/libexec/install/models.py")
+		#expect(found == "/opt/homebrew/Cellar/splash/1.0.9/libexec/install/models.py")
 	}
 
-	func testCellarSearchReturnsNilWhenAbsent() {
-		XCTAssertNil(SplashPaths.firstCellarCandidate(subpath: "libexec/python/bin/python3",
-													  versions: { _ in nil },
-													  exists: { _ in true }))
-		XCTAssertNil(SplashPaths.firstCellarCandidate(subpath: "libexec/python/bin/python3",
-													  versions: { _ in [] },
-													  exists: { _ in true }))
+	@Test func testCellarSearchReturnsNilWhenAbsent() {
+		#expect(SplashPaths.firstCellarCandidate(subpath: "libexec/python/bin/python3",
+												  versions: { _ in nil },
+												  exists: { _ in true }) == nil)
+		#expect(SplashPaths.firstCellarCandidate(subpath: "libexec/python/bin/python3",
+												  versions: { _ in [] },
+												  exists: { _ in true }) == nil)
 	}
 
-	func testCellarVersionListingIsSorted() {
-		XCTAssertEqual(SplashPaths.cellarVersions(in: "/opt/homebrew/Cellar/splash",
-												  list: { _ in ["1.0.10", "1.0.2"] }),
-					   ["1.0.10", "1.0.2"])
-		XCTAssertEqual(SplashPaths.cellarVersions(in: "/x", list: { _ in nil }), [])
+	@Test func testCellarVersionListingIsSorted() {
+		#expect(SplashPaths.cellarVersions(in: "/opt/homebrew/Cellar/splash",
+											list: { _ in ["1.0.10", "1.0.2"] }) == ["1.0.10", "1.0.2"])
+		#expect(SplashPaths.cellarVersions(in: "/x", list: { _ in nil }) == [])
 	}
 }

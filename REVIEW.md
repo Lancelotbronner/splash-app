@@ -409,106 +409,24 @@ remains. `[whats-new-27]` is authoritative for this section.
 
 Source: `[tests]` throughout. Severity per the test report (P0 → §2).
 
-### 8.1 P1 — non-hermetic / structurally wrong for a test lane
-- **`ScreenshotGeneratorTests` is a screenshot *generator* masquerading as a
-  test · High** `[tests]` finding 3; corroborated by `[swiftui-way]` P2-16,
-  `[specialist]` F-TST-1 — `SplashTests/ScreenshotGeneratorTests.swift:62-267`:
-  one 200-line "test" that mutates the `SplashService.shared` singleton
-  (isRunning, status, installedModels, connectedApps, speedHistory, download
-  state) and `UserDefaults.standard` (`hasAskedAboutMenuBar = true` — real
-  developer prefs, never reset), writes PNGs **into the repo** at
-  `screenshots/<lang>/` computed from `#filePath` (line 154 — repo-fragile),
-  renders via a hardcoded 1000×700 `NSWindow`/`NSHostingView`, duplicates a
-  mock `/status` JSON instead of reusing `Fixtures` (L8-69), and uses
-  `XCTFail`+`continue` on bitmap failure (L160, L164) so failures are silent.
-  Running `xcodebuild test` regenerates the wiki screenshots and mutates the
-  working tree; singleton mutation leaks into any test running after it
-  (order-dependent). The `for lang in ["es","en"]` loop **never switches the
-  app language** (the feature is dead, §9) → both dirs render in the host OS
-  language. **Fix (all three reviews agree):** move out of the default test
-  lane — a generation script, or a custom action / env-gated test. If it must
-  stay in the target: `@MainActor`, `@Suite(.serialized)`, a dedicated
-  `SplashService(transport:)` instance (constructor injection already exists —
-  `StatusModelTests` does exactly this), write to a temp dir with
-  `Attachment.record(pngData)`, reuse `Fixtures`, `#require` instead of
-  `XCTFail/continue`.
-- **Global-state pollution across suites (parallelism hazard once Swift
-  Testing's default parallel execution kicks in) · High** `[tests]` finding 4 —
-  `ServerOptionsTests.testRestoreOptimalProfile…` (L283-335) writes ~17 keys to
-  `UserDefaults.standard` (test-host = the app bundle → clobbers a developer's
-  real prefs) and never restores them; `NotificationAndAutoLaunchTests.swift:12-19`
-  mutates `NotificationService.shared` + `UserDefaults.standard`, restores only
-  on the success path, and `AutoLaunchService.refreshStatus()` hits the real
-  SMAppService login-items database (environment-dependent);
-  `SystemMemoryPressureTests.swift:22` sets
-  `SystemMemoryPressureSentinel.shared.delegate` and never resets it (the
-  `simulatePressureChange` seam lives on the shared singleton,
-  `SystemMemoryPressureSentinel.swift:82`). **Fix:** migrate those suites as
-  `@Suite(.serialized)` with restore in `deinit`; nice-to-have app seams: a
-  `UserDefaults(suiteName:)` injection point (currently hardcoded `.standard`
-  via `@AppStorage`) and an injectable sentinel.
-
-### 8.2 P2 — flaky-prone patterns to fix during migration `[tests]` findings 6-7
-- **Fixed sleeps instead of condition waits:** 13 of 15 capture tests in
-  `ServerOptionsTests` do `Task.sleep(80 ms)` after `startServer` then
-  `guard let cmd … else XCTFail` (XCTFail sites L45, 66, 86, 105, 156, 174,
-  190, 215, 227, 244, 262, 280, 298, 319, 402); a `waitForCommand` helper
-  (L23-29) exists but is used in only 2 tests. Same pattern in
-  `SystemMemoryPressureTests` (six 50 ms sleeps, L22-68) and the 1.2 s
-  re-check in `PollingTests.testStartServerRejectsInjectedModelIdentifier`
-  (L132). **Fix:** `try #require(await waitForCommand(capturedCommand))` or
-  `try await #require(where: { … }, timeout:)` (Xcode 26+ API).
-- **`TestSupport.waitUntil` (L181-184) can be deleted** in favor of
-  `#require(where:timeout:)` (already used at `PollingTests.swift:87, 106`).
-  `TestSupport.swift` imports `XCTest` (L2) but uses no XCTest API. The
-  duplicated `makeService` helpers across 5 suites should be hoisted to one
-  canonical constructor (per-test `init()` in Swift Testing is free).
-  `StubStatusTransport`/`RecordingServerTerminator`/`TempDirectory` doubles are
-  fine as-is — keep the `TempDirectory` `deinit` cleanup.
-
-### 8.3 P3 — modernization opportunities (value, not correctness) `[tests]` findings 8-10
-- **Prime `@Test(arguments:)` targets** (biggest LOC-per-value wins):
-  `ServerCLIValidatorTests` (4 parameterizable validators — 11/9/7/10 cases —
-  plus 4 injection-rejection tests → one parameterized test over malicious
-  strings; `XCTAssertTrue(x == false)` at L22 → `#expect(!x)`),
-  `ModelIDValidatorTests` (~25 `XCTAssertFalse(isValid(x))` lines →
-  parameterized lists), `AgentLaunchTests` (4 near-identical
-  `testAgentInstallURLFor*` → one parameterized test; 8 `supportedAgents`
-  checks → one test over a `Set`), `VersionTests` (`isNewer` triples),
-  `ProcessIntrospectionTests`, `ClientTerminationPolicyTests` (8 call sites of
-  one pure function → case-struct table), `ShellEnvironmentTests` (4-way
-  consent decision table L42-47, 5 port-policy cases L33-39),
-  `ServerOptionsTests.testServerLaunchInjectsClaudeCodeAndCoworkModelAliases`
-  (L160-177: 7 hardcoded alias assertions → data-driven; launch-flag tests
-  share a (configure, expectedFlag, expectedBanner) shape).
-- **Weak/vacuous tests:** `AgentLaunchTests.testIsAgentInstalledDoesNotCrashFor*`
-  (3 tests, zero assertions) and `NotificationAndAutoLaunchTests`
-  `XCTAssertTrue(true, …)` (L32, L43) — assert real values or relabel as
-  explicit smoke tests. `testIsAgentInstalledDetectsDeepSeekHarnessAppIfPresent`
-  (L59-63) passes silently when the app is absent →
-  `@Test(.enabled(if: FileManager.default.fileExists(atPath: …)))` so the skip
-  is visible.
-- **Mechanical mappings** (apply during migration): `final class: XCTestCase` →
-  `@Suite struct` (keep `final class` only where `deinit` is needed);
-  `try XCTUnwrap` → `try #require`; `XCTAssertEqual(_:_:accuracy:)` has no
-  direct equivalent → `#expect(abs(a - b) < tol)` (`StatusModelTests` L49-51,
-  L79; `ModelDiagnosticTests` L48-50); keep `@MainActor` on every suite touching
-  `@MainActor` app types (ServerOptions, Polling, SystemMemoryPressure,
-  NotificationAndAutoLaunch, ScreenshotGenerator, plus individually-annotated
-  tests); `StatusModelTests` L70 passes
-  `FileManager.default.temporaryDirectory` as `dataDirectoryRoot` → use
-  `try TempDirectory()`; `AgentLaunchTests` constructs `SplashService()`
-  (default init, real transport) instead of the injectable seam
-  (`SplashService.swift:268-272`) — align it. `HarnessTests` (13 lines) is the
-  import canary: first smoke test CI should run after the P0 fix.
-- **Preserve audit-ID comments** (P-xx / H-xx, "Sonda V-4") and the real 1.0.2
-  `/status` fixture as specs — they document past bug regressions.
-
-**Out-of-lens notes from `[tests]`:** `MARKETING_VERSION = "1.0"` in the
-project vs `SplashVersion.current = "1.0.10-beta"` (`Services/Version.swift`,
-the sed-extracted source of truth) — reconcile; app-code seams are good and
-always compiled (no `#if DEBUG`), nothing in `Splash/` *must* change for the
-migration.
+**Resolved by W2 (2026-10-28):** all 19 test files migrated to Swift
+Testing (`@Suite`/`@Test`/`#expect`/`#require`, `@MainActor` kept on every
+suite touching app types); the 13+ fixed sleeps replaced by condition waits
+via the `TestSupport.waitFor` helper (`#require(where:timeout:)` does not
+exist in this toolchain); `TestSupport.waitUntil` deleted, the duplicated
+`makeService` helpers hoisted into the canonical `makeTestService`;
+`ScreenshotGeneratorTests` env-gated behind `SPLASH_GENERATE_SCREENSHOTS`
+with dedicated injected service, `Fixtures` reuse, temp-dir output and
+singleton state restored in `deinit`; the UserDefaults/sentinel-delegate
+polluters (ServerOptions, NotificationAndAutoLaunch, SystemMemoryPressure,
+ShellEnvironment) run `@Suite(.serialized)` with globals restored in
+`deinit`; `@Test(arguments:)` consolidations applied across all 8 target
+suites; vacuous tests now assert real values (`doesNotCrash` smoke, the two
+`XCTAssertTrue(true)`, DeepSeek-harness detection `enabled(if:)`);
+audit-ID comments (P-xx / H-xx, Sonda V-4/V-7/V-8, F0.1) and the real 1.0.2
+`/status` fixture preserved verbatim; `MARKETING_VERSION` aligned to
+1.0.10-beta on both targets in the (gitignored) project file — full suite
+passes, screenshot generator SKIPPED in the normal lane (see W2 report).
 
 ---
 

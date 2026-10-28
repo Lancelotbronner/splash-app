@@ -1,8 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import Splash
 
 @MainActor
-final class SystemMemoryPressureTests: XCTestCase {
+@Suite(.serialized)
+final class SystemMemoryPressureTests {
 
 	private final class MockSentinelDelegate: SystemMemoryPressureSentinelDelegate, @unchecked Sendable {
 		var lastLevel: SystemMemoryPressureLevel?
@@ -12,55 +14,76 @@ final class SystemMemoryPressureTests: XCTestCase {
 		}
 	}
 
-	func testSentinelNotifiesDelegateOnSimulatedPressureChange() async {
+	/// `SplashService.init` (y cualquier otra suite en paralelo) reasigna
+	/// `SystemMemoryPressureSentinel.shared.delegate`; se captura el delegado
+	/// original y se restaura al terminar cada test.
+	private let previousDelegate: SystemMemoryPressureSentinelDelegate?
+
+	init() {
+		previousDelegate = SystemMemoryPressureSentinel.shared.delegate
+	}
+
+	isolated deinit {
+		SystemMemoryPressureSentinel.shared.delegate = previousDelegate
+	}
+
+	/// `simulatePressureChange` despacha por `DispatchQueue.main.async`; en vez de
+	/// dormir un tiempo fijo, se reasigna el delegado (por si otra suite lo robó)
+	/// y se reenvía hasta que el delegado observe el nivel esperado.
+	private func simulateAndAwait(sentinel: SystemMemoryPressureSentinel,
+								  delegate: MockSentinelDelegate,
+								  level: SystemMemoryPressureLevel) async {
+		for _ in 0..<10 {
+			sentinel.delegate = delegate
+			sentinel.simulatePressureChange(to: level)
+			try? await Task.sleep(for: .milliseconds(50))
+			if delegate.lastLevel == level { return }
+		}
+	}
+
+	@Test func testSentinelNotifiesDelegateOnSimulatedPressureChange() async {
 		let sentinel = SystemMemoryPressureSentinel.shared
 		let delegate = MockSentinelDelegate()
-		sentinel.delegate = delegate
 
-		sentinel.simulatePressureChange(to: .warning)
+		await simulateAndAwait(sentinel: sentinel, delegate: delegate, level: .warning)
+		#expect(sentinel.currentPressure == .warning)
+		#expect(delegate.lastLevel == .warning)
+		#expect(sentinel.lastWarningDate != nil)
 
-		try? await Task.sleep(nanoseconds: 50_000_000)
-		XCTAssertEqual(sentinel.currentPressure, .warning)
-		XCTAssertEqual(delegate.lastLevel, .warning)
-		XCTAssertNotNil(sentinel.lastWarningDate)
+		await simulateAndAwait(sentinel: sentinel, delegate: delegate, level: .critical)
+		#expect(sentinel.currentPressure == .critical)
+		#expect(delegate.lastLevel == .critical)
+		#expect(sentinel.lastCriticalDate != nil)
 
-		sentinel.simulatePressureChange(to: .critical)
-		try? await Task.sleep(nanoseconds: 50_000_000)
-		XCTAssertEqual(sentinel.currentPressure, .critical)
-		XCTAssertEqual(delegate.lastLevel, .critical)
-		XCTAssertNotNil(sentinel.lastCriticalDate)
-
-		sentinel.simulatePressureChange(to: .normal)
-		try? await Task.sleep(nanoseconds: 50_000_000)
-		XCTAssertEqual(sentinel.currentPressure, .normal)
-		XCTAssertEqual(delegate.lastLevel, .normal)
+		await simulateAndAwait(sentinel: sentinel, delegate: delegate, level: .normal)
+		#expect(sentinel.currentPressure == .normal)
+		#expect(delegate.lastLevel == .normal)
 	}
 
-	func testSplashServiceUpdatesMemoryPressureFromSentinel() async throws {
+	@Test func testSplashServiceUpdatesMemoryPressureFromSentinel() async throws {
 		let dir = try TempDirectory()
-		let service = SplashService(transport: StubStatusTransport(),
-									terminator: RecordingServerTerminator(),
-									pollInterval: 60,
-									dataDirectoryRoot: dir.url,
-									bootstrapNetwork: false)
+		let service = makeTestService(pollInterval: 60, directory: dir.url)
 
-		SystemMemoryPressureSentinel.shared.simulatePressureChange(to: .warning)
-		try? await Task.sleep(nanoseconds: 50_000_000)
+		for _ in 0..<10 {
+			SystemMemoryPressureSentinel.shared.delegate = service
+			SystemMemoryPressureSentinel.shared.simulatePressureChange(to: .warning)
+			try? await Task.sleep(for: .milliseconds(50))
+			if service.systemMemoryPressure == .warning { break }
+		}
+		#expect(service.systemMemoryPressure == .warning)
 
-		XCTAssertEqual(service.systemMemoryPressure, .warning)
-
-		SystemMemoryPressureSentinel.shared.simulatePressureChange(to: .normal)
-		try? await Task.sleep(nanoseconds: 50_000_000)
-		XCTAssertEqual(service.systemMemoryPressure, .normal)
+		for _ in 0..<10 {
+			SystemMemoryPressureSentinel.shared.delegate = service
+			SystemMemoryPressureSentinel.shared.simulatePressureChange(to: .normal)
+			try? await Task.sleep(for: .milliseconds(50))
+			if service.systemMemoryPressure == .normal { break }
+		}
+		#expect(service.systemMemoryPressure == .normal)
 	}
 
-	func testSplashServiceReleaseMemoryNowSetsNotice() async throws {
+	@Test func testSplashServiceReleaseMemoryNowSetsNotice() async throws {
 		let dir = try TempDirectory()
-		let service = SplashService(transport: StubStatusTransport(),
-									terminator: RecordingServerTerminator(),
-									pollInterval: 60,
-									dataDirectoryRoot: dir.url,
-									bootstrapNetwork: false)
+		let service = makeTestService(pollInterval: 60, directory: dir.url)
 
 		service.isRunning = true
 		// Puerto sin motor real: la llamada POST falla y el fallback seguro detiene el
@@ -69,9 +92,9 @@ final class SystemMemoryPressureTests: XCTestCase {
 		service.releaseMemoryNow()
 
 		// El fallback encadena varios hops de Task/MainActor (release → POST fallido →
-		// stopServer → stopServerAsync); 50 ms no bastan para todos los saltos.
-		try? await Task.sleep(nanoseconds: 500_000_000)
-		XCTAssertNotNil(service.memoryReliefNotice)
-		XCTAssertFalse(service.isRunning)
+		// stopServer → stopServerAsync); se espera la condición, no un tiempo fijo.
+		try await waitFor(where: { service.memoryReliefNotice != nil && !service.isRunning },
+						  timeout: .seconds(5),
+						  message: "releaseMemoryNow debe dejar aviso y detener el servidor")
 	}
 }

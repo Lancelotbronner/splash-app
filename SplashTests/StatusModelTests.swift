@@ -1,82 +1,80 @@
-import XCTest
+import Foundation
+import Testing
 @testable import Splash
 
 // MARK: - Sonda V-4: contrato real de `/status` frente al modelo Swift
 
 @MainActor
-final class StatusModelTests: XCTestCase {
+@Suite
+final class StatusModelTests {
 
 	/// La fixture replica la carga útil real del motor 1.0.2 (30 claves observadas) más
 	/// una clave desconocida. El modelo debe decodificar e ignorar lo que no conoce.
-	func testDecodesRealStatusPayloadAndToleratesUnknownKeys() throws {
-		let status = Fixtures.status(port: 8005)
-		XCTAssertTrue(try XCTUnwrap(status.ready))
-		XCTAssertEqual(status.maximumContextTokens, 262_144)
-		XCTAssertEqual(status.memoryPressure, "nominal")
-		XCTAssertEqual(status.thermalState, "nominal")
-		XCTAssertEqual(status.aneFfn?.state, "active")
-		XCTAssertEqual(status.aneFfn?.share, 0.6667)
-		XCTAssertEqual(status.aneFfn?.minPromptChunk, 128)
-		XCTAssertEqual(status.weights?.released, false)
-		XCTAssertEqual(status.weights?.idleReleaseSeconds, 300.0)
-		XCTAssertEqual(status.instance?.pid, 4242)
-		XCTAssertEqual(status.instance?.host, "127.0.0.1")
-		XCTAssertEqual(status.instance?.port, 8005)
-		XCTAssertEqual(status.instance?.startedAt, 1_758_700_000.0)
+	@Test func testDecodesRealStatusPayloadAndToleratesUnknownKeys() throws {
+		let status = try #require(Fixtures.status(port: 8005))
+		#expect(try #require(status.ready))
+		#expect(status.maximumContextTokens == 262_144)
+		#expect(status.memoryPressure == "nominal")
+		#expect(status.thermalState == "nominal")
+		#expect(status.aneFfn?.state == "active")
+		#expect(status.aneFfn?.share == 0.6667)
+		#expect(status.aneFfn?.minPromptChunk == 128)
+		#expect(status.weights?.released == false)
+		#expect(status.weights?.idleReleaseSeconds == 300.0)
+		#expect(status.instance?.pid == 4242)
+		#expect(status.instance?.host == "127.0.0.1")
+		#expect(status.instance?.port == 8005)
+		#expect(status.instance?.startedAt == 1_758_700_000.0)
 	}
 
-	func testEveryModelledFieldIsPopulatedByTheRealPayload() throws {
-		let status = Fixtures.status(port: 8005)
+	@Test func testEveryModelledFieldIsPopulatedByTheRealPayload() throws {
+		let status = try #require(Fixtures.status(port: 8005))
 		// Sonda V-4: las 11 claves modeladas existen todas en la carga útil real.
-		XCTAssertNotNil(status.memoryPlan?.device?.physicalMemoryBytes)
-		XCTAssertNotNil(status.memoryPlan?.device?.recommendedMaxWorkingSetBytes)
-		XCTAssertNotNil(status.memoryPlan?.model?.maximumContextTokens)
-		XCTAssertNotNil(status.memoryPlan?.budget?.hardBudgetBytes)
-		XCTAssertNotNil(status.memoryActual?.currentBytes)
-		XCTAssertNotNil(status.memoryActual?.peakBytes)
-		XCTAssertNotNil(status.memoryGovernor?.limitBytes)
-		XCTAssertNotNil(status.memoryGovernor?.systemPressure)
-		XCTAssertNotNil(status.cache?.hitRate)
-		XCTAssertNotNil(status.cache?.reusedTokens)
-		XCTAssertNotNil(status.scheduler?.decoding)
-		XCTAssertNotNil(status.requests?.completed)
-		XCTAssertNotNil(status.metrics?.decodeTokensPerSecond)
-		XCTAssertNotNil(status.metrics?.ttftMs?.p50)
+		#expect(status.memoryPlan?.device?.physicalMemoryBytes != nil)
+		#expect(status.memoryPlan?.device?.recommendedMaxWorkingSetBytes != nil)
+		#expect(status.memoryPlan?.model?.maximumContextTokens != nil)
+		#expect(status.memoryPlan?.budget?.hardBudgetBytes != nil)
+		#expect(status.memoryActual?.currentBytes != nil)
+		#expect(status.memoryActual?.peakBytes != nil)
+		#expect(status.memoryGovernor?.limitBytes != nil)
+		#expect(status.memoryGovernor?.systemPressure != nil)
+		#expect(status.cache?.hitRate != nil)
+		#expect(status.cache?.reusedTokens != nil)
+		#expect(status.scheduler?.decoding != nil)
+		#expect(status.requests?.completed != nil)
+		#expect(status.metrics?.decodeTokensPerSecond != nil)
+		#expect(status.metrics?.ttftMs?.p50 != nil)
 	}
 
 	/// Valores medidos en la auditoría: prefill 763 tok/s, decodificación 42,5 tok/s.
-	func testMetricValuesMatchTheAuditedPayload() throws {
-		let metrics = try XCTUnwrap(Fixtures.status(port: 8005).metrics)
-		XCTAssertEqual(try XCTUnwrap(metrics.prefillTokensPerSecond), 763.5, accuracy: 0.001)
-		XCTAssertEqual(try XCTUnwrap(metrics.decodeTokensPerSecond), 42.5, accuracy: 0.001)
-		XCTAssertEqual(try XCTUnwrap(metrics.draftAcceptanceRate), 0.8, accuracy: 0.001)
-		XCTAssertEqual(metrics.decodeOutputTokens, 2048)
+	@Test func testMetricValuesMatchTheAuditedPayload() throws {
+		let metrics = try #require(try #require(Fixtures.status(port: 8005)).metrics)
+		#expect(abs(try #require(metrics.prefillTokensPerSecond) - 763.5) < 0.001)
+		#expect(abs(try #require(metrics.decodeTokensPerSecond) - 42.5) < 0.001)
+		#expect(abs(try #require(metrics.draftAcceptanceRate) - 0.8) < 0.001)
+		#expect(metrics.decodeOutputTokens == 2048)
 	}
 
-	func testMissingOptionalSectionsDecodeToNil() throws {
+	@Test func testMissingOptionalSectionsDecodeToNil() throws {
 		let minimal = Data(#"{ "ready": false }"#.utf8)
 		let status = try JSONDecoder().decode(SplashStatus.self, from: minimal)
-		XCTAssertEqual(status.ready, false)
-		XCTAssertNil(status.instance)
-		XCTAssertNil(status.metrics)
-		XCTAssertNil(status.cache)
+		#expect(status.ready == false)
+		#expect(status.instance == nil)
+		#expect(status.metrics == nil)
+		#expect(status.cache == nil)
 	}
 
 	/// Formateadores del servicio sobre la carga útil auditada.
-	@MainActor
-	func testFormattedMetricsFromAuditedPayload() throws {
-		let service = SplashService(transport: StubStatusTransport(),
-									terminator: RecordingServerTerminator(),
-									pollInterval: 30,
-									dataDirectoryRoot: FileManager.default.temporaryDirectory,
-									bootstrapNetwork: false)
-		service.status = Fixtures.status(port: 8005)
-		XCTAssertEqual(service.formattedDecodeSpeed, "42.5")
-		XCTAssertEqual(service.formattedPrefillSpeed, "763.5")
-		XCTAssertEqual(service.formattedCacheHitRate, "93.3%")
-		XCTAssertEqual(service.formattedTokensDecode, "2.0K")
-		XCTAssertEqual(service.formattedMemoryUsed, "2.5 GB")
-		XCTAssertEqual(service.formattedMemoryLimit, "26.0 GB")
-		XCTAssertEqual(service.memoryUsageRatio, 0.0963, accuracy: 0.001)
+	@Test func testFormattedMetricsFromAuditedPayload() throws {
+		let dir = try TempDirectory()
+		let service = makeTestService(pollInterval: 30, directory: dir.url)
+		service.status = try #require(Fixtures.status(port: 8005))
+		#expect(service.formattedDecodeSpeed == "42.5")
+		#expect(service.formattedPrefillSpeed == "763.5")
+		#expect(service.formattedCacheHitRate == "93.3%")
+		#expect(service.formattedTokensDecode == "2.0K")
+		#expect(service.formattedMemoryUsed == "2.5 GB")
+		#expect(service.formattedMemoryLimit == "26.0 GB")
+		#expect(abs(service.memoryUsageRatio - 0.0963) < 0.001)
 	}
 }

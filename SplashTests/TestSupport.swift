@@ -1,5 +1,5 @@
 import Foundation
-import XCTest
+import Testing
 @testable import Splash
 
 // MARK: - Utilidades comunes de prueba
@@ -171,15 +171,45 @@ enum Fixtures {
 	}
 }
 
+// MARK: - Construcción de servicios
+
+/// Constructor canónico de `SplashService` para pruebas: transporte y terminador
+/// inyectados (sin red, sin señales), sin conflictos de puerto y con el motor
+/// «instalado». Sustituye los helpers `makeService` duplicados de los cinco
+/// suítes que lo tenían (en Swift Testing el `init` del contenedor es gratis).
+@MainActor
+func makeTestService(transport: StubStatusTransport = StubStatusTransport(),
+					 terminator: RecordingServerTerminator = RecordingServerTerminator(),
+					 pollInterval: TimeInterval = 60,
+					 directory: URL,
+					 bootstrapNetwork: Bool = false) -> SplashService {
+	let service = SplashService(transport: transport,
+								terminator: terminator,
+								pollInterval: pollInterval,
+								dataDirectoryRoot: directory,
+								bootstrapNetwork: bootstrapNetwork)
+	service.shellEnvironmentDirectory = directory
+	service.skipPortConflictCheck = true
+	service.isSplashInstalled = true
+	return service
+}
+
 // MARK: - Esperas
 
 /// Espera activa hasta que se cumpla `condition`, con límite de tiempo.
+///
+/// Sustituye al antiguo `waitUntil` y a los `Task.sleep` fijos. La API
+/// `#require(where:timeout:)` propuesta en la auditoría **no existe** en este
+/// toolchain (Xcode 27.2 / Testing.framework): no hay sobrecarga de `where`
+/// para `#expect`/`#require`; de ahí este helper de sondeo cada 20 ms.
 @MainActor
-func waitUntil(timeout: TimeInterval = 5.0, _ condition: () -> Bool) async -> Bool {
-	let deadline = Date().addingTimeInterval(timeout)
+func waitFor(where condition: @escaping () -> Bool,
+			 timeout: Duration = .seconds(5),
+			 message: @autoclosure @escaping () -> String = "La condición no se cumplió dentro del tiempo límite") async throws {
+	let deadline = Date().addingTimeInterval(Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18)
 	while Date() < deadline {
-		if condition() { return true }
-		try? await Task.sleep(nanoseconds: 50_000_000)
+		if condition() { return }
+		try await Task.sleep(for: .milliseconds(20))
 	}
-	return condition()
+	try #require(condition(), "\(message())")
 }
