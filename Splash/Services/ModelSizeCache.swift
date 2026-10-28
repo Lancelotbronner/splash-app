@@ -13,41 +13,41 @@ import Foundation
 /// La caché se invalida cuando cambia la fecha de modificación del enlace del modelo,
 /// y explícitamente al instalar o eliminar un modelo.
 public struct ModelSizeCache {
-    private struct Entry {
-        let size: Int64
-        let stamp: Date?
-        let computedAt: Date
-    }
+	private struct Entry {
+		let size: Int64
+		let stamp: Date?
+		let computedAt: Date
+	}
 
-    private var entries: [String: Entry] = [:]
-    private let ttl: TimeInterval
+	private var entries: [String: Entry] = [:]
+	private let ttl: TimeInterval
 
-    public init(ttl: TimeInterval = 900) {
-        self.ttl = ttl
-    }
+	public init(ttl: TimeInterval = 900) {
+		self.ttl = ttl
+	}
 
-    public var count: Int { entries.count }
+	public var count: Int { entries.count }
 
-    /// Devuelve el tamaño cacheado o lo calcula con `compute`.
-    public mutating func size(repoId: String,
-                              stamp: Date?,
-                              now: Date = Date(),
-                              compute: () -> Int64) -> Int64 {
-        if let entry = entries[repoId],
-           entry.stamp == stamp,
-           now.timeIntervalSince(entry.computedAt) < ttl {
-            return entry.size
-        }
-        let size = compute()
-        entries[repoId] = Entry(size: size, stamp: stamp, computedAt: now)
-        return size
-    }
+	/// Devuelve el tamaño cacheado o lo calcula con `compute`.
+	public mutating func size(repoId: String,
+							  stamp: Date?,
+							  now: Date = Date(),
+							  compute: () -> Int64) -> Int64 {
+		if let entry = entries[repoId],
+		   entry.stamp == stamp,
+		   now.timeIntervalSince(entry.computedAt) < ttl {
+			return entry.size
+		}
+		let size = compute()
+		entries[repoId] = Entry(size: size, stamp: stamp, computedAt: now)
+		return size
+	}
 
-    public mutating func invalidate(repoId: String) {
-        entries.removeValue(forKey: repoId)
-    }
+	public mutating func invalidate(repoId: String) {
+		entries.removeValue(forKey: repoId)
+	}
 
-    public mutating func invalidateAll() {
-        entries.removeAll()
-    }
+	public mutating func invalidateAll() {
+		entries.removeAll()
+	}
 }
