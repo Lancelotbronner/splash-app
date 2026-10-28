@@ -1,6 +1,7 @@
 import XCTest
 @testable import Splash
 
+@MainActor
 final class AgentLaunchTests: XCTestCase {
 
 	func testSupportedAgentsIncludesClaudeCowork() {

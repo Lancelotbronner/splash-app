@@ -3,6 +3,7 @@ import XCTest
 
 // MARK: - P-04 / H-05: política de terminación de clientes
 
+@MainActor
 final class ClientTerminationPolicyTests: XCTestCase {
 
 	func testTerminatesMatchingRunningApplication() {

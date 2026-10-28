@@ -3,6 +3,7 @@ import SwiftUI
 import AppKit
 @testable import Splash
 
+@MainActor
 final class ScreenshotGeneratorTests: XCTestCase {
 
 	@MainActor
@@ -152,7 +153,7 @@ final class ScreenshotGeneratorTests: XCTestCase {
 			)
 			window.appearance = NSAppearance(named: .darkAqua)
 
-			for item in MainWindowView.SidebarItem.allCases {
+			for item in SidebarItem.allCases {
 				let view = MainWindowView(initialTab: item)
 					.frame(width: 1000, height: 700)
 					.preferredColorScheme(.dark)

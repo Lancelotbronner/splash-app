@@ -3,6 +3,7 @@ import XCTest
 
 /// F0.1 — El objetivo de pruebas puede importar el módulo del ejecutable.
 /// Confirma que no hace falta extraer un target de librería para probar la app.
+@MainActor
 final class HarnessTests: XCTestCase {
 	func testTestTargetCanImportExecutableModuleAndDecodeFixture() throws {
 		let status: SplashStatus = Fixtures.status(port: 8005)

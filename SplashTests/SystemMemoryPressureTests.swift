@@ -63,9 +63,14 @@ final class SystemMemoryPressureTests: XCTestCase {
 									bootstrapNetwork: false)
 
 		service.isRunning = true
+		// Puerto sin motor real: la llamada POST falla y el fallback seguro detiene el
+		// servidor. No usar el puerto por defecto para no depender de un motor vivo.
+		service.activePort = 58931
 		service.releaseMemoryNow()
 
-		try? await Task.sleep(nanoseconds: 50_000_000)
+		// El fallback encadena varios hops de Task/MainActor (release → POST fallido →
+		// stopServer → stopServerAsync); 50 ms no bastan para todos los saltos.
+		try? await Task.sleep(nanoseconds: 500_000_000)
 		XCTAssertNotNil(service.memoryReliefNotice)
 		XCTAssertFalse(service.isRunning)
 	}

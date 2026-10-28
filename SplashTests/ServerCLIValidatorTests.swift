@@ -1,6 +1,7 @@
 import XCTest
 @testable import Splash
 
+@MainActor
 final class ServerCLIValidatorTests: XCTestCase {
 
 	func testAcceptsValidFlags() {

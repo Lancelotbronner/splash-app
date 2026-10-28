@@ -3,6 +3,7 @@ import XCTest
 
 // MARK: - P-07 / H-08: comparación semántica de versiones
 
+@MainActor
 final class VersionTests: XCTestCase {
 
 	/// Sonda V-8 de la auditoría, ahora como prueba de regresión.
@@ -53,12 +54,11 @@ final class VersionTests: XCTestCase {
 	/// P-15: la versión vive en un solo sitio y los scripts la extraen de ahí.
 	func testVersionExistsOnceAndScriptsAgreeWithIt() throws {
 		let root = URL(fileURLWithPath: #filePath)
-			.deletingLastPathComponent()   // Tests/SplashMonitorTests
-			.deletingLastPathComponent()   // Tests
-			.deletingLastPathComponent()   // raíz del paquete
+			.deletingLastPathComponent()   // VersionTests.swift
+			.deletingLastPathComponent()   // SplashTests → raíz del proyecto
 		let version = SplashVersion.current
 
-		let sources = ["Sources/SplashMonitor/Services/Version.swift"]
+		let sources = ["Splash/Services/Version.swift"]
 		var declarations = 0
 		for relative in sources {
 			let contents = try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
@@ -68,7 +68,7 @@ final class VersionTests: XCTestCase {
 		XCTAssertEqual(declarations, 1, "La versión debe declararse una sola vez (P-15).")
 
 		// Ningún otro fichero Swift puede contener un literal de versión del producto.
-		let enumerator = FileManager.default.enumerator(at: root.appendingPathComponent("Sources"),
+		let enumerator = FileManager.default.enumerator(at: root.appendingPathComponent("Splash"),
 														includingPropertiesForKeys: nil)
 		while let file = enumerator?.nextObject() as? URL {
 			guard file.pathExtension == "swift", file.lastPathComponent != "Version.swift" else { continue }

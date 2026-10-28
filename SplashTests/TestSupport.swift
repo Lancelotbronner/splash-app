@@ -154,6 +154,7 @@ enum Fixtures {
 		"""
 	}
 
+	@MainActor
 	static func status(port: Int,
 					   model: String = "incoai/Qwen3.8-27B-Splash",
 					   pid: Int = 4242,

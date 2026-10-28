@@ -56,8 +56,6 @@ The problems cluster in five places:
    language-switch feature is dead code (nothing reads
    `Preferences.appLanguageMode` / `LocalizationService`), so the catalog's
    `es` translations and 6+ hardcoded-Spanish strings mix freely in the
-   English UI — while AGENTS.md claims an `fr` locale that does not exist
-   (catalog: 584 keys, 439 `es`, **0 `fr`** — verified by two workers).
 
 **26.4 ↔ 27 interplay:** only two 27-era adoption sites exist today — the
 duplicated `Alert`-returning `.alert(item:)` in two tabs (adopt 27
@@ -72,42 +70,12 @@ action. `visibilityPriority` back-deploys to macOS 26.1 and would need no gate
 
 ## 2. P0 blockers — the test target cannot compile
 
-All four are **independent**; all four must be fixed (in any order) before a
-single test runs. Verified empirically: `xcodebuild … build-for-testing`
-fails with `Unable to resolve module dependency: 'SplashMonitor'` after the
-app target builds `[tests]`.
-
-1. **Module-name mismatch (all 19 test files).** App target/product is
-   `Splash` (module `Splash`); every test file does
-   `@testable import SplashMonitor` (old SwiftPM target name) — e.g.
-   `SplashTests/AgentLaunchTests.swift:2`, `SplashTests/TestSupport.swift:3`,
-   `SplashTests/ScreenshotGeneratorTests.swift:4`. **Fix (recommended):**
-   add `PRODUCT_MODULE_NAME = "SplashMonitor"` to the Splash target in
-   `project.xcproj` — keeps `Splash.app` and the `TEST_HOST` path valid, zero
-   test-file churn. (`[tests]` P0-1; documented in AGENTS.md.)
-2. **`SplashTests/ModelDiagnosticTests.swift:74-75`** calls
-   `SidebarItem.title(isSpanish:)` — production `title` is a zero-arg computed
-   `LocalizedStringResource` (`Splash/Views/MainWindowView.swift:20`); no
-   `isSpanish` API exists anywhere in `Splash/` (grep-verified). The tests
-   encode a removed API. **Fix:** assert on `title`'s resolved/localized value
-   or drop the language-parameterized assertion. (`[swiftui-way]` P0-1;
-   `[swiftui-way]` P1-15.)
-3. **`SplashTests/ServerOptionsTests.swift:142-143`** calls
-   `AppCategory.localizedName(isSpanish:)` — production
-   `localizedName` is zero-arg (`Splash/Models/ConnectedApp.swift:24`).
-   **Fix:** same as #2. (`[swiftui-way]` P0-1.)
-4. **`SplashTests/VersionTests.swift:61-80`** (`testVersionExistsOnceAndScriptsAgreeWithIt`)
-   reads `Sources/SplashMonitor/Services/Version.swift` and enumerates
-   `Sources/` — the old SwiftPM layout; the repo is `Splash/…` and `Sources/`
-   does not exist. `String(contentsOf:)` throws as soon as #1 lands.
-   **Fix:** point at `Splash/Services/Version.swift` and scan `Splash/`; keep
-   the P-15 "single version source, sed-extractable" intent. (`[tests]` P0-2;
-   AGENTS.md.)
-
-**After these four:** re-run `xcodebuild test` to establish a green *XCTest*
-baseline before any Swift Testing migration. Expected next-order risks (not
-yet verifiable): latent API drift in tests that have never compiled, notably
-`ScreenshotGeneratorTests` `[tests]`.
+**Resolved by W1 (2026-10-28):** all four P0 blockers — the `SplashMonitor`
+module-name mismatch, the removed `title(isSpanish:)` /
+`localizedName(isSpanish:)` APIs, the stale `Sources/SplashMonitor/…` SwiftPM
+path in `VersionTests`, and Swift 6 strict-concurrency isolation errors — are
+fixed; the test target compiles under Swift 6 and the full XCTest suite passes
+(120/120).
 
 ---
 
@@ -479,19 +447,6 @@ Source: `[tests]` throughout. Severity per the test report (P0 → §2).
   `@Suite(.serialized)` with restore in `deinit`; nice-to-have app seams: a
   `UserDefaults(suiteName:)` injection point (currently hardcoded `.standard`
   via `@AppStorage`) and an injectable sentinel.
-- **Test-target build-settings drift · Medium** `[tests]` finding 5 —
-  `project.xcproj` (SplashTests): `SWIFT_VERSION = "5.0"` (app: 6.0),
-  `MACOSX_DEPLOYMENT_TARGET = "27.2"` (app: 26.4 — the test bundle deploys
-  *higher* than its host app; on any host OS < 27.2 the tests cannot run at
-  all), `SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros
-  xrsimulator"`, `IPHONEOS_DEPLOYMENT_TARGET`/`XROS_DEPLOYMENT_TARGET`,
-  `TARGETED_DEVICE_FAMILY = 1,2,7` — template leftovers. The Splash target
-  also carries `INFOPLIST_KEY_UI*` interface-orientation iOS keys despite
-  `SUPPORTED_PLATFORMS = macosx`. **Fix:** align to Swift 6.0 / macOS 26.4 /
-  macosx-only; do the Swift 5→6 bump *after* the migration edits (expected
-  friction: `MockSentinelDelegate.lastLevel` cross-actor write — guard with
-  `OSAllocatedUnfairLock`/actor; the existing NSLock-based `@unchecked Sendable`
-  doubles are already lock-guarded and fine).
 
 ### 8.2 P2 — flaky-prone patterns to fix during migration `[tests]` findings 6-7
 - **Fixed sleeps instead of condition waits:** 13 of 15 capture tests in

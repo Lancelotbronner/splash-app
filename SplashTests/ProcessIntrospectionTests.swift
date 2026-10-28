@@ -3,6 +3,7 @@ import XCTest
 
 // MARK: - P-01 / H-02 y H-04: a quién es lícito señalizar
 
+@MainActor
 final class ProcessIntrospectionTests: XCTestCase {
 
 	/// Salida real de `lsof -tiTCP:18097 -sTCP:LISTEN` (solo el servidor).

@@ -3,6 +3,7 @@ import XCTest
 
 // MARK: - Sonda V-4: contrato real de `/status` frente al modelo Swift
 
+@MainActor
 final class StatusModelTests: XCTestCase {
 
 	/// La fixture replica la carga útil real del motor 1.0.2 (30 claves observadas) más

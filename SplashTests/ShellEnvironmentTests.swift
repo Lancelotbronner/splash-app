@@ -3,6 +3,7 @@ import XCTest
 
 // MARK: - P-09 / H-09 (consentimiento) y P-13 (política única de entorno)
 
+@MainActor
 final class ShellEnvironmentTests: XCTestCase {
 
 	func testEnvironmentFileContentsCarryTheActivePort() {
@@ -63,8 +64,8 @@ final class ShellEnvironmentTests: XCTestCase {
 									dataDirectoryRoot: dir.url,
 									bootstrapNetwork: false)
 		service.shellEnvironmentDirectory = dir.url
-		service.shellConfigConsent = false
-		service.shellConfigDeclined = false
+		Preferences.shellConfigConsent = false
+		Preferences.shellConfigDeclined = false
 		var writtenFiles: [String] = []
 		service.shellWriteOverride = { _, url in writtenFiles.append(url.lastPathComponent) }
 
@@ -78,8 +79,8 @@ final class ShellEnvironmentTests: XCTestCase {
 		service.resolveShellConfigPrompt(allow: true)
 		XCTAssertEqual(writtenFiles, [".zshrc"])
 		XCTAssertNil(service.pendingShellConfigPort)
-		XCTAssertTrue(service.shellConfigConsent)
-		XCTAssertFalse(service.shellConfigDeclined)
+		XCTAssertTrue(Preferences.shellConfigConsent)
+		XCTAssertFalse(Preferences.shellConfigDeclined)
 
 		// Deshacer: borra el fichero de entorno y revierte la inyección.
 		service.clearShellEnvironment()

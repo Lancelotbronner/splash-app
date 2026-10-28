@@ -33,8 +33,8 @@ final class ServerOptionsTests: XCTestCase {
 	func testDefaultServerLaunchBindsToLocalhostAndOmitsMaxContext() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.listenOnAllInterfaces = false
-		service.maxContext = "auto"
+		Preferences.listenOnAllInterfaces = false
+		Preferences.maxContext = "auto"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 
@@ -55,8 +55,8 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchWithAllInterfacesBindsToZeroZeroZeroZero() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.listenOnAllInterfaces = true
-		service.maxContext = "auto"
+		Preferences.listenOnAllInterfaces = true
+		Preferences.maxContext = "auto"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 
@@ -75,8 +75,8 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchWithCustomMaxContextInjectsFlag() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.listenOnAllInterfaces = false
-		service.maxContext = "64K"
+		Preferences.listenOnAllInterfaces = false
+		Preferences.maxContext = "64K"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 
@@ -94,8 +94,8 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchSanitizesMalformedContextValue() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.listenOnAllInterfaces = false
-		service.maxContext = "32K; rm -rf /"
+		Preferences.listenOnAllInterfaces = false
+		Preferences.maxContext = "32K; rm -rf /"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 
@@ -114,18 +114,18 @@ final class ServerOptionsTests: XCTestCase {
 		let dir = try TempDirectory()
 		let (service, _) = makeService(directory: dir.url)
 
-		service.allowedHosts = ""
-		service.listenOnAllInterfaces = false
+		Preferences.allowedHosts = ""
+		Preferences.listenOnAllInterfaces = false
 		XCTAssertEqual(service.preferredHostOrIP, "127.0.0.1")
 
-		service.listenOnAllInterfaces = true
+		Preferences.listenOnAllInterfaces = true
 		if let ip = service.localNetworkIP {
 			XCTAssertEqual(service.preferredHostOrIP, ip)
 		} else {
 			XCTAssertEqual(service.preferredHostOrIP, "127.0.0.1")
 		}
 
-		service.allowedHosts = "midominio.duckdns.org"
+		Preferences.allowedHosts = "midominio.duckdns.org"
 		XCTAssertEqual(service.preferredHostOrIP, "midominio.duckdns.org")
 	}
 
@@ -139,15 +139,16 @@ final class ServerOptionsTests: XCTestCase {
 		)
 		XCTAssertEqual(app.category, .lanClient)
 		XCTAssertEqual(app.category.iconName, "network")
-		XCTAssertEqual(app.category.localizedName(isSpanish: true), "Cliente Remoto / Red LAN")
-		XCTAssertEqual(app.category.localizedName(isSpanish: false), "Remote Client / LAN Network")
+		// `localizedName` es un `LocalizedStringResource` de un solo argumento: la
+		// traducción (es, etc.) vive en el catálogo de strings, no en la API.
+		XCTAssertEqual(app.category.localizedName, LocalizedStringResource("Remote Client / LAN Network"))
 	}
 
 	func testServerLaunchWithAllowedHostsInjectsFlags() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.listenOnAllInterfaces = true
-		service.allowedHosts = "midominio.duckdns.org, mimac.local; test.com"
+		Preferences.listenOnAllInterfaces = true
+		Preferences.allowedHosts = "midominio.duckdns.org, mimac.local; test.com"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 		try await Task.sleep(nanoseconds: 80_000_000)
@@ -166,7 +167,7 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchInjectsAllowedOriginFlags() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.allowedOrigins = "*"
+		Preferences.allowedOrigins = "*"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 
@@ -207,7 +208,7 @@ final class ServerOptionsTests: XCTestCase {
 		let (service, capturedCommand) = makeService(directory: dir.url)
 
 		// Sin flag activo
-		service.languageOnly = false
+		Preferences.languageOnly = false
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 		try await Task.sleep(nanoseconds: 80_000_000)
 
@@ -219,7 +220,7 @@ final class ServerOptionsTests: XCTestCase {
 		XCTAssertTrue(cmdNormal.contains("👁️ Modalidad: Multimodal (Texto y Visión)"))
 
 		// Con flag activo
-		service.languageOnly = true
+		Preferences.languageOnly = true
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 		try await Task.sleep(nanoseconds: 80_000_000)
 
@@ -253,7 +254,7 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchWithCustomServerFlagsInjectsTokens() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.customServerFlags = "--no-webui --max-cache-disk 50GB"
+		Preferences.customServerFlags = "--no-webui --max-cache-disk 50GB"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 		try await Task.sleep(nanoseconds: 80_000_000)
@@ -271,7 +272,7 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchSanitizesMaliciousCustomFlags() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.customServerFlags = "--no-webui ; rm -rf /"
+		Preferences.customServerFlags = "--no-webui ; rm -rf /"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 		try await Task.sleep(nanoseconds: 80_000_000)
@@ -288,8 +289,8 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchWithIdleReleaseAndMaxMemory() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.idleRelease = "2m"
-		service.maxMemory = "24G"
+		Preferences.idleRelease = "2m"
+		Preferences.maxMemory = "24G"
 
 		service.startServer(model: "incoai/Qwen3.6-35B-A3B-Splash", port: testPort)
 		try await Task.sleep(nanoseconds: 80_000_000)
@@ -308,9 +309,9 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchWithSplash132Features() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.stateFormat = "bf16"
-		service.thinkingTokenBudget = "8K"
-		service.persistentCache = true
+		Preferences.stateFormat = "bf16"
+		Preferences.thinkingTokenBudget = "8K"
+		Preferences.persistentCache = true
 
 		service.startServer(model: "nvidia/Qwen3.8-27B-NVFP4", port: testPort)
 		try await Task.sleep(nanoseconds: 80_000_000)
@@ -333,40 +334,40 @@ final class ServerOptionsTests: XCTestCase {
 		let (service, _) = makeService(directory: dir.url)
 
 		// Mutar a valores distintos para comprobar la restauración
-		service.stateFormat = "fp32"
-		service.thinkingTokenBudget = "auto"
-		service.persistentCache = false
-		service.maxContext = "16K"
-		service.idleRelease = "1m"
-		service.languageOnly = false
-		service.maxMemory = "16G"
-		service.lastUsedPort = 9999
-		service.listenOnAllInterfaces = false
-		service.allowedHosts = "otro.dominio.org"
-		service.allowedOrigins = "http://localhost:3000"
-		service.autoReleaseOnMemoryPressure = false
-		service.refreshInterval = 4.0
-		service.runInBackground = false
+		Preferences.stateFormat = "fp32"
+		Preferences.thinkingTokenBudget = "auto"
+		Preferences.persistentCache = false
+		Preferences.maxContext = "16K"
+		Preferences.idleRelease = "1m"
+		Preferences.languageOnly = false
+		Preferences.maxMemory = "16G"
+		Preferences.lastUsedPort = 9999
+		Preferences.listenOnAllInterfaces = false
+		Preferences.allowedHosts = "otro.dominio.org"
+		Preferences.allowedOrigins = "http://localhost:3000"
+		Preferences.autoReleaseOnMemoryPressure = false
+		Preferences.refreshInterval = 4.0
+		Preferences.runInBackground = false
 
 		service.restoreOptimalProfile()
 
 		// Validar propiedades en SplashService
-		XCTAssertEqual(service.stateFormat, "bf16")
-		XCTAssertEqual(service.thinkingTokenBudget, "8K")
-		XCTAssertTrue(service.persistentCache)
-		XCTAssertEqual(service.maxContext, "128K")
-		XCTAssertEqual(service.idleRelease, "off")
-		XCTAssertTrue(service.languageOnly)
-		XCTAssertEqual(service.maxMemory, "auto")
-		XCTAssertEqual(service.verifyRows, "auto")
-		XCTAssertEqual(service.expertMemory, "auto")
-		XCTAssertEqual(service.lastUsedPort, 8005)
-		XCTAssertTrue(service.listenOnAllInterfaces)
-		XCTAssertEqual(service.allowedHosts, "jmgrepdevsrl.duckdns.org")
-		XCTAssertEqual(service.allowedOrigins, "*")
-		XCTAssertTrue(service.autoReleaseOnMemoryPressure)
-		XCTAssertEqual(service.refreshInterval, 1.5)
-		XCTAssertTrue(service.runInBackground)
+		XCTAssertEqual(Preferences.stateFormat, "bf16")
+		XCTAssertEqual(Preferences.thinkingTokenBudget, "8K")
+		XCTAssertTrue(Preferences.persistentCache)
+		XCTAssertEqual(Preferences.maxContext, "128K")
+		XCTAssertEqual(Preferences.idleRelease, "off")
+		XCTAssertTrue(Preferences.languageOnly)
+		XCTAssertEqual(Preferences.maxMemory, "auto")
+		XCTAssertEqual(Preferences.verifyRows, "auto")
+		XCTAssertEqual(Preferences.expertMemory, "auto")
+		XCTAssertEqual(Preferences.lastUsedPort, 8005)
+		XCTAssertTrue(Preferences.listenOnAllInterfaces)
+		XCTAssertEqual(Preferences.allowedHosts, "jmgrepdevsrl.duckdns.org")
+		XCTAssertEqual(Preferences.allowedOrigins, "*")
+		XCTAssertTrue(Preferences.autoReleaseOnMemoryPressure)
+		XCTAssertEqual(Preferences.refreshInterval, 1.5)
+		XCTAssertTrue(Preferences.runInBackground)
 
 		// Validar persistencia en UserDefaults
 		let defaults = UserDefaults.standard
@@ -392,9 +393,9 @@ final class ServerOptionsTests: XCTestCase {
 	func testServerLaunchWithSplash140Features() async throws {
 		let dir = try TempDirectory()
 		let (service, capturedCommand) = makeService(directory: dir.url)
-		service.maxContext = "1M"
-		service.verifyRows = "all"
-		service.expertMemory = "12G"
+		Preferences.maxContext = "1M"
+		Preferences.verifyRows = "all"
+		Preferences.expertMemory = "12G"
 
 		service.startServer(model: "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0", port: testPort)
 

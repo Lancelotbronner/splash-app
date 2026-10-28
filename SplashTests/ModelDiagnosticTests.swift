@@ -1,6 +1,7 @@
 import XCTest
 @testable import Splash
 
+@MainActor
 final class ModelDiagnosticTests: XCTestCase {
 
 	@MainActor
@@ -67,12 +68,13 @@ final class ModelDiagnosticTests: XCTestCase {
 
 	@MainActor
 	func testSidebarItemIncludesModelTesting() {
-		let allItems = MainWindowView.SidebarItem.allCases
+		let allItems = SidebarItem.allCases
 		XCTAssertTrue(allItems.contains(.modelTesting))
 
-		let testingItem = MainWindowView.SidebarItem.modelTesting
-		XCTAssertEqual(testingItem.title(isSpanish: true), "Test de Modelos")
-		XCTAssertEqual(testingItem.title(isSpanish: false), "Model Testing")
+		let testingItem = SidebarItem.modelTesting
+		// `title` es un `LocalizedStringResource` de un solo argumento: la traducción
+		// (es, etc.) vive en el catálogo de strings, no en la API.
+		XCTAssertEqual(testingItem.title, LocalizedStringResource("Model Testing"))
 		XCTAssertEqual(testingItem.icon, "testtube.2")
 	}
 }

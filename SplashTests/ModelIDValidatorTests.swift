@@ -3,6 +3,7 @@ import XCTest
 
 // MARK: - P-03 / H-03: validación de identificadores de modelo
 
+@MainActor
 final class ModelIDValidatorTests: XCTestCase {
 
 	func testAcceptsRealIdentifiers() {
@@ -51,11 +52,12 @@ final class ModelIDValidatorTests: XCTestCase {
 	/// Los códigos de barras de la interfaz deben explicar el motivo, no solo negar.
 	func testRejectionReasonIsActionable() throws {
 		XCTAssertNil(ModelIDValidator.rejectionReason("incoai/Qwen3.8-27B-Splash"))
-		XCTAssertEqual(try XCTUnwrap(ModelIDValidator.rejectionReason("")).isEmpty, false)
+		XCTAssertNotNil(ModelIDValidator.rejectionReason(""))
 		let noSlash = try XCTUnwrap(ModelIDValidator.rejectionReason("incoai"))
-		XCTAssertTrue(noSlash.contains("propietario/modelo"))
+		// `rejectionReason` devuelve un `LocalizedStringResource`: se compara por clave.
+		XCTAssertEqual(noSlash, LocalizedStringResource("Missing separator: use format owner/model or owner/model:variant."))
 		let injection = try XCTUnwrap(ModelIDValidator.rejectionReason("a/b\"c"))
-		XCTAssertTrue(injection.contains("caracteres no permitidos"))
+		XCTAssertEqual(injection, LocalizedStringResource("Contains forbidden characters (spaces, quotes, ; | & $ ` \\ % ? # …)."))
 	}
 
 	func testAcceptsIdentifiersWithVariants() {

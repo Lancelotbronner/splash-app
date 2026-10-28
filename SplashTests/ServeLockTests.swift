@@ -3,6 +3,7 @@ import XCTest
 
 // MARK: - P-08 / H-07: ficheros de bloqueo del motor
 
+@MainActor
 final class ServeLockTests: XCTestCase {
 
 	func testCandidateNamesPreferPortSpecificLock() {
