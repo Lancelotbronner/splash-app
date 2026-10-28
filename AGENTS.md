@@ -36,7 +36,9 @@ MainWindowView tabs (SidebarItem): .dashboard, .connectedApps, .models,
 ```
 
 - **`SplashService`** (`Services/SplashService.swift`, **2,779 lines — the god object**)
-  is the heart: `@Observable` class, singleton via `SplashService.shared`, polls
+  is the heart: `@Observable` class, singleton via `SplashService.shared`
+  (declared `@Bindable private(set) static var` at l.25 — views obtain bindings
+  as `SplashService.$shared.property`), polls
   `/status` via a `StatusTransport` protocol (production:
   `URLSessionStatusTransport`; tests inject `StubStatusTransport`), manages server
   lifecycle via a `ServerTerminating` protocol (production:
@@ -54,9 +56,10 @@ MainWindowView tabs (SidebarItem): .dashboard, .connectedApps, .models,
   (`SplashVersion.current = "1.0.10-beta"`, bundle id `do.jmgrep.splashmonitor`);
   the release scripts extract it from that literal with `sed`.
 - **Localization**: one string catalog `Splash/Resources/Localizable.xcstrings`
-  (en, es, fr); `STRING_CATALOG_GENERATE_SYMBOLS` is ON, so views use
-  `LocalizedStringResource` symbols. Note: code and test comments are a mix of
-  English and Spanish.
+  (584 keys: 439 carry an `es` translation, 9 explicit `en`, **zero `fr`** —
+  French falls back to English); `STRING_CATALOG_GENERATE_SYMBOLS` is ON, so
+  views use `LocalizedStringResource` symbols. Note: code and test comments are
+  a mix of English and Spanish.
 
 ## File Index
 
@@ -146,6 +149,9 @@ Resources: `Resources/Localizable.xcstrings` (string catalog),
   `error: Unable to resolve module dependency: 'SplashMonitor'`; **zero tests
   currently run**. Minimal fix: add `PRODUCT_MODULE_NAME = "SplashMonitor"`
   to the Splash target (keeps `Splash.app` and the TEST_HOST path valid).
+- App target compiles cleanly under **Xcode 27.2 / macOS SDK 27.2** (verified
+  2026-10-28): the SDK-27 SwiftUI source changes (@State macro, unified
+  @ContentBuilder) trigger no incompatibilities in this codebase.
 - Project format: `Splash.xcodeproj/project.xcproj` (JSON, Xcode 27-era
   "last-upgrade 27.2"). Two schemes: `Splash` (shared) and `Splash (french)`
   (personal, in `xcuserdata` — ignore).
