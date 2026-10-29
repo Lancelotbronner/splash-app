@@ -153,65 +153,30 @@ struct DependencyInstallView: View {
 				.controlSize(.regular)
 			}
 
-			// Live Installation Console
+			// §3.2/§3.8: consola de instalación compartida con entradas de valor
+			// (las filas conservan su id monótono aunque se haga «Clear»).
 			if SplashService.shared.isInstallingDependency || !SplashService.shared.dependencyInstallLogs.isEmpty {
-				VStack(alignment: .leading, spacing: 4) {
-					HStack {
-						if SplashService.shared.isInstallingDependency {
-							ProgressView()
-								.scaleEffect(0.6)
-							Text("Installing Splash...")
-								.font(.system(size: 11, weight: .medium))
-								.foregroundColor(.orange)
-						} else if SplashService.shared.dependencyInstallSuccess == true {
-							Image(systemName: "checkmark.circle.fill")
-								.foregroundColor(.green)
-							Text("Installation completed successfully!")
-								.font(.system(size: 11, weight: .medium))
-								.foregroundColor(.green)
-						} else if SplashService.shared.dependencyInstallSuccess == false {
-							Image(systemName: "exclamationmark.triangle.fill")
-								.foregroundColor(.red)
-							Text("Installation error")
-								.font(.system(size: 11, weight: .medium))
-								.foregroundColor(.red)
-						}
-
-						Spacer()
-
-						if !SplashService.shared.isInstallingDependency {
-							Button("Clear") {
-								SplashService.shared.dependencyInstallLogs.removeAll()
-								SplashService.shared.dependencyInstallSuccess = nil
-							}
-							.buttonStyle(.borderless)
-							.font(.system(size: 10))
-						}
+				InstallConsole(
+					isInstalling: SplashService.shared.isInstallingDependency,
+					installingModelId: "Splash",
+					installSuccess: SplashService.shared.dependencyInstallSuccess,
+					logs: SplashService.shared.dependencyInstallLogs,
+					downloadPhase: "brew install incoai/tap/splash",
+					downloadSpeedMBs: 0,
+					downloadedBytes: 0,
+					totalExpectedBytes: 0,
+					progressFraction: nil,
+					isGatedError: false,
+					targetModelId: nil,
+					showsGatedBanner: false,
+					onCancel: {
+						SplashService.shared.cancelDependencyInstall()
+					},
+					onClose: {
+						SplashService.shared.dependencyInstallLogs.removeAll()
+						SplashService.shared.dependencyInstallSuccess = nil
 					}
-
-					ScrollViewReader { proxy in
-						ScrollView {
-							VStack(alignment: .leading, spacing: 2) {
-								ForEach(Array(SplashService.shared.dependencyInstallLogs.enumerated()), id: \.offset) { idx, log in
-									Text(log)
-										.font(.system(size: 9, design: .monospaced))
-										.foregroundColor(.white.opacity(0.9))
-										.frame(maxWidth: .infinity, alignment: .leading)
-										.id(idx)
-								}
-							}
-							.padding(8)
-						}
-						.frame(height: 90)
-						.background(Color.black.opacity(0.85))
-						.cornerRadius(6)
-						.onChange(of: SplashService.shared.dependencyInstallLogs.count) {
-							if let last = SplashService.shared.dependencyInstallLogs.indices.last {
-								proxy.scrollTo(last, anchor: .bottom)
-							}
-						}
-					}
-				}
+				)
 			}
 		}
 		.padding(16)

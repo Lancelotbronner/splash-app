@@ -2,10 +2,17 @@ import SwiftUI
 import AppKit
 
 struct ModelTestingView: View {
-	@Environment(ModelDiagnosticService.self) private var diagnosticService
-	@State private var selectedSubTab: Int = 0 // 0: Smoke Test, 1: Benchmark, 2: Playground
+	enum ModelTestingTab: Int, Hashable, CaseIterable {
+		case smokeTest
+		case benchmark
+		case playground
+	}
 
-	// Playground inputs
+	@Environment(ModelDiagnosticService.self) private var diagnosticService
+	// §6.2: selector tipado en vez de `Int` mágico.
+	@State private var selectedTab: ModelTestingTab = .smokeTest
+
+	// Playground inputs (viven aquí para sobrevivir al cambio de pestaña)
 	@State private var playgroundProtocol: String = "openai" // "openai" | "anthropic"
 	@State private var playgroundSystemPrompt: String = ""
 	@State private var playgroundUserPrompt: String = "Escribe una función en Python para verificar si un número es primo y explica brevemente su complejidad."
@@ -19,13 +26,17 @@ struct ModelTestingView: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 14) {
 			// Header & Active Server Status Banner
-			headerView
+			TestingHeaderView(
+				isRunning: SplashService.shared.isRunning,
+				activeModel: SplashService.shared.activeModel,
+				activePort: SplashService.shared.activePort
+			)
 
 			// Segmented Selector
-			Picker("Tab", selection: $selectedSubTab) {
-				Label("Smoke Test", systemImage: "stethoscope").tag(0)
-				Label("Benchmark & Cache", systemImage: "bolt.fill").tag(1)
-				Label("Playground", systemImage: "terminal.fill").tag(2)
+			Picker("Model testing section", selection: $selectedTab) {
+				Label("Smoke Test", systemImage: "stethoscope").tag(ModelTestingTab.smokeTest)
+				Label("Benchmark & Cache", systemImage: "bolt.fill").tag(ModelTestingTab.benchmark)
+				Label("Playground", systemImage: "terminal.fill").tag(ModelTestingTab.playground)
 			}
 			.pickerStyle(.segmented)
 			.labelsHidden()
@@ -46,22 +57,84 @@ struct ModelTestingView: View {
 			}
 
 			// Tab Content
-			switch selectedSubTab {
-			case 0:
-				smokeTestView
-			case 1:
-				benchmarkView
-			case 2:
-				playgroundView
-			default:
-				EmptyView()
+			switch selectedTab {
+			case .smokeTest:
+				SmokeTestSection(
+					results: diagnosticService.smokeTestResults,
+					isRunning: diagnosticService.isRunningSmokeTest,
+					isServerRunning: SplashService.shared.isRunning,
+					activeModel: SplashService.shared.activeModel,
+					activePort: SplashService.shared.activePort,
+					onRun: {
+						Task {
+							await diagnosticService.runFullSmokeTest(
+								port: SplashService.shared.activePort,
+								targetModel: SplashService.shared.activeModel.isEmpty ? SplashService.shared.selectedModelForLaunch : SplashService.shared.activeModel
+							)
+						}
+					}
+				)
+			case .benchmark:
+				BenchmarkSection(
+					tokens: $benchmarkTokens,
+					isRunning: diagnosticService.isRunningBenchmark,
+					progress: diagnosticService.benchmarkProgress,
+					phase: diagnosticService.currentBenchmarkPhase,
+					latest: diagnosticService.latestBenchmark,
+					isServerRunning: SplashService.shared.isRunning,
+					onStart: {
+						Task {
+							await diagnosticService.runBenchmark(
+								port: SplashService.shared.activePort,
+								targetModel: SplashService.shared.activeModel.isEmpty ? SplashService.shared.selectedModelForLaunch : SplashService.shared.activeModel,
+								tokenLimit: benchmarkTokens
+							)
+						}
+					}
+				)
+			case .playground:
+				PlaygroundSection(
+					protocol: $playgroundProtocol,
+					systemPrompt: $playgroundSystemPrompt,
+					userPrompt: $playgroundUserPrompt,
+					maxTokens: $playgroundMaxTokens,
+					temperature: $playgroundTemperature,
+					isGenerating: diagnosticService.isGeneratingPlayground,
+					output: diagnosticService.playgroundOutput,
+					rawResponse: diagnosticService.playgroundRawResponse,
+					tokensGenerated: diagnosticService.playgroundTokensGenerated,
+					tokPerSec: diagnosticService.playgroundTokPerSec,
+					ttftMs: diagnosticService.playgroundTTFTMs,
+					error: diagnosticService.playgroundLastError,
+					isServerRunning: SplashService.shared.isRunning,
+					onSend: {
+						Task {
+							await diagnosticService.sendInteractivePrompt(
+								port: SplashService.shared.activePort,
+								model: SplashService.shared.activeModel.isEmpty ? SplashService.shared.selectedModelForLaunch : SplashService.shared.activeModel,
+								apiProtocol: playgroundProtocol,
+								systemPrompt: playgroundSystemPrompt,
+								userPrompt: playgroundUserPrompt,
+								maxTokens: Int(playgroundMaxTokens),
+								temperature: playgroundTemperature
+							)
+						}
+					}
+				)
 			}
 		}
 	}
+}
 
-	// MARK: - Header
+// MARK: - Header (§3.3)
 
-	private var headerView: some View {
+/// Cabecera de la pestaña con el badge del servidor activo.
+private struct TestingHeaderView: View {
+	let isRunning: Bool
+	let activeModel: String
+	let activePort: Int
+
+	var body: some View {
 		HStack(alignment: .center) {
 			VStack(alignment: .leading, spacing: 2) {
 				HStack(spacing: 6) {
@@ -81,9 +154,9 @@ struct ModelTestingView: View {
 			// Server Badge
 			HStack(spacing: 6) {
 				Circle()
-					.fill(SplashService.shared.isRunning ? Color.green : Color.red)
+					.fill(isRunning ? Color.green : Color.red)
 					.frame(width: 8, height: 8)
-				Text("\(SplashService.shared.activeModel) (:\(SplashService.shared.activePort))")
+				Text("\(activeModel) (:\(activePort))")
 					.font(.system(size: 11, design: .monospaced))
 					.lineLimit(1)
 					.truncationMode(.middle)
@@ -95,22 +168,26 @@ struct ModelTestingView: View {
 			.cornerRadius(6)
 		}
 	}
+}
 
-	// MARK: - 1. Smoke Test View
+// MARK: - 1. Smoke Test (§3.3)
 
-	private var smokeTestView: some View {
+private struct SmokeTestSection: View {
+	let results: [ModelDiagnosticService.SmokeTestResult]
+	let isRunning: Bool
+	let isServerRunning: Bool
+	let activeModel: String
+	let activePort: Int
+	let onRun: () -> Void
+
+	@State private var copied: CopiedFlash?
+
+	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {
 			HStack {
-				Button {
-					Task {
-						await diagnosticService.runFullSmokeTest(
-							port: SplashService.shared.activePort,
-							targetModel: SplashService.shared.activeModel.isEmpty ? SplashService.shared.selectedModelForLaunch : SplashService.shared.activeModel
-						)
-					}
-				} label: {
+				Button(action: onRun) {
 					HStack(spacing: 6) {
-						if diagnosticService.isRunningSmokeTest {
+						if isRunning {
 							ProgressView()
 								.controlSize(.small)
 							Text("Running diagnostics...")
@@ -123,101 +200,37 @@ struct ModelTestingView: View {
 				}
 				.buttonStyle(.borderedProminent)
 				.tint(.purple)
-				.disabled(diagnosticService.isRunningSmokeTest || !SplashService.shared.isRunning)
+				.disabled(isRunning || !isServerRunning)
 
 				Spacer()
 
+				// §3.8: patrón de copia compartido con destello de confirmación.
 				Button {
-					copySmokeReportToClipboard()
+					copyToClipboard(smokeReport, flash: "Report copied!", into: $copied)
 				} label: {
-					Label("Copy Report", systemImage: "doc.on.doc")
+					Label("Copy Report", systemImage: copied != nil ? "checkmark" : "doc.on.doc")
 						.font(.system(size: 10))
+						.foregroundColor(copied != nil ? .green : .primary)
 				}
+				.copiedFlashAutoClear($copied)
 				.buttonStyle(.borderless)
-				.disabled(diagnosticService.smokeTestResults.allSatisfy { $0.status == .idle })
+				.disabled(results.allSatisfy { $0.status == .idle })
 			}
 
 			// Test items list
 			VStack(spacing: 8) {
-				ForEach(diagnosticService.smokeTestResults) { test in
-					HStack(spacing: 10) {
-						Image(systemName: test.icon)
-							.font(.system(size: 14))
-							.foregroundColor(.blue)
-							.frame(width: 20)
-
-						VStack(alignment: .leading, spacing: 2) {
-							Text(test.name)
-								.font(.system(size: 12, weight: .medium))
-
-							switch test.status {
-							case .idle:
-								Text("Pending")
-									.font(.system(size: 10))
-									.foregroundColor(.secondary)
-							case .running:
-								Text("Probing endpoint...")
-									.font(.system(size: 10))
-									.foregroundColor(.orange)
-							case .passed(let details, _):
-								Text(details)
-									.font(.system(size: 10, design: .monospaced))
-									.foregroundColor(.green)
-							case .warning(let details, _):
-								Text(details)
-									.font(.system(size: 10, design: .monospaced))
-									.foregroundColor(.orange)
-							case .failed(let err):
-								Text(err)
-									.font(.system(size: 10, design: .monospaced))
-									.foregroundColor(.red)
-							}
-						}
-
-						Spacer()
-
-						// Status badge
-						switch test.status {
-						case .idle:
-							Image(systemName: "circle")
-								.foregroundColor(.secondary.opacity(0.5))
-						case .running:
-							ProgressView()
-								.controlSize(.small)
-						case .passed(_, let latency):
-							HStack(spacing: 4) {
-								Text("\(String(format: "%.0f", latency)) ms")
-									.font(.system(size: 9, design: .monospaced))
-									.foregroundColor(.secondary)
-								Image(systemName: "checkmark.circle.fill")
-									.foregroundColor(.green)
-							}
-						case .warning(_, let latency):
-							HStack(spacing: 4) {
-								Text("\(String(format: "%.0f", latency)) ms")
-									.font(.system(size: 9, design: .monospaced))
-									.foregroundColor(.secondary)
-								Image(systemName: "exclamationmark.triangle.fill")
-									.foregroundColor(.orange)
-							}
-						case .failed:
-							Image(systemName: "xmark.circle.fill")
-								.foregroundColor(.red)
-						}
-					}
-					.padding(10)
-					.background(Color(nsColor: .controlBackgroundColor))
-					.cornerRadius(8)
+				ForEach(results) { test in
+					SmokeTestRow(test: test)
 				}
 			}
 		}
 	}
 
-	private func copySmokeReportToClipboard() {
+	private var smokeReport: String {
 		var report = "### Splash Monitor — Model Smoke Diagnostics Report\n"
-		report += "Model: \(SplashService.shared.activeModel) | Port: \(SplashService.shared.activePort)\n"
+		report += "Model: \(activeModel) | Port: \(activePort)\n"
 		report += "Date: \(Date().formatted())\n\n"
-		for item in diagnosticService.smokeTestResults {
+		for item in results {
 			let statusText: String = {
 				switch item.status {
 				case .passed(let d, let ms): return "PASSED (\(d), \(String(format: "%.0f", ms))ms)"
@@ -228,17 +241,102 @@ struct ModelTestingView: View {
 			}()
 			report += "- [\(String(localized: item.name))]: \(statusText)\n"
 		}
-		NSPasteboard.general.clearContents()
-		NSPasteboard.general.setString(report, forType: .string)
+		return report
 	}
+}
 
-	// MARK: - 2. Benchmark View
+/// Fila de una comprobación del smoke test con entrada de valor.
+private struct SmokeTestRow: View {
+	let test: ModelDiagnosticService.SmokeTestResult
 
-	private var benchmarkView: some View {
+	var body: some View {
+		HStack(spacing: 10) {
+			Image(systemName: test.icon)
+				.font(.system(size: 14))
+				.foregroundColor(.blue)
+				.frame(width: 20)
+
+			VStack(alignment: .leading, spacing: 2) {
+				Text(test.name)
+					.font(.system(size: 12, weight: .medium))
+
+				switch test.status {
+				case .idle:
+					Text("Pending")
+						.font(.system(size: 10))
+						.foregroundColor(.secondary)
+				case .running:
+					Text("Probing endpoint...")
+						.font(.system(size: 10))
+						.foregroundColor(.orange)
+				case .passed(let details, _):
+					Text(details)
+						.font(.system(size: 10, design: .monospaced))
+						.foregroundColor(.green)
+				case .warning(let details, _):
+					Text(details)
+						.font(.system(size: 10, design: .monospaced))
+						.foregroundColor(.orange)
+				case .failed(let err):
+					Text(err)
+						.font(.system(size: 10, design: .monospaced))
+						.foregroundColor(.red)
+				}
+			}
+
+			Spacer()
+
+			// Status badge
+			switch test.status {
+			case .idle:
+				Image(systemName: "circle")
+					.foregroundColor(.secondary.opacity(0.5))
+			case .running:
+				ProgressView()
+					.controlSize(.small)
+			case .passed(_, let latency):
+				HStack(spacing: 4) {
+					Text("\(String(format: "%.0f", latency)) ms")
+						.font(.system(size: 9, design: .monospaced))
+						.foregroundColor(.secondary)
+					Image(systemName: "checkmark.circle.fill")
+						.foregroundColor(.green)
+				}
+			case .warning(_, let latency):
+				HStack(spacing: 4) {
+					Text("\(String(format: "%.0f", latency)) ms")
+						.font(.system(size: 9, design: .monospaced))
+						.foregroundColor(.secondary)
+					Image(systemName: "exclamationmark.triangle.fill")
+						.foregroundColor(.orange)
+				}
+			case .failed:
+				Image(systemName: "xmark.circle.fill")
+					.foregroundColor(.red)
+			}
+		}
+		.padding(10)
+		.background(Color(nsColor: .controlBackgroundColor))
+		.cornerRadius(8)
+	}
+}
+
+// MARK: - 2. Benchmark (§3.3)
+
+private struct BenchmarkSection: View {
+	@Binding var tokens: Int
+	let isRunning: Bool
+	let progress: Double
+	let phase: String
+	let latest: ModelDiagnosticService.BenchmarkResult?
+	let isServerRunning: Bool
+	let onStart: () -> Void
+
+	var body: some View {
 		VStack(alignment: .leading, spacing: 14) {
 			// Options Row
 			HStack(spacing: 12) {
-				Picker("Output tokens:", selection: $benchmarkTokens) {
+				Picker("Output tokens:", selection: $tokens) {
 					Text("64 tokens").tag(64)
 					Text("128 tokens").tag(128)
 					Text("256 tokens").tag(256)
@@ -246,17 +344,9 @@ struct ModelTestingView: View {
 				}
 				.frame(width: 220)
 
-				Button {
-					Task {
-						await diagnosticService.runBenchmark(
-							port: SplashService.shared.activePort,
-							targetModel: SplashService.shared.activeModel.isEmpty ? SplashService.shared.selectedModelForLaunch : SplashService.shared.activeModel,
-							tokenLimit: benchmarkTokens
-						)
-					}
-				} label: {
+				Button(action: onStart) {
 					HStack(spacing: 4) {
-						if diagnosticService.isRunningBenchmark {
+						if isRunning {
 							ProgressView()
 								.controlSize(.small)
 							Text("Benchmarking...")
@@ -268,16 +358,16 @@ struct ModelTestingView: View {
 				}
 				.buttonStyle(.borderedProminent)
 				.tint(.blue)
-				.disabled(diagnosticService.isRunningBenchmark || !SplashService.shared.isRunning)
+				.disabled(isRunning || !isServerRunning)
 
 				Spacer()
 			}
 
 			// Progress Bar
-			if diagnosticService.isRunningBenchmark {
+			if isRunning {
 				VStack(alignment: .leading, spacing: 4) {
-					ProgressView(value: diagnosticService.benchmarkProgress, total: 1.0)
-					Text(diagnosticService.currentBenchmarkPhase)
+					ProgressView(value: progress, total: 1.0)
+					Text(phase)
 						.font(.system(size: 10))
 						.foregroundColor(.secondary)
 				}
@@ -287,14 +377,14 @@ struct ModelTestingView: View {
 			}
 
 			// Results Gauges / Cards
-			if let bench = diagnosticService.latestBenchmark {
+			if let bench = latest {
 				VStack(alignment: .leading, spacing: 10) {
 					Text("Metal Performance Results")
 						.font(.system(size: 13, weight: .semibold))
 
 					LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
 						// Card 1: Cold Decode Speed
-						metricCard(
+						BenchmarkMetricCard(
 							title: LocalizedStringResource("Cold Decode Speed"),
 							value: LocalizedStringResource("\(String(format: "%.1f", bench.coldDecodeTokPerSec)) tok/s"),
 							icon: "snowflake",
@@ -303,7 +393,7 @@ struct ModelTestingView: View {
 						)
 
 						// Card 2: Warm Cached Speed
-						metricCard(
+						BenchmarkMetricCard(
 							title: LocalizedStringResource("Warm Decode Speed"),
 							value: LocalizedStringResource("\(String(format: "%.1f", bench.warmDecodeTokPerSec)) tok/s"),
 							icon: "flame.fill",
@@ -311,17 +401,18 @@ struct ModelTestingView: View {
 							subtitle: LocalizedStringResource("Replay with indexed prefix")
 						)
 
-						// Card 3: Cold TTFT
-						metricCard(
-							title: LocalizedStringResource("Cold TTFT (1st Token)"),
+						// Card 3: Cold TTFT (§4: el motor no reporta TTFT; es una
+						// estimación a partir del tiempo total, así se etiqueta).
+						BenchmarkMetricCard(
+							title: LocalizedStringResource("Estimated Cold TTFT"),
 							value: LocalizedStringResource("\(String(format: "%.0f", bench.coldTTFTMs)) ms"),
 							icon: "timer",
 							color: .purple,
-							subtitle: LocalizedStringResource("Initial prefill latency")
+							subtitle: LocalizedStringResource("Estimated from total response time")
 						)
 
 						// Card 4: Cache Speedup Multiplier
-						metricCard(
+						BenchmarkMetricCard(
 							title: LocalizedStringResource("KV Cache Speedup"),
 							value: "\(String(format: "%.1fx", bench.cacheSpeedupMultiplier))",
 							icon: "arrow.up.right.circle.fill",
@@ -340,8 +431,17 @@ struct ModelTestingView: View {
 			}
 		}
 	}
+}
 
-	private func metricCard(title: LocalizedStringResource, value: LocalizedStringResource, icon: String, color: Color, subtitle: LocalizedStringResource) -> some View {
+/// Tarjeta de métrica del benchmark (antes `metricCard(...)` inline).
+private struct BenchmarkMetricCard: View {
+	let title: LocalizedStringResource
+	let value: LocalizedStringResource
+	let icon: String
+	let color: Color
+	let subtitle: LocalizedStringResource
+
+	var body: some View {
 		VStack(alignment: .leading, spacing: 4) {
 			HStack {
 				Image(systemName: icon)
@@ -363,27 +463,47 @@ struct ModelTestingView: View {
 		.background(color.opacity(0.08))
 		.cornerRadius(8)
 	}
+}
 
-	// MARK: - 3. Playground View
+// MARK: - 3. Playground (§3.3)
 
-	private var playgroundView: some View {
+private struct PlaygroundSection: View {
+	@Binding var `protocol`: String
+	@Binding var systemPrompt: String
+	@Binding var userPrompt: String
+	@Binding var maxTokens: Double
+	@Binding var temperature: Double
+	let isGenerating: Bool
+	let output: String
+	let rawResponse: String
+	let tokensGenerated: Int
+	let tokPerSec: Double
+	let ttftMs: Double
+	let error: String?
+	let isServerRunning: Bool
+	let onSend: () -> Void
+
+	@State private var showingRawJSON: Bool = false
+
+	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {
 			// Protocol Selector & Sliders
 			HStack(spacing: 12) {
-				Picker("API:", selection: $playgroundProtocol) {
+				Picker("API protocol", selection: $protocol) {
 					Text("OpenAI Chat Completions").tag("openai")
 					Text("Anthropic Messages").tag("anthropic")
 				}
+				.labelsHidden()
 				.frame(width: 250)
 
-				Text("Tokens: \(Int(playgroundMaxTokens))")
+				Text("Tokens: \(Int(maxTokens))")
 					.font(.system(size: 11))
-				Slider(value: $playgroundMaxTokens, in: 32...1024, step: 32)
+				Slider(value: $maxTokens, in: 32...1024, step: 32)
 					.frame(width: 120)
 
-				Text("Temp: \(String(format: "%.1f", playgroundTemperature))")
+				Text("Temp: \(String(format: "%.1f", temperature))")
 					.font(.system(size: 11))
-				Slider(value: $playgroundTemperature, in: 0.0...1.0, step: 0.1)
+				Slider(value: $temperature, in: 0.0...1.0, step: 0.1)
 					.frame(width: 100)
 			}
 
@@ -392,7 +512,7 @@ struct ModelTestingView: View {
 				Text("System Prompt (Optional):")
 					.font(.system(size: 10, weight: .medium))
 					.foregroundColor(.secondary)
-				TextField("E.g. You are an expert software engineering assistant.", text: $playgroundSystemPrompt)
+				TextField("E.g. You are an expert software engineering assistant.", text: $systemPrompt)
 					.textFieldStyle(.roundedBorder)
 					.font(.system(size: 11))
 			}
@@ -402,7 +522,7 @@ struct ModelTestingView: View {
 				Text("Input Prompt (User):")
 					.font(.system(size: 10, weight: .medium))
 					.foregroundColor(.secondary)
-				TextEditor(text: $playgroundUserPrompt)
+				TextEditor(text: $userPrompt)
 					.font(.system(size: 11, design: .monospaced))
 					.frame(height: 60)
 					.padding(4)
@@ -412,21 +532,9 @@ struct ModelTestingView: View {
 
 			// Action Button
 			HStack {
-				Button {
-					Task {
-						await diagnosticService.sendInteractivePrompt(
-							port: SplashService.shared.activePort,
-							model: SplashService.shared.activeModel.isEmpty ? SplashService.shared.selectedModelForLaunch : SplashService.shared.activeModel,
-							apiProtocol: playgroundProtocol,
-							systemPrompt: playgroundSystemPrompt,
-							userPrompt: playgroundUserPrompt,
-							maxTokens: Int(playgroundMaxTokens),
-							temperature: playgroundTemperature
-						)
-					}
-				} label: {
+				Button(action: onSend) {
 					HStack(spacing: 6) {
-						if diagnosticService.isGeneratingPlayground {
+						if isGenerating {
 							ProgressView()
 								.controlSize(.small)
 							Text("Generating...")
@@ -438,11 +546,11 @@ struct ModelTestingView: View {
 				}
 				.buttonStyle(.borderedProminent)
 				.tint(.purple)
-				.disabled(diagnosticService.isGeneratingPlayground || !SplashService.shared.isRunning || playgroundUserPrompt.isEmpty)
+				.disabled(isGenerating || !isServerRunning || userPrompt.isEmpty)
 
 				Spacer()
 
-				if !diagnosticService.playgroundRawResponse.isEmpty {
+				if !rawResponse.isEmpty {
 					Toggle(isOn: $showingRawJSON) {
 						Text("Raw JSON")
 							.font(.system(size: 10))
@@ -452,11 +560,11 @@ struct ModelTestingView: View {
 			}
 
 			// Output Display
-			if diagnosticService.playgroundLastError != nil {
+			if error != nil {
 				HStack(spacing: 6) {
 					Image(systemName: "exclamationmark.octagon.fill")
 						.foregroundColor(.red)
-					Text(diagnosticService.playgroundLastError ?? "")
+					Text(error ?? "")
 						.font(.system(size: 11))
 						.foregroundColor(.red)
 				}
@@ -464,7 +572,7 @@ struct ModelTestingView: View {
 				.frame(maxWidth: .infinity, alignment: .leading)
 				.background(Color.red.opacity(0.1))
 				.cornerRadius(6)
-			} else if !diagnosticService.playgroundOutput.isEmpty || !diagnosticService.playgroundRawResponse.isEmpty {
+			} else if !output.isEmpty || !rawResponse.isEmpty {
 				VStack(alignment: .leading, spacing: 6) {
 					HStack {
 						Text("Model Response:")
@@ -472,13 +580,14 @@ struct ModelTestingView: View {
 
 						Spacer()
 
-						if diagnosticService.playgroundTokensGenerated > 0 {
+						if tokensGenerated > 0 {
 							HStack(spacing: 8) {
-								Text("\(diagnosticService.playgroundTokensGenerated) tokens")
+								Text("\(tokensGenerated) tokens")
 								Text(verbatim: "•")
-								Text("\(String(format: "%.1f", diagnosticService.playgroundTokPerSec)) tok/s")
+								Text("\(String(format: "%.1f", tokPerSec)) tok/s")
 								Text(verbatim: "•")
-								Text("TTFT: \(String(format: "%.0f", diagnosticService.playgroundTTFTMs)) ms")
+								// §4: TTFT estimado, no medido por el motor.
+								Text("Est. TTFT: \(String(format: "%.0f", ttftMs)) ms")
 							}
 							.font(.system(size: 10, weight: .medium, design: .monospaced))
 							.foregroundColor(.secondary)
@@ -486,7 +595,7 @@ struct ModelTestingView: View {
 					}
 
 					ScrollView {
-						Text(showingRawJSON ? diagnosticService.playgroundRawResponse : diagnosticService.playgroundOutput)
+						Text(showingRawJSON ? rawResponse : output)
 							.font(.system(size: 11, design: .monospaced))
 							.textSelection(.enabled)
 							.frame(maxWidth: .infinity, alignment: .leading)

@@ -2,10 +2,12 @@ import SwiftUI
 import AppKit
 
 struct ConnectedAppsView: View {
-	@State private var selectedTab: ConnectedAppsTab = .detected
+	// §6.3: asignación directa vía macro (la forma `init` con `State(initialValue:)`
+	// queda fuera del soporte de migración de la macro @State).
+	@State private var selectedTab: ConnectedAppsTab
 
 	init(initialTab: ConnectedAppsTab = .detected) {
-		self._selectedTab = State(initialValue: initialTab)
+		selectedTab = initialTab
 	}
 
 	var body: some View {
@@ -13,19 +15,24 @@ struct ConnectedAppsView: View {
 			Header()
 			MetricsSummaryRow()
 
-			Picker("empty", selection: $selectedTab) {
+			Picker("Connected apps view", selection: $selectedTab) {
 				ForEach(ConnectedAppsTab.allCases) { tab in
 					Text(tab.title).tag(tab)
 				}
 			}
 			.pickerStyle(.segmented)
+			.labelsHidden()
 			.padding(.vertical, 2)
 
 			switch selectedTab {
 			case .detected:
 				DetectedAppsListSection(selectedTab: $selectedTab)
 			case .quickConnect:
-				QuickConnectGuideSection()
+				QuickConnectGuideSection(
+					host: SplashService.shared.preferredHostOrIP,
+					port: SplashService.shared.activePort,
+					activeModel: SplashService.shared.activeModel
+				)
 			}
 		}
 	}
@@ -148,7 +155,16 @@ private struct DetectedAppsListSection: View {
 			} else {
 				VStack(spacing: 10) {
 					ForEach(SplashService.shared.connectedApps) { app in
-						ConnectedAppCard(app: app)
+						ConnectedAppCard(
+							pid: app.pid,
+							name: app.name,
+							icon: app.icon,
+							category: app.category,
+							status: app.status,
+							connectionCount: app.connectionCount,
+							bundleId: app.bundleId,
+							lastSeen: app.lastSeen
+						)
 					}
 				}
 			}
@@ -191,7 +207,7 @@ private struct ServerOfflinePlaceholder: View {
 }
 
 private struct EmptyAppsPlaceholder: View {
-	@State private var copiedMessage: String? = nil
+	@State private var copied: CopiedFlash?
 	@Binding var selectedTab: ConnectedAppsTab
 
 	var body: some View {
@@ -212,8 +228,9 @@ private struct EmptyAppsPlaceholder: View {
 			HStack(spacing: 10) {
 				Button {
 					let host = SplashService.shared.preferredHostOrIP
-					copyToClipboard("http://\(host):\(SplashService.shared.activePort)/v1")
-					showCopied("URL Copied!")
+					copyToClipboard("http://\(host):\(SplashService.shared.activePort)/v1",
+									flash: "URL Copied!",
+									into: $copied)
 				} label: {
 					Label("Copy OpenAI Base URL", systemImage: "doc.on.doc")
 						.font(.system(size: 11))
@@ -232,11 +249,12 @@ private struct EmptyAppsPlaceholder: View {
 			}
 			.padding(.top, 4)
 
-			if let msg = copiedMessage {
-				Text(msg)
+			if let flash = copied {
+				Text(flash.message)
 					.font(.system(size: 10, weight: .semibold))
 					.foregroundColor(.green)
 					.transition(.opacity)
+					.copiedFlashAutoClear($copied)
 			}
 		}
 		.frame(maxWidth: .infinity)
@@ -244,32 +262,16 @@ private struct EmptyAppsPlaceholder: View {
 		.background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
 		.cornerRadius(10)
 	}
-
-
-	private func copyToClipboard(_ string: String) {
-		let pasteboard = NSPasteboard.general
-		pasteboard.clearContents()
-		pasteboard.setString(string, forType: .string)
-	}
-
-	private func showCopied(_ message: LocalizedStringResource) {
-		let message = String(localized: message)
-		withAnimation {
-			copiedMessage = message
-		}
-		DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-			withAnimation {
-				if copiedMessage == message {
-					copiedMessage = nil
-				}
-			}
-		}
-	}
 }
 
+/// §3.2: sección independiente con entradas de valor (host/puerto/modelo) para que
+/// el cuerpo de la vista no vuelva a correr en cada cambio del servicio.
 private struct QuickConnectGuideSection: View {
+	let host: String
+	let port: Int
+	let activeModel: String
+
 	var body: some View {
-		let host = SplashService.shared.preferredHostOrIP
 		VStack(alignment: .leading, spacing: 14) {
 			Text("Connect Your Favorite Apps & IDEs")
 				.font(.system(size: 14, weight: .bold))
@@ -291,9 +293,9 @@ private struct QuickConnectGuideSection: View {
 						LocalizedStringResource("1. Go to Settings → Models in Cursor"),
 						LocalizedStringResource("2. Enable 'OpenAI API Key' (enter any text, e.g. 'splash')"),
 						LocalizedStringResource("3. In 'Override OpenAI Base URL', enter:"),
-						LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)/v1")
+						LocalizedStringResource("http://\(host):\(port)/v1")
 					],
-					copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
+					copyText: "http://\(host):\(port)/v1"
 				)
 
 				IntegrationGuideCard(
@@ -306,9 +308,9 @@ private struct QuickConnectGuideSection: View {
 						LocalizedStringResource("1. In Continue/Cline extension, add a new model"),
 						LocalizedStringResource("2. Select provider 'OpenAI' or 'Custom'"),
 						LocalizedStringResource("3. Set apiBase in config.json:"),
-						LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)/v1")
+						LocalizedStringResource("http://\(host):\(port)/v1")
 					],
-					copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
+					copyText: "http://\(host):\(port)/v1"
 				)
 
 				IntegrationGuideCard(
@@ -319,11 +321,11 @@ private struct QuickConnectGuideSection: View {
 					color: .orange,
 					steps: [
 						LocalizedStringResource("1. Export Splash environment variable:"),
-						LocalizedStringResource("export ANTHROPIC_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)\""),
+						LocalizedStringResource("export ANTHROPIC_BASE_URL=\"http://\(host):\(port)\""),
 						LocalizedStringResource("2. Launch Claude Code in your terminal:"),
 						LocalizedStringResource("splash claude")
 					],
-					copyText: "export ANTHROPIC_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)\"\nsplash claude"
+					copyText: "export ANTHROPIC_BASE_URL=\"http://\(host):\(port)\"\nsplash claude"
 				)
 
 				IntegrationGuideCard(
@@ -335,10 +337,10 @@ private struct QuickConnectGuideSection: View {
 					steps: [
 						LocalizedStringResource("1. In Claude for Mac, select your local Gateway"),
 						LocalizedStringResource("2. Host / Endpoint URL:"),
-						LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)"),
+						LocalizedStringResource("http://\(host):\(port)"),
 						LocalizedStringResource("3. Splash responds to claude-haiku-4-5 & sonnet probes")
 					],
-					copyText: "http://\(host):\(SplashService.shared.activePort)"
+					copyText: "http://\(host):\(port)"
 				)
 
 				IntegrationGuideCard(
@@ -349,12 +351,12 @@ private struct QuickConnectGuideSection: View {
 					color: .teal,
 					steps: [
 						LocalizedStringResource("1. In ChatGPT for Mac or Codex scripts, point to your endpoint:"),
-						LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)/v1"),
+						LocalizedStringResource("http://\(host):\(port)/v1"),
 						LocalizedStringResource("2. Active model in Splash:"),
-						SplashService.shared.activeModel.isEmpty ? LocalizedStringResource("mlx-community/Qwen3.8-27B-4bit") : "\(SplashService.shared.activeModel)",
+						activeModel.isEmpty ? LocalizedStringResource("mlx-community/Qwen3.8-27B-4bit") : "\(activeModel)",
 						LocalizedStringResource("3. API Key: 'splash' (bypass token)")
 					],
-					copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
+					copyText: "http://\(host):\(port)/v1"
 				)
 
 				IntegrationGuideCard(
@@ -366,10 +368,10 @@ private struct QuickConnectGuideSection: View {
 					steps: [
 						LocalizedStringResource("1. In Chatbot Settings, choose 'OpenAI API'"),
 						LocalizedStringResource("2. Host / API Host:"),
-						LocalizedStringResource("http://\(host):\(SplashService.shared.activePort)"),
+						LocalizedStringResource("http://\(host):\(port)"),
 						LocalizedStringResource("3. API Key: 'splash' (any string)")
 					],
-					copyText: "http://\(host):\(SplashService.shared.activePort)/v1"
+					copyText: "http://\(host):\(port)/v1"
 				)
 
 				IntegrationGuideCard(
@@ -380,10 +382,10 @@ private struct QuickConnectGuideSection: View {
 					color: .cyan,
 					steps: [
 						LocalizedStringResource("from openai import OpenAI"),
-						LocalizedStringResource("client = OpenAI(base_url='http://\(host):\(SplashService.shared.activePort)/v1', api_key='splash')"),
-						LocalizedStringResource("resp = client.chat.completions.create(model='\(SplashService.shared.activeModel)', messages=[...])")
+						LocalizedStringResource("client = OpenAI(base_url='http://\(host):\(port)/v1', api_key='splash')"),
+						LocalizedStringResource("resp = client.chat.completions.create(model='\(activeModel)', messages=[...])")
 					],
-					copyText: "from openai import OpenAI\nclient = OpenAI(base_url='http://\(host):\(SplashService.shared.activePort)/v1', api_key='splash')"
+					copyText: "from openai import OpenAI\nclient = OpenAI(base_url='http://\(host):\(port)/v1', api_key='splash')"
 				)
 
 				IntegrationGuideCard(
@@ -393,11 +395,11 @@ private struct QuickConnectGuideSection: View {
 					badge: LocalizedStringResource("REST HTTP"),
 					color: .indigo,
 					steps: [
-						LocalizedStringResource("curl http://\(host):\(SplashService.shared.activePort)/v1/chat/completions \\"),
+						LocalizedStringResource("curl http://\(host):\(port)/v1/chat/completions \\"),
 						LocalizedStringResource("  -H 'Content-Type: application/json' \\"),
-						LocalizedStringResource("  -d '{\"model\": \"\(SplashService.shared.activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola!\"}]}'")
+						LocalizedStringResource("  -d '{\"model\": \"\(activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola!\"}]}'")
 					],
-					copyText: "curl http://\(host):\(SplashService.shared.activePort)/v1/chat/completions -H 'Content-Type: application/json' -d '{\"model\": \"\(SplashService.shared.activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola\"}]}'"
+					copyText: "curl http://\(host):\(port)/v1/chat/completions -H 'Content-Type: application/json' -d '{\"model\": \"\(activeModel)\", \"messages\": [{\"role\": \"user\", \"content\": \"Hola\"}]}'"
 				)
 
 				IntegrationGuideCard(
@@ -410,10 +412,10 @@ private struct QuickConnectGuideSection: View {
 						LocalizedStringResource("1. Launch DeepSeek Harness web runtime:"),
 						LocalizedStringResource("npx @deepseek-ai/dsh web"),
 						LocalizedStringResource("2. In Settings → Models → Custom model API:"),
-						LocalizedStringResource("Base URL: http://\(host):\(SplashService.shared.activePort)/v1"),
+						LocalizedStringResource("Base URL: http://\(host):\(port)/v1"),
 						LocalizedStringResource("3. Protocol: openai-completions | API Key: splash")
 					],
-					copyText: "export OPENAI_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)/v1\"\nexport OPENAI_API_KEY=\"splash\"\nnpx @deepseek-ai/dsh web"
+					copyText: "export OPENAI_BASE_URL=\"http://\(host):\(port)/v1\"\nexport OPENAI_API_KEY=\"splash\"\nnpx @deepseek-ai/dsh web"
 				)
 
 				IntegrationGuideCard(
@@ -424,12 +426,12 @@ private struct QuickConnectGuideSection: View {
 					color: .orange,
 					steps: [
 						LocalizedStringResource("1. In your Hermes .env or configuration:"),
-						LocalizedStringResource("OPENAI_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)/v1\""),
+						LocalizedStringResource("OPENAI_BASE_URL=\"http://\(host):\(port)/v1\""),
 						LocalizedStringResource("OPENAI_API_KEY=\"splash\""),
 						LocalizedStringResource("2. Active model in Splash:"),
-						"\(SplashService.shared.activeModel.isEmpty ? "mlx-community/Qwen3.8-27B-4bit" : SplashService.shared.activeModel)"
+						"\(activeModel.isEmpty ? "mlx-community/Qwen3.8-27B-4bit" : activeModel)"
 					],
-					copyText: "export OPENAI_BASE_URL=\"http://\(host):\(SplashService.shared.activePort)/v1\"\nexport OPENAI_API_KEY=\"splash\""
+					copyText: "export OPENAI_BASE_URL=\"http://\(host):\(port)/v1\"\nexport OPENAI_API_KEY=\"splash\""
 				)
 			}
 		}
@@ -439,16 +441,34 @@ private struct QuickConnectGuideSection: View {
 // MARK: - Subcomponents
 
 struct ConnectedAppCard: View {
-	let app: ConnectedApp
+	// §3.7: entradas de valor individuales en vez del model entero — el model es
+	// `Hashable` y cambia con cada sondeo, lo que re-identificaría la fila y
+	// mataría el estado local (@State) de la tarjeta.
+	let pid: Int32
+	let name: String
+	let icon: NSImage?
+	let category: AppCategory
+	let status: AppConnectionStatus
+	let connectionCount: Int
+	let bundleId: String?
+	let lastSeen: Date
+	// §3.7: la identidad es el PID estable.
+	var id: Int32 { pid }
 	@State private var isHovered: Bool = false
 	/// P-04: la terminación de una app conectada exige confirmación explícita.
 	@State private var confirmingTermination: Bool = false
+
+	/// Busca la app viva en el servicio por PID antes de actuar sobre ella:
+	/// el `ConnectedApp` que se muestra puede estar desactualizado.
+	private var liveApp: ConnectedApp? {
+		SplashService.shared.connectedApps.first(where: { $0.pid == pid })
+	}
 
 	var body: some View {
 		HStack(spacing: 12) {
 			// App Icon
 			Group {
-				if let icon = app.icon {
+				if let icon = icon {
 					Image(nsImage: icon)
 						.resizable()
 						.aspectRatio(contentMode: .fit)
@@ -456,12 +476,12 @@ struct ConnectedAppCard: View {
 				} else {
 					ZStack {
 						RoundedRectangle(cornerRadius: 8)
-							.fill(categoryColor(app.category).opacity(0.15))
+							.fill(categoryColor(category).opacity(0.15))
 							.frame(width: 38, height: 38)
 
-						Image(systemName: app.category.iconName)
+						Image(systemName: category.iconName)
 							.font(.system(size: 18))
-							.foregroundColor(categoryColor(app.category))
+							.foregroundColor(categoryColor(category))
 					}
 				}
 			}
@@ -469,15 +489,15 @@ struct ConnectedAppCard: View {
 			// App Details
 			VStack(alignment: .leading, spacing: 3) {
 				HStack(spacing: 6) {
-					Text(app.name)
+					Text(name)
 						.font(.system(size: 13, weight: .bold))
 
-					Text(app.category.localizedName)
+					Text(category.localizedName)
 						.font(.system(size: 9, weight: .medium))
-						.foregroundColor(categoryColor(app.category))
+						.foregroundColor(categoryColor(category))
 						.padding(.horizontal, 5)
 						.padding(.vertical, 1)
-						.background(categoryColor(app.category).opacity(0.12))
+						.background(categoryColor(category).opacity(0.12))
 						.cornerRadius(4)
 
 					Spacer()
@@ -485,15 +505,15 @@ struct ConnectedAppCard: View {
 					// Status Badge
 					HStack(spacing: 4) {
 						Circle()
-							.fill(statusColor(app.status))
+							.fill(statusColor(status))
 							.frame(width: 6, height: 6)
-						Text(app.status.localizedName)
+						Text(status.localizedName)
 							.font(.system(size: 10, weight: .semibold))
-							.foregroundColor(statusColor(app.status))
+							.foregroundColor(statusColor(status))
 					}
 					.padding(.horizontal, 6)
 					.padding(.vertical, 2)
-					.background(statusColor(app.status).opacity(0.12))
+					.background(statusColor(status).opacity(0.12))
 					.cornerRadius(5)
 				}
 
@@ -502,7 +522,7 @@ struct ConnectedAppCard: View {
 						Text("PID:")
 							.font(.system(size: 10))
 							.foregroundColor(.secondary)
-						Text(app.pid, format: .number.grouping(.never))
+						Text(pid, format: .number.grouping(.never))
 							.font(.system(size: 10, weight: .medium, design: .monospaced))
 					}
 
@@ -510,12 +530,12 @@ struct ConnectedAppCard: View {
 						Image(systemName: "network")
 							.font(.system(size: 9))
 							.foregroundColor(.secondary)
-						Text("\(app.connectionCount) sockets")
+						Text("\(connectionCount) sockets")
 							.font(.system(size: 10))
 							.foregroundColor(.secondary)
 					}
 
-					if let bundle = app.bundleId, !bundle.isEmpty {
+					if let bundle = bundleId, !bundle.isEmpty {
 						Text(bundle)
 							.font(.system(size: 9, design: .monospaced))
 							.foregroundColor(.secondary.opacity(0.8))
@@ -524,41 +544,38 @@ struct ConnectedAppCard: View {
 
 					Spacer()
 
-					Text("Last seen: \(app.lastSeen, format: .dateTime.hour().minute().second())")
+					Text("Last seen: \(lastSeen, format: .dateTime.hour().minute().second())")
 						.font(.system(size: 9))
 						.foregroundColor(.secondary)
 				}
 			}
 
 			// Actions
-			if app.category != .lanClient {
+			if category != .lanClient {
 				HStack(spacing: 6) {
-					Button {
-						SplashService.shared.activateApp(app: app)
-					} label: {
-						Image(systemName: "arrow.up.forward.app")
-							.font(.system(size: 12))
+					// §10: botones solo-icono con etiqueta de accesibilidad visible en VoiceOver.
+					Button("Bring app to front", systemImage: "arrow.up.forward.app") {
+						guard let live = liveApp else { return }
+						SplashService.shared.activateApp(app: live)
 					}
+					.labelStyle(.iconOnly)
 					.buttonStyle(.bordered)
 					.controlSize(.small)
 					.help("Bring app to front")
 
-					Button {
-						SplashService.shared.revealAppInFinder(app: app)
-					} label: {
-						Image(systemName: "folder")
-							.font(.system(size: 12))
+					Button("Reveal in Finder", systemImage: "folder") {
+						guard let live = liveApp else { return }
+						SplashService.shared.revealAppInFinder(app: live)
 					}
+					.labelStyle(.iconOnly)
 					.buttonStyle(.bordered)
 					.controlSize(.small)
 					.help("Reveal in Finder")
 
-					Button(role: .destructive) {
+					Button("Terminate client process", systemImage: "xmark.circle") {
 						confirmingTermination = true
-					} label: {
-						Image(systemName: "xmark.circle")
-							.font(.system(size: 12))
 					}
+					.labelStyle(.iconOnly)
 					.buttonStyle(.bordered)
 					.controlSize(.small)
 					.help("Terminate client process")
@@ -583,22 +600,23 @@ struct ConnectedAppCard: View {
 		.cornerRadius(8)
 		.overlay(
 			RoundedRectangle(cornerRadius: 8)
-				.stroke(app.status == .active ? Color.green.opacity(0.3) : Color.clear, lineWidth: 1)
+				.stroke(status == .active ? Color.green.opacity(0.3) : Color.clear, lineWidth: 1)
 		)
 		// P-04 / H-05: antes el botón «Terminar» enviaba SIGTERM al primer clic y sin
 		// confirmación. Un clic accidental cerraba el cliente del usuario.
 		.confirmationDialog(
-			"Terminate \(app.name)?",
+			"Terminate \(name)?",
 			isPresented: $confirmingTermination,
 			titleVisibility: .visible
 		) {
-			Button("Terminate process (PID \(app.pid))",
+			Button("Terminate process (PID \(pid))",
 				   role: .destructive) {
-				SplashService.shared.terminateApp(app: app)
+				guard let live = liveApp else { return }
+				SplashService.shared.terminateApp(app: live)
 			}
 			Button("Cancel", role: .cancel) {}
 		} message: {
-			Text("A shutdown request will be sent to \(app.name) (PID \(app.pid)). Save its work before continuing. The application decides how to close.")
+			Text("A shutdown request will be sent to \(name) (PID \(pid)). Save its work before continuing. The application decides how to close.")
 		}
 	}
 
@@ -669,7 +687,7 @@ struct IntegrationGuideCard: View {
 	let color: Color
 	let steps: [LocalizedStringResource]
 	let copyText: String
-	@State private var isCopied: Bool = false
+	@State private var copied: CopiedFlash?
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 8) {
@@ -717,21 +735,16 @@ struct IntegrationGuideCard: View {
 			Spacer(minLength: 4)
 
 			Button {
-				let pasteboard = NSPasteboard.general
-				pasteboard.clearContents()
-				pasteboard.setString(copyText, forType: .string)
-				isCopied = true
-				DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-					isCopied = false
-				}
+				copyToClipboard(copyText, flash: "Copied!", into: $copied)
 			} label: {
 				HStack(spacing: 4) {
-					Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-					Text(isCopied ? "Copied!" : "Copiar Configuración")
+					Image(systemName: copied != nil ? "checkmark" : "doc.on.doc")
+					Text(copied != nil ? "Copied!" : "Copiar Configuración")
 				}
 				.font(.system(size: 10, weight: .medium))
 				.frame(maxWidth: .infinity)
 			}
+			.copiedFlashAutoClear($copied)
 			.buttonStyle(.bordered)
 			.controlSize(.small)
 		}

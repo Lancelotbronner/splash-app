@@ -51,7 +51,8 @@ final class ScreenshotGeneratorTests {
 				connectedApps: s.connectedApps,
 				isInstalling: s.isInstalling,
 				installingModelId: s.installingModelId,
-				installLogs: s.installLogs,
+				// Se serializa como texto: los ids de InstallLogLine son locales al servicio.
+				installLogs: s.installLogs.map(\.text),
 				downloadSpeedMBs: s.downloadSpeedMBs,
 				downloadedBytes: s.downloadedBytes,
 				totalExpectedBytes: s.totalExpectedBytes,
@@ -84,7 +85,10 @@ final class ScreenshotGeneratorTests {
 		s.connectedApps = saved.connectedApps
 		s.isInstalling = saved.isInstalling
 		s.installingModelId = saved.installingModelId
-		s.installLogs = saved.installLogs
+		// Se reconstruyen los InstallLogLine con ids secuenciales frescos.
+		s.installLogs = saved.installLogs.enumerated().map { idx, text in
+			InstallLogLine(id: idx + 1, text: text)
+		}
 		s.downloadSpeedMBs = saved.downloadSpeedMBs
 		s.downloadedBytes = saved.downloadedBytes
 		s.totalExpectedBytes = saved.totalExpectedBytes
@@ -220,9 +224,10 @@ final class ScreenshotGeneratorTests {
 			service.totalExpectedBytes = 4_133_879_808
 			service.downloadProgressFraction = 0.35
 
+			let logLines: [String]
 			if lang == "es" {
 				service.downloadPhase = "Descargando acelerador DFlash2 (especulativo)..."
-				service.installLogs = [
+				logLines = [
 					"Iniciando descarga y preparación para mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit...",
 					"ℹ️ Modo solo lenguaje (--language-only) activado.",
 					"ℹ️ Fetching 1 file(s), 3.85 GB, from incoai/Qwen3.8-27B-DFlash2@015e795645c7; cached files are reused.",
@@ -232,7 +237,7 @@ final class ScreenshotGeneratorTests {
 				]
 			} else {
 				service.downloadPhase = "Downloading DFlash2 speculative accelerator..."
-				service.installLogs = [
+				logLines = [
 					"Starting download and preparation for mlx-community/Qwen3.8-27B-Uncensored-OptiQ-4bit...",
 					"ℹ️ Language-only mode (--language-only) enabled.",
 					"ℹ️ Fetching 1 file(s), 3.85 GB, from incoai/Qwen3.8-27B-DFlash2@015e795645c7; cached files are reused.",
@@ -240,6 +245,9 @@ final class ScreenshotGeneratorTests {
 					"Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]",
 					"📥 Downloading package: 1.33 GB received..."
 				]
+			}
+			service.installLogs = logLines.enumerated().map { idx, text in
+				InstallLogLine(id: idx + 1, text: text)
 			}
 
 			let downloadView = MainWindowView(initialTab: .models)

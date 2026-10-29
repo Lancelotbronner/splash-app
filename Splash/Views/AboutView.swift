@@ -2,8 +2,6 @@ import SwiftUI
 import AppKit
 
 struct AboutView: View {
-	init() {}
-
 	var body: some View {
 		VStack(spacing: 20) {
 			// Header with App Icon
@@ -154,8 +152,9 @@ struct AboutView: View {
 				.controlSize(.small)
 			}
 
-			// Copyright
-			Text("© 2026 JMGREP Developers · Joan Gregorio Pérez · \(String(localized: "Open Source"))")
+			// Copyright (año dinámico para que no quede desactualizado)
+			let year = Calendar.current.component(.year, from: Date.now)
+			Text(String(localized: "© \(year) JMGREP Developers · Joan Gregorio Pérez · Open Source"))
 				.font(.system(size: 10))
 				.foregroundColor(.secondary.opacity(0.7))
 				.padding(.top, 6)

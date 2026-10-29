@@ -1133,7 +1133,8 @@ private struct AgentsLauncherView: View {
 			return
 		}
 
-		if !SplashService.shared.isAgentInstalled(agent: agent.rawValue) {
+		// §3.5: cache local de valor (misma `Set.contains`, sin tocar el servicio).
+		if !installedAgents.contains(agent.rawValue) {
 			showingAgentNotInstalledAlert = true
 			return
 		}

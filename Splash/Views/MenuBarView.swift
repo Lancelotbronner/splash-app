@@ -4,6 +4,9 @@ import AppKit
 struct MenuBarView: View {
 	@Environment(\.openWindow) private var openWindow
 	@State private var activeTab: AppTab = .metrics
+	// §5.1: el slider escribe la preferencia al soltar (onEditingChanged), no en cada
+	// paso; el reinicio del sondeo se hace entonces, una sola vez.
+	@State private var refreshIntervalDraft: Double = Preferences.refreshInterval
 
 	enum AppTab: String, CaseIterable, Identifiable {
 		case metrics
@@ -37,8 +40,14 @@ struct MenuBarView: View {
 
 	var body: some View {
 		VStack(spacing: 0) {
-			// Header
-			headerView
+			// Header — §3.2: estructura independiente con entradas de valor; el cuerpo
+			// principal no vuelve a correr por isRunning/activeModel.
+			MenuBarHeaderView(
+				isSplashInstalled: SplashService.shared.isSplashInstalled,
+				isRunning: SplashService.shared.isRunning,
+				activeModel: SplashService.shared.activeModel,
+				onOpenMainWindow: openMainWindow
+			)
 				.padding(.horizontal, 14)
 				.padding(.vertical, 10)
 				.background(Color(nsColor: .windowBackgroundColor).opacity(0.8))
@@ -89,7 +98,13 @@ struct MenuBarView: View {
 	}
 
 	// MARK: - Header
-	private var headerView: some View {
+	private struct MenuBarHeaderView: View {
+		let isSplashInstalled: Bool
+		let isRunning: Bool
+		let activeModel: String
+		let onOpenMainWindow: () -> Void
+
+		var body: some View {
 		HStack(spacing: 8) {
 			AppIconView(size: 20)
 
@@ -106,7 +121,7 @@ struct MenuBarView: View {
 						.background(Color.orange)
 						.cornerRadius(3)
 
-					if !SplashService.shared.isSplashInstalled {
+					if !isSplashInstalled {
 						Text("brew")
 							.textCase(.uppercase)
 							.font(.system(size: 7, weight: .bold, design: .monospaced))
@@ -120,15 +135,15 @@ struct MenuBarView: View {
 
 				HStack(spacing: 4) {
 					Circle()
-						.fill(SplashService.shared.isRunning ? Color.green : (SplashService.shared.isSplashInstalled ? Color.red : Color.orange))
+						.fill(isRunning ? Color.green : (isSplashInstalled ? Color.red : Color.orange))
 						.frame(width: 6, height: 6)
 
-					if !SplashService.shared.isSplashInstalled {
+					if !isSplashInstalled {
 						Text("Needs Splash")
 							.font(.system(size: 10, weight: .medium))
 							.foregroundColor(.orange)
 					} else {
-						Text(SplashService.shared.isRunning ? SplashService.shared.activeModel.components(separatedBy: "/").last ?? SplashService.shared.activeModel : String(localized: "Offline"))
+						Text(isRunning ? activeModel.components(separatedBy: "/").last ?? activeModel : String(localized: "Offline"))
 							.font(.system(size: 10))
 							.foregroundColor(.secondary)
 							.lineLimit(1)
@@ -138,62 +153,58 @@ struct MenuBarView: View {
 
 			Spacer()
 
-			// Free memory button if running
-			if SplashService.shared.isRunning {
-				Button {
+			// Free memory button if running — §10: etiqueta de accesibilidad en el botón.
+			if isRunning {
+				Button("Release memory", systemImage: "arrow.down.right.and.arrow.up.left") {
 					SplashService.shared.releaseMemoryNow()
-				} label: {
-					Image(systemName: "arrow.down.right.and.arrow.up.left")
-						.font(.system(size: 11))
-						.foregroundColor(.orange)
 				}
+				.labelStyle(.iconOnly)
+				.font(.system(size: 11))
+				.foregroundColor(.orange)
 				.buttonStyle(.plain)
 				.help("Release memory (Unload model weights)")
 			}
 
 			// Stop server button if running
-			if SplashService.shared.isRunning {
-				Button {
+			if isRunning {
+				Button("Stop Splash server", systemImage: "stop.circle.fill") {
 					SplashService.shared.stopServer()
-				} label: {
-					Image(systemName: "stop.circle.fill")
-						.font(.system(size: 13))
-						.foregroundColor(.red)
 				}
+				.labelStyle(.iconOnly)
+				.font(.system(size: 13))
+				.foregroundColor(.red)
 				.buttonStyle(.plain)
 				.help("Stop Splash Server")
 			}
 
 			// Open full window button
-			Button {
-				openMainWindow()
-			} label: {
-				Image(systemName: "macwindow")
-					.font(.system(size: 11))
+			Button("Open full application window", systemImage: "macwindow") {
+				onOpenMainWindow()
 			}
+			.labelStyle(.iconOnly)
+			.font(.system(size: 11))
 			.buttonStyle(.plain)
 			.help("Open full application window")
 
-			Button {
+			Button("Refresh now", systemImage: "arrow.clockwise") {
 				Task {
 					await SplashService.shared.checkServerStatus()
 				}
-			} label: {
-				Image(systemName: "arrow.clockwise")
-					.font(.system(size: 11))
 			}
+			.labelStyle(.iconOnly)
+			.font(.system(size: 11))
 			.buttonStyle(.plain)
 			.help("Refresh now")
 
-			Button {
+			Button("Quit Splash Monitor", systemImage: "power") {
 				NSApplication.shared.terminate(nil)
-			} label: {
-				Image(systemName: "power")
-					.font(.system(size: 11))
-					.foregroundColor(.secondary)
 			}
+			.labelStyle(.iconOnly)
+			.font(.system(size: 11))
+			.foregroundColor(.secondary)
 			.buttonStyle(.plain)
 			.help("Quit Splash Monitor (Exit app)")
+		}
 		}
 	}
 
@@ -226,6 +237,31 @@ struct MenuBarView: View {
 		}
 	}
 
+	// MARK: - Refresh Interval Section
+	private var refreshIntervalSection: some View {
+		VStack(alignment: .leading, spacing: 6) {
+			Text("Refresh Interval")
+				.font(.system(size: 11, weight: .semibold))
+
+			HStack {
+				// §5.1: el reinicio del sondeo se hace al soltar el slider
+				// (onEditingChanged), no en cada paso del onChange.
+				Slider(value: $refreshIntervalDraft, in: 0.5...5.0, step: 0.5,
+					   onEditingChanged: { editing in
+						   guard !editing else { return }
+						   Preferences.refreshInterval = refreshIntervalDraft
+						   SplashService.shared.startPolling()
+					   }) {
+					Text("Refresh Interval")
+				}
+				.labelsHidden()
+				Text("\(refreshIntervalDraft, format: .number.precision(.fractionLength(1))) s")
+					.font(.system(size: 11, design: .monospaced))
+					.frame(width: 45)
+			}
+		}
+	}
+
 	// MARK: - Settings View
 	@ViewBuilder
 	private var settingsView: some View {
@@ -238,33 +274,21 @@ struct MenuBarView: View {
 					.font(.system(size: 11))
 					.foregroundColor(.secondary)
 
-				Picker("empty", selection: Preferences.$menuBarDisplayMode) {
+				Picker("Menu bar display mode", selection: Preferences.$menuBarDisplayMode) {
 					Text("Icon Only").tag("icon")
 					Text("Icon + Speed (tok/s)").tag("speed")
 					Text("Icon + Tokens Used").tag("tokens")
 					Text("Icon + Active Model").tag("model")
 				}
 				.pickerStyle(.radioGroup)
+				.labelsHidden()
 				.font(.system(size: 11))
 			}
 			.padding(10)
 			.background(Color(nsColor: .controlBackgroundColor))
 			.cornerRadius(8)
 
-			VStack(alignment: .leading, spacing: 6) {
-				Text("Refresh Interval")
-					.font(.system(size: 11, weight: .semibold))
-
-				HStack {
-					Slider(value: Preferences.$refreshInterval, in: 0.5...5.0, step: 0.5)
-						.onChange(of: Preferences.refreshInterval) {
-							SplashService.shared.startPolling()
-						}
-					Text(String(format: "%.1f s", Preferences.refreshInterval))
-						.font(.system(size: 11, design: .monospaced))
-						.frame(width: 45)
-				}
-			}
+			refreshIntervalSection
 			.padding(10)
 			.background(Color(nsColor: .controlBackgroundColor))
 			.cornerRadius(8)
@@ -309,7 +333,9 @@ struct MenuBarView: View {
 			return
 		}
 		openWindow(id: "main")
-		DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+		// §7: Task cancelable en lugar de asyncAfter sin gestión.
+		Task { @MainActor in
+			try? await Task.sleep(for: .milliseconds(100))
 			for window in NSApp.windows where window.canBecomeMain && !(window is NSPanel) {
 				window.makeKeyAndOrderFront(nil)
 				return

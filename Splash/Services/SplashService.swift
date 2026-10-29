@@ -88,8 +88,10 @@ class SplashService {
 	var splashVersion: String? = nil
 	var hasHomebrew: Bool = false
 	var isInstallingDependency: Bool = false
-	var dependencyInstallLogs: [String] = []
+	var dependencyInstallLogs: [InstallLogLine] = []
 	var dependencyInstallSuccess: Bool? = nil
+	/// §3.8: id monótono emitido por el servicio para las líneas de logs.
+	private var dependencyInstallLogID = 0
 
 	// Model lists
 	var installedModels: [InstalledSplashModel] = []
@@ -100,8 +102,10 @@ class SplashService {
 	// Model Installation state & metrics
 	var isInstalling: Bool = false
 	var installingModelId: String? = nil
-	var installLogs: [String] = []
+	var installLogs: [InstallLogLine] = []
 	var installSuccess: Bool? = nil
+	/// §3.8: id monótono emitido por el servicio para las líneas de logs.
+	private var installLogID = 0
 	var downloadSpeedMBs: Double = 0.0
 	var downloadedBytes: Int64 = 0
 	var totalExpectedBytes: Int64 = 0
@@ -178,6 +182,35 @@ class SplashService {
 	/// Refresca `localNetworkIP` consultando las interfaces del sistema.
 	func refreshLocalNetworkIP() {
 		localNetworkIP = NetworkInterfaceHelper.primaryLocalIPv4()
+	}
+
+	// MARK: - §3.8: Logs de instalación con identidad monótona
+
+	/// Añade una línea al registro de instalación de modelos con un id monótono
+	/// (la vista ya no usa `\.offset` como identidad: tras `removeAll()` los
+	/// offsets se reutilizaban y el scroll/animación saltaba sobre filas nuevas).
+	private func appendInstallLog(_ text: String) {
+		installLogID += 1
+		installLogs.append(InstallLogLine(id: installLogID, text: text))
+	}
+
+	/// Añade una línea al registro de instalación de dependencias.
+	private func appendDependencyInstallLog(_ text: String) {
+		dependencyInstallLogID += 1
+		dependencyInstallLogs.append(InstallLogLine(id: dependencyInstallLogID, text: text))
+	}
+
+	/// Reinicia el registro de modelos con un conjunto inicial de líneas
+	/// (emitiendo ids nuevos; sustituye a los antiguos literales `installLogs = [ … ]`).
+	private func resetInstallLogs(_ lines: [String] = []) {
+		installLogs.removeAll()
+		lines.forEach { appendInstallLog($0) }
+	}
+
+	/// Reinicia el registro de dependencias.
+	private func resetDependencyInstallLogs(_ lines: [String] = []) {
+		dependencyInstallLogs.removeAll()
+		lines.forEach { appendDependencyInstallLog($0) }
 	}
 
 	/// Host o IP preferida para clientes e integraciones según la configuración activa.
@@ -407,15 +440,16 @@ class SplashService {
 	func installSplashDependency() {
 		guard !isInstallingDependency else { return }
 		isInstallingDependency = true
-		dependencyInstallLogs = [
+		// §3.8: ids monótonos emitidos por el servicio (no `\.offset` en la vista).
+		resetDependencyInstallLogs([
 			"Iniciando instalación de la dependencia Splash...",
 			"Comando: brew install incoai/tap/splash"
-		]
+		])
 		dependencyInstallSuccess = nil
 
 		guard let brewPath = brewExecutablePath else {
-			dependencyInstallLogs.append("Error: No se encontró Homebrew instalado en /opt/homebrew/bin/brew o /usr/local/bin/brew.")
-			dependencyInstallLogs.append("Por favor instala Homebrew primero desde https://brew.sh")
+			appendDependencyInstallLog("Error: No se encontró Homebrew instalado en /opt/homebrew/bin/brew o /usr/local/bin/brew.")
+			appendDependencyInstallLog("Por favor instala Homebrew primero desde https://brew.sh")
 			isInstallingDependency = false
 			dependencyInstallSuccess = false
 			return
@@ -441,7 +475,7 @@ class SplashService {
 				let lines = text.components(separatedBy: .newlines).filter { !$0.isEmpty }
 				Task { @MainActor in
 					for line in lines {
-						self.dependencyInstallLogs.append(line)
+						self.appendDependencyInstallLog(line)
 					}
 				}
 			}
@@ -461,12 +495,12 @@ class SplashService {
 					self.isInstallingDependency = false
 					if status == 0 {
 						self.dependencyInstallSuccess = true
-						self.dependencyInstallLogs.append(" Splash se instaló correctamente.")
+						self.appendDependencyInstallLog(" Splash se instaló correctamente.")
 						self.checkDependencies()
 						self.refreshInstalledModels()
 					} else {
 						self.dependencyInstallSuccess = false
-						self.dependencyInstallLogs.append(" brew install finalizó con código de error \(status).")
+						self.appendDependencyInstallLog(" brew install finalizó con código de error \(status).")
 					}
 				}
 			} catch {
@@ -474,7 +508,7 @@ class SplashService {
 					self.dependencyProcess = nil
 					self.isInstallingDependency = false
 					self.dependencyInstallSuccess = false
-					self.dependencyInstallLogs.append(" Error al ejecutar el instalador: \(error.localizedDescription)")
+					self.appendDependencyInstallLog(" Error al ejecutar el instalador: \(error.localizedDescription)")
 				}
 			}
 		}
@@ -484,7 +518,7 @@ class SplashService {
 		dependencyProcess?.terminate()
 		dependencyProcess = nil
 		isInstallingDependency = false
-		dependencyInstallLogs.append(" Proceso de instalación cancelado.")
+		appendDependencyInstallLog(" Proceso de instalación cancelado.")
 	}
 
 	func installSplashInTerminal() {
@@ -1309,17 +1343,18 @@ class SplashService {
 		let autoLangOnly = textOnlyKeywords.contains { effectiveRepoId.lowercased().contains($0) }
 		let initialLangOnly = languageOnly ?? autoLangOnly
 
+		// §3.8: ids monótonos emitidos por el servicio (no `\.offset` en la vista).
 		if effectiveRepoId != repoId {
-			installLogs = [
+			resetInstallLogs([
 				"Iniciando descarga y preparación para \(effectiveRepoId)...",
 				"ℹ️ Qwen3.8-Flash-Next requiere formato GGUF en Splash 1.4.0.",
 				"🔄 Mapeando automáticamente a la versión oficial cuantizada: \(effectiveRepoId)"
-			]
+			])
 		} else {
-			installLogs = ["Iniciando descarga y preparación para \(repoId)..."]
+			resetInstallLogs(["Iniciando descarga y preparación para \(repoId)..."])
 		}
 		if initialLangOnly {
-			installLogs.append("ℹ️ Modo solo lenguaje (--language-only) activado.")
+			appendInstallLog("ℹ️ Modo solo lenguaje (--language-only) activado.")
 		}
 		installSuccess = nil
 
@@ -1330,8 +1365,8 @@ class SplashService {
 		Task.detached(priority: .userInitiated) {
 			guard !scriptPath.isEmpty, FileManager.default.fileExists(atPath: scriptPath) else {
 				await MainActor.run {
-					self.installLogs.append("Error: No se encontró script de instalación en \(scriptPath).")
-					self.installLogs.append("Asegúrate de que Splash esté instalado vía: brew install incoai/tap/splash")
+					self.appendInstallLog("Error: No se encontró script de instalación en \(scriptPath).")
+					self.appendInstallLog("Asegúrate de que Splash esté instalado vía: brew install incoai/tap/splash")
 					self.isInstalling = false
 					self.installSuccess = false
 					self.downloadSpeedMBs = 0.0
@@ -1400,8 +1435,8 @@ class SplashService {
 							if clean.isEmpty { continue }
 
 							if clean.contains("Fetching ") && clean.contains("GB") {
-								self.installLogs.append("ℹ️ \(clean)")
-								self.installLogs.append("⏳ Conectando y transfiriendo archivos grandes en paralelo...")
+								self.appendInstallLog("ℹ️ \(clean)")
+								self.appendInstallLog("⏳ Conectando y transfiriendo archivos grandes en paralelo...")
 
 								if let match = clean.range(of: "[0-9.]+\\s*GB", options: .regularExpression) {
 									let gbSubstring = clean[match].replacingOccurrences(of: "GB", with: "").trimmingCharacters(in: .whitespaces)
@@ -1426,20 +1461,23 @@ class SplashService {
 							let isFileCounter = clean.contains("Fetching ") && clean.contains("%|")
 							let isByteCounter = clean.contains("Downloading bytes") || clean.contains("it/s")
 
+							// §3.8: se reescribe el `text` de la última fila (id estable).
 							if isFileCounter {
-								if let last = self.installLogs.last, last.contains("Fetching ") && last.contains("%|") {
-									self.installLogs[self.installLogs.count - 1] = clean
+								if let lastIdx = self.installLogs.indices.last,
+								   self.installLogs[lastIdx].text.contains("Fetching ") && self.installLogs[lastIdx].text.contains("%|") {
+									self.installLogs[lastIdx].text = clean
 								} else {
-									self.installLogs.append(clean)
+									self.appendInstallLog(clean)
 								}
 							} else if isByteCounter {
-								if let last = self.installLogs.last, (last.contains("Downloading bytes") || last.contains("it/s")) {
-									self.installLogs[self.installLogs.count - 1] = clean
+								if let lastIdx = self.installLogs.indices.last,
+								   self.installLogs[lastIdx].text.contains("Downloading bytes") || self.installLogs[lastIdx].text.contains("it/s") {
+									self.installLogs[lastIdx].text = clean
 								} else {
-									self.installLogs.append(clean)
+									self.appendInstallLog(clean)
 								}
 							} else {
-								self.installLogs.append(clean)
+								self.appendInstallLog(clean)
 							}
 						}
 					}
@@ -1525,10 +1563,10 @@ class SplashService {
 				let joinedLogs = logs.joined(separator: " ").lowercased()
 				if joinedLogs.contains("vision projector") || joinedLogs.contains("mmproj") || joinedLogs.contains("--language-only") {
 					await MainActor.run {
-						self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-						self.installLogs.append("ℹ️ Detectado modelo sin componentes de visión (mmproj).")
-						self.installLogs.append("🔄 Reintentando preparación automáticamente con --language-only...")
-						self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+						self.appendInstallLog("ℹ️ Detectado modelo sin componentes de visión (mmproj).")
+						self.appendInstallLog("🔄 Reintentando preparación automáticamente con --language-only...")
+						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 					}
 					let secondPass = runPrepareProcess(withLanguageOnly: true)
 					success = secondPass.success
@@ -1547,30 +1585,31 @@ class SplashService {
 				if finalSuccess {
 					self.downloadProgressFraction = 1.0
 					self.downloadPhase = "Instalación completada con éxito"
-					self.installLogs.append("✅ Instalación y verificación de \(effectiveRepoId) completada con éxito.")
+					self.appendInstallLog("✅ Instalación y verificación de \(effectiveRepoId) completada con éxito.")
 					self.refreshInstalledModels()
 				} else {
 					self.downloadPhase = "Fallo en la instalación"
-					self.installLogs.append("❌ Error al instalar \(effectiveRepoId).")
-					if self.installLogs.contains(where: { $0.contains("loads from a GGUF only") }) {
-						self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-						self.installLogs.append("💡 La arquitectura Qwen3.8-Flash-Next en Splash requiere formato GGUF.")
-						self.installLogs.append("👉 El repositorio base 'Qwen/Qwen3.8-Flash-Next' contiene pesos safetensors incompatibles con Splash.")
-						self.installLogs.append("👉 Instala la cuantización oficial compatible con Splash:")
-						self.installLogs.append("   ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0")
-						self.installLogs.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-					} else if self.installLogs.contains(where: { $0.contains("gated repo") || $0.contains("Access to model") || $0.contains("403") }) {
-						self.installLogs.append("🔒 Este modelo tiene acceso restringido ('Gated') en Hugging Face.")
-						self.installLogs.append("💡 Muchos modelos protegidos tienen aprobación instantánea ('auto').")
-						self.installLogs.append("👉 Pasos para habilitar la descarga:")
-						self.installLogs.append("   1. Inicia sesión en Hugging Face con tu cuenta.")
-						self.installLogs.append("   2. Visita: https://huggingface.co/\(effectiveRepoId)")
-						self.installLogs.append("   3. Pulsa 'Agree and access repository' (o Aceptar términos).")
-						self.installLogs.append("   4. Regresa a Splash Monitor y haz clic nuevamente en Descargar.")
-					} else if self.installLogs.contains(where: { $0.contains("HTTP Error 500") || $0.contains("Error 502") || $0.contains("Error 503") || $0.contains("Error 504") || $0.contains("check your connection") }) {
-						self.installLogs.append("⚠️ Interrupción temporal en los servidores de Hugging Face o en la red (Error 500 / Timeout).")
-						self.installLogs.append("💾 ¡Los archivos ya transferidos están a salvo en la caché local (~17 GB guardados)!")
-						self.installLogs.append("👉 Solo pulsa 'Descargar' de nuevo; el proceso reanudará al instante solo lo que falta.")
+					self.appendInstallLog("❌ Error al instalar \(effectiveRepoId).")
+					// §3.8: las comprobaciones leen `text` de cada línea.
+					if self.installLogs.contains(where: { $0.text.contains("loads from a GGUF only") }) {
+						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+						self.appendInstallLog("💡 La arquitectura Qwen3.8-Flash-Next en Splash requiere formato GGUF.")
+						self.appendInstallLog("👉 El repositorio base 'Qwen/Qwen3.8-Flash-Next' contiene pesos safetensors incompatibles con Splash.")
+						self.appendInstallLog("👉 Instala la cuantización oficial compatible con Splash:")
+						self.appendInstallLog("   ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0")
+						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+					} else if self.installLogs.contains(where: { $0.text.contains("gated repo") || $0.text.contains("Access to model") || $0.text.contains("403") }) {
+						self.appendInstallLog("🔒 Este modelo tiene acceso restringido ('Gated') en Hugging Face.")
+						self.appendInstallLog("💡 Muchos modelos protegidos tienen aprobación instantánea ('auto').")
+						self.appendInstallLog("👉 Pasos para habilitar la descarga:")
+						self.appendInstallLog("   1. Inicia sesión en Hugging Face con tu cuenta.")
+						self.appendInstallLog("   2. Visita: https://huggingface.co/\(effectiveRepoId)")
+						self.appendInstallLog("   3. Pulsa 'Agree and access repository' (o Aceptar términos).")
+						self.appendInstallLog("   4. Regresa a Splash Monitor y haz clic nuevamente en Descargar.")
+					} else if self.installLogs.contains(where: { $0.text.contains("HTTP Error 500") || $0.text.contains("Error 502") || $0.text.contains("Error 503") || $0.text.contains("Error 504") || $0.text.contains("check your connection") }) {
+						self.appendInstallLog("⚠️ Interrupción temporal en los servidores de Hugging Face o en la red (Error 500 / Timeout).")
+						self.appendInstallLog("💾 ¡Los archivos ya transferidos están a salvo en la caché local (~17 GB guardados)!")
+						self.appendInstallLog("👉 Solo pulsa 'Descargar' de nuevo; el proceso reanudará al instante solo lo que falta.")
 					}
 				}
 			}
@@ -1586,7 +1625,7 @@ class SplashService {
 		downloadSpeedMBs = 0.0
 		downloadProgressFraction = nil
 		downloadPhase = "Descarga cancelada por el usuario"
-		installLogs.append("⚠️ Descarga cancelada por el usuario.")
+		appendInstallLog("⚠️ Descarga cancelada por el usuario.")
 	}
 
 	// MARK: - Server Control

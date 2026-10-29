@@ -97,9 +97,10 @@ narrow value inputs. Highest-impact extractions: `QuickConnectGuideSection`
 `apiEndpointsView`, `ModelManagerView`'s `installationConsoleView`,
 `TokenMetricsView`'s memory/quick-bar/request sections, `MenuBarView`'s
 header (churned by `isRunning`/`activeModel`).
+**Resolved by W5 (2026-10-29):** every tab view now projects narrow value inputs into extracted `private struct` sections — `MainWindowView.settingsDetailView` split into 9 `Settings*Card` structs, `ModelTestingView` into `TestingHeaderView`/`SmokeTestSection`/`SmokeTestRow`/`BenchmarkSection`/`BenchmarkMetricCard`/`PlaygroundSection`, `TokenMetricsView` into `ActiveRequestCard`/`SpeedHistoryCard`/`EfficiencyMetricsCard`/`MemorySectionCard`/`ConnectedAppsQuickBar`/`ConnectedAppChip`, `ServerControlView` into `AgentsLauncherView`/`APIEndpointsView`, `ModelManagerView`'s online rows into `OnlineModelRow`, `ConnectedAppsView`'s `Header`/`MetricsSummaryRow`/`QuickConnectGuideSection`/`StatBadgeCard`/`IntegrationGuideCard`, and `MenuBarView`'s `MenuBarHeaderView`. The two install consoles (model + dependency) share one `InstallConsole` view fed by monotonic-id `InstallLogLine`s. State that must survive tab switches (playground inputs, the delete-alert target) stays `@State` in the parent; everything else is value input + closure actions.
 
 ### 3.3 Migrate `ModelDiagnosticService` to `@Observable` and hoist the instance · **High** `[specialist]` F-MDS-2/F-MT-1, `[swiftui-way]` P1-6/P1-7, `[whats-new-27]` P3-4
-**Partially resolved by W4 (2026-10-29):** `ModelDiagnosticService` is now `@Observable` (zero `@Published` left in the codebase) and the instance is hoisted to a stable parent and injected via `@Environment(ModelDiagnosticService.self)`, so leaving the tab no longer destroys smoke-test/benchmark results. Remaining (W5): extract `ModelTestingView`'s subviews (currently computed props, including the `metricCard(...)` helper) into standalone structs.
+**Resolved by W4+W5 (2026-10-29):** `ModelDiagnosticService` is now `@Observable` (zero `@Published` left in the codebase) and the instance is hoisted to a stable parent and injected via `@Environment(ModelDiagnosticService.self)`, so leaving the tab no longer destroys smoke-test/benchmark results; W5 extracted `ModelTestingView`'s subviews (including the old `metricCard(...)` helper, now `BenchmarkMetricCard`) into standalone structs — see §3.2.
 
 ### 3.4 Cache derived values on the service instead of reading the compound `status` · **Medium** `[specialist]` F-TM-3/F-SC-6/F-MW-2/F-CA-2
 **Resolved by W4 (2026-10-29):** the service now caches every derived value views read — `ttftP50Ms`, `itlP50Ms`, `memoryDevice`, `thermalState`, `statusMemoryPressure`, `weights`, `aneFfn`, `requestsCompleted/Cancelled/Failed`, `schedulerQueued`, `statusVision` — recomputed once per tick in `updateStatusDerivedCaches()` (nilled on stop/reset), and `ConnectedAppsView`'s summary reads the stored `activeClientCount` / `totalSockets` maintained by `scanConnectedClients()`. All `status?.…` read sites in `TokenMetricsView` / `ServerControlView` / `ConnectedAppsView` were switched to the cached values. The `MainWindowView` sidebar badge intentionally keeps its `.active`-only filter (different semantics from `activeClientCount`, which includes idle).
@@ -131,6 +132,8 @@ header (churned by `isRunning`/`activeModel`).
   (`Data(contentsOf:)` + split) synchronously in the sheet body builder. **Fix:**
   load once into `@State` when the sheet opens.
 
+**Resolved by W4+W5 (2026-10-29):** the service-side items landed in W4 (stored `localNetworkIP` refreshed during polling, `isAgentInstalled` a pure `installedAgents.contains` with the app-presence scan folded into `refreshAgentAvailability()` and run off-actor, `AppIconView` decoding its icon into a `static let`); W5 finished the view side — `ServerControlView` holds `@State portInUse` refreshed via `.task(id: portString)` (no more `bind()` syscall per keystroke), loads the log file once into `@State serverLogsText` when the sheet opens, commits the port on `onSubmit`/focus loss instead of per keystroke, and `ConnectedAppCard` renders `lastSeen` with `Text(_, format: .dateTime…)` instead of a fresh `DateFormatter` per card per tick.
+
 ### 3.6 Poll loop & per-tick I/O · **Medium** `[swiftui-way]` P2-1/P2-2
 **Resolved by W4 (2026-10-29):** `checkServerStatus()` now has an in-flight guard (`isCheckingStatus`) so overlapping polls can't stack, and the lock-file read/decode/stale-cleanup runs off the main actor (`resolveActiveLock` in a `Task.detached` returning a `Sendable` `LockSnapshot`; only the resulting `activePort`/`activeModel`/`activePid` writes touch the service). The 10th-tick `refreshInstalledModels` disk walk moved to `nonisolated static scanInstalledModels` (value-captured directory/state, `ModelSizeCache` mutated by value and returned). `detectPortConflict()` runs its `lsof`/`ps` spawns in a `Task.detached`, and `startServer` only calls `launchServerProcess()` after that async check.
 
@@ -146,6 +149,7 @@ displayed fields (status, count, lastSeen) as narrow separate inputs to the
 card (or compare displayed fields with a quantized `lastSeen`). Secondary: the
 card's `icon: NSImage?` input is non-POD, so reflected comparison can't prove
 equality (`[specialist]` F-CA-6) — the narrow-input fix covers this.
+**Resolved by W5 (2026-10-29):** `ConnectedAppCard` now takes the narrow value inputs (`pid`, `name`, `icon`, `category`, `status`, `connectionCount`, `bundleId`, `lastSeen`) with `var id: Int { pid }`, so per-poll `status`/`connectionCount`/`lastSeen` changes reach the row body and the row's `@State` (hover, termination-confirmation) survives. Actions (`activateApp`/`revealAppInFinder`/`terminateApp`) resolve the live `ConnectedApp` by PID (`connectedApps.first(where: { $0.pid == pid })`) before touching the service, so a stale displayed value can't terminate/activate the wrong process.
 
 ### 3.8 List identity & row structure · **Medium** `[swiftui-way]` P1-10/P1-11/P2-9, `[specialist]` F-MM-3/F-DI-2/F-MM-7/F-MM-8/F-MM-10
 - **Offset-as-id in both live log consoles:**
@@ -165,6 +169,8 @@ equality (`[specialist]` F-CA-6) — the narrow-input fix covers this.
   an enum. **Fix:** row struct with value inputs (`item`, `isInstalled` from a
   precomputed `Set<repoId>`); enum for the tab.
 
+**Resolved by W5 (2026-10-29):** both consoles now share the single `InstallConsole` view whose rows are `InstallLogLine`s (monotonic `Identifiable` ids owned by the service; in-place progress lines rewrite `text` of the same line instead of appending), so `ForEach(logs)` has stable identity across "Clear"/`removeAll()`. `isGatedError` is a `@State` cache recomputed on `onChange(of: installSuccess)`. Online rows are `OnlineModelRow(item:isInstalled:isInstalling:)` fed by a precomputed `Set<repoId>`, and the tab selector is a typed `ModelManagerTab` enum (as is `ModelTestingTab` in the testing tab).
+
 ---
 
 ## 4. Live-behavior bugs (user-visible, non-SwiftUI-idiom)
@@ -176,14 +182,17 @@ equality (`[specialist]` F-CA-6) — the narrow-input fix covers this.
   "8005" restarts the live engine on intermediate values. Also interacts with
   the reverse-sync `onChange(of: activePort)` at `:57` that can overwrite
   in-progress input. **Fix:** commit on `onSubmit` / focus loss.
+  **Resolved (in-tree since commit `2a47963`):** the port field now commits through `commitPort()` on `onSubmit` and focus loss, and the reverse-sync `onChange(of: activePort)` skips while the field is focused, so intermediate keystrokes never restart the engine.
 - **Literal `%%` in the ANE row · High** `[swiftui-way]` addendum 1, `[specialist]` F-TM-1 —
   `Splash/Views/TokenMetricsView.swift:231` (verified):
   `Text("…\(Int(share * 100))%% share")` — Swift interpolation has no printf
   semantics → UI renders "… · 67%% share". **Fix:** single `%`.
+  **Resolved (in-tree since commit `2a47963`):** the interpolation now uses a single `%`.
 - **Seven identical "1M tokens (YaRN)" rows · High** `[swiftui-way]` addendum 2, `[specialist]` F-SC-2 —
   `ServerControlView.swift:530-540` (verified): `ForEach(["16K", …, "1M"])`
   but every row label is hardcoded `Text("1M tokens (YaRN)")`. **Fix:**
   `Text("\(ctx) tokens")` + the YaRN note for 1M only.
+  **Resolved (in-tree since commit `2a47963`):** each row interpolates its own context label; the "(YaRN)" suffix appears only for 1M.
 - **Three menu labels ignore their stored state · Medium** `[swiftui-way]` addendum 4, `[specialist]` F-SC-3 —
   **Resolved by W3 (2026-10-28):** already applied in-tree (commit `2a47963`) — GDN, modality and Verify menu labels now interpolate `Preferences.stateFormat` / `Preferences.languageOnly` / `Preferences.verifyRows`; verified in `ServerControlView.swift`.
 - **Inconsistent validation gating · Medium** `[swiftui-way]` addendum 3 —
@@ -193,6 +202,7 @@ equality (`[specialist]` F-CA-6) — the narrow-input fix covers this.
   max(15, totalElapsed * 0.35 * 1000)`, `playgroundTTFTMs = max(10, elapsed *
   0.25 * 1000)` — UI labels these "Cold TTFT (1st Token)". Relabel as estimates
   or remove.
+  **Resolved by W5 (2026-10-29):** the estimates are now labeled as such — the benchmark card reads "Estimated Cold TTFT" with subtitle "Estimated from total response time", the playground row reads "Est. TTFT: … ms", and the service documents the factors at each computation site.
 - **`SplashEngineIdentity.engineMarkers` contains bare "splash"** —
   **Resolved by W4 (2026-10-29):** the bare `splash` marker is gone — `engineMarkers` is now `["server.py", "serve-native", "/splash"]` (path-separated / engine-specific only), so this app's own binary (`SplashMonitor.app/…/Splash`) can no longer match; `ProcessIntrospectionTests` covers all three installed layouts. `[swiftui-way]` P3.
 
@@ -201,7 +211,7 @@ equality (`[specialist]` F-CA-6) — the narrow-input fix covers this.
 ## 5. Deprecated / soft-deprecated APIs
 
 ### 5.1 Single-parameter `.onChange(of:)` — 5 sites (not 8) · **Medium** `[swiftui-way]` P1-13, `[specialist]` F-APP-1/F-MW-6/F-MM-6/F-DI-2/F-MB-1
-**Partially resolved by W4 (2026-10-29):** `SplashMonitorApp.swift:113` is converted to the two-param form (`onChange(of: menuBarOnlyMode)`); the other 4 sites remain (W5).
+**Resolved by W4+W5 (2026-10-29):** every `onChange` in the app is now the two-param form (grep-verified; the W5 rewrites of `ModelManagerView` / `DependencyInstallView`'s consoles — now the shared `InstallConsole` with `onChange(of: logs.count)` — removed the last two single-param sites), and the two `refreshInterval` slider sites (settings card, menu-bar view) commit via `onEditingChanged` + `startPolling()` instead of reacting per slider step.
 Verified by grep: **5** single-param sites (AGENTS.md claims 8 — stale):
 `SplashMonitorApp.swift:113`, `MainWindowView.swift:681`, `MenuBarView.swift:260`,
 `ModelManagerView.swift:522`, `DependencyInstallView.swift:208`. Deprecated
@@ -223,6 +233,7 @@ lands in the string catalog as a key and VoiceOver reads "empty". **Fix:**
 `Picker(selection:content:label:) { … } label: { EmptyView() }` (or a shared
 empty label). Note the label-last `Picker.init(selection:label:content:)` is
 the soft-deprecated spelling.
+**Resolved by W5 (2026-10-29):** every segmented tab/menu picker now carries a meaningful accessible label ("Model catalog tab", "Model testing section", "Connected apps view", "Menu bar display mode", "Output tokens:", "API protocol", "Context window limit", …) that stays visible to VoiceOver while hidden in the UI via `.labelsHidden()` — the app owner's a11y preference over the `EmptyView()` label.
 
 ---
 
@@ -247,6 +258,7 @@ remains. `[whats-new-27]` is authoritative for this section.
    (Non-candidate, documented: the terminate-app `confirmationDialog` at
    `ConnectedAppsView.swift:583-596` captures `app` from the row's stored
    property — no optional to bind; its current form is correct.)
+   **Resolved by W5 (2026-10-29):** `ModelManagerView`'s delete alert is now the dual path — the 27 branch drives presentation purely from `modelToDelete` via `alert("Delete Model?", item:)` (SwiftUI nils it on dismiss), the 26.x branch keeps `showingDeleteAlert` + `presenting:`; the delete button sets both, the bool only matters on 26.x. The terminate-app `confirmationDialog` now resolves the live app by PID (see §3.7) and was otherwise left as documented.
 3. **`State(initialValue:)` seeding in the two `init(initialTab:)`s · Low** `[whats-new-27]` P3-3, *conflicts with* `[swiftui-way]` P1-9 —
    `MainWindowView.swift:47-49` and `ConnectedAppsView.swift:22-24` seed
    `@State` via the legacy projected-value form. Both inits have **no
@@ -260,6 +272,7 @@ remains. `[whats-new-27]` is authoritative for this section.
    reorder or split init assignments across stored properties (the shape the
    `@State` macro turns into "used before being initialized" errors). Revisit
    deletion once the screenshot generator is quarantined (§8.2).
+   **Resolved by W5 (2026-10-29):** both `init(initialTab:)`s now use the macro-correct direct-assignment form (`@State private var selectedTab: X = .default` + `self.selectedTab = initialTab` in init), single assignment, no projected-value seeding; the inits are kept because the screenshot generator still calls them.
 4. **No adoption path — verified, no action** `[whats-new-27]` INFO-5/6:
    no `AsyncImage`, no reorder/drag-drop surface, no List swipe actions, and
    **no `toolbar { }` builders at all** (only `.windowToolbarStyle(.unified)`
@@ -295,6 +308,7 @@ remains. `[whats-new-27]` is authoritative for this section.
   duplicated verbatim in ConnectedAppsView + ServerControlView — extract to a
   `View` extension (also resolves the locale-resolved-at-creation note,
   `[specialist]` F-SC-9/F-CA-7).
+  **Resolved by W3+W5 (2026-10-29):** zero `DispatchQueue.main.asyncAfter` left in `Splash/` (grep-verified; the remaining mentions are comments) — the optimal-profile banner in `MainWindowView` and the menu-bar window-scan hide both use cancellable `Task`s (the banner one runs in the extracted `SettingsOptimalProfileCard`), and the copy-flash pair is the shared `ClipboardCopy.swift` helper (`copyToClipboard(_:flash:into:)` + `copiedFlashAutoClear($copied)`) with an auto-clearing `CopiedFlash`, used by the guide card, smoke-test report and API-endpoint rows.
 - **Side-effecting inits · Low** `[swiftui-way]` P2-13/P2-14, `[swiftui-way]` P3 —
   **Resolved by W4 (2026-10-29):** `NotificationService.init`, `AutoLaunchService.init` and `SystemMemoryPressureSentinel.init` now assign values only; the permission prompt (only when `Preferences.systemNotificationsEnabled`) and the launch-at-login status refresh moved to `applicationDidFinishLaunching`.
 - **`print(...)` instead of `os.Logger` · Low** `[swiftui-way]` P3 —
@@ -404,6 +418,7 @@ passes, screenshot generator SKIPPED in the normal lane (see W2 report).
   `DominicanEmblem` (referenced nowhere — verify before deleting),
   `AboutView`'s empty `init()`, redundant `@Bindable` on the `shared` static
   if no view actually uses `$shared.` bindings for it (grep before removing).
+  **Partially resolved by W5 (2026-10-29):** `AboutView`'s empty `init()` is removed; grep-verified `$shared.` bindings are used (5 sites: `ServerControlView`, `PortConflictAlertModifier` ×2, `MainWindowView` ×2), so the `@Bindable` on `shared` is **required — keep**. Remaining (W7): delete the unreferenced `DominicanEmblem`.
 - **Accessibility · Low** `[swiftui-way]` P3 — icon-only buttons without text
   labels (`MenuBarView.swift:120-160`, `ConnectedAppCard:505-535`,
   TokenMetricsView free-memory/dismiss, AboutView): use
@@ -413,10 +428,12 @@ passes, screenshot generator SKIPPED in the normal lane (see W2 report).
   `MainWindowView.swift:88, 96, 141`) break Dynamic Type — semantic fonts +
   `@ScaledMetric`. (The 11 pt menu-bar label size is arguably intentional —
   keep, `[specialist]` F-APP-3.)
+  **Partially resolved by W5 (2026-10-29):** every icon-only button now uses the shared pattern `Button("Label", systemImage: "…") { … }.labelStyle(.iconOnly)` + `.help()` — the 5 menu-bar buttons, the `ConnectedAppCard` actions, the model rows (Reveal/Delete/Refresh), the memory-notice dismiss and the log-console buttons. Remaining: the app-wide fixed point-size → Dynamic Type migration (deliberately deferred: it would restyle every screen and the owner treats the current sizing as the design).
 - **`SemanticVersion` prerelease comparison is lexicographic on the suffix** —
   `"1.0.10-beta.10"` sorts before `"-beta.2"`; harmless for current
   single-digit betas. `[swiftui-way]` P3.
 - **`AboutView` hardcodes "© 2026"** — drifts. `[specialist]` F-AB-1.
+  **Resolved by W5 (2026-10-29):** the year is now computed from `Calendar.current` and interpolated into the (localizable) copyright string.
 - **Good patterns — keep** (all reviews converge): narrow value-input leaf
   views (`MetricCard`, `MiniStatRow`, `RequestPill`, `SpeedMiniChart`,
   `AgentButton`, `StatBadgeCard`, `IntegrationGuideCard`, `DiagnosticBadge`,
