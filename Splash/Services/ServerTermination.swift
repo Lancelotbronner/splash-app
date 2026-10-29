@@ -3,7 +3,8 @@ import AppKit
 
 // MARK: - Ejecución de comandos externos
 
-struct CommandResult: Sendable {
+/// `nonisolated` (§7): lo construye `CommandRunner` fuera del actor principal.
+nonisolated struct CommandResult: Sendable {
 	let status: Int32
 	let output: String
 	var succeeded: Bool { status == 0 }
@@ -18,7 +19,9 @@ struct CommandResult: Sendable {
 ///
 /// Lectura del pipe antes de `waitUntilExit()` para no bloquearse si la salida
 /// supera el búfer interno de 64 KB (caso real: `lsof` con muchas conexiones).
-enum CommandRunner {
+/// `nonisolated` (§7): es Foundation puro y debe poder ejecutarse fuera del
+/// actor principal (escalada de terminación, sondeo de puertos).
+nonisolated enum CommandRunner {
 	@discardableResult
 	static func run(_ executable: String, _ arguments: [String]) -> CommandResult {
 		guard FileManager.default.isExecutableFile(atPath: executable) else {
@@ -55,7 +58,11 @@ protocol ServerTerminating: Sendable {
 
 /// Implementación endurecida: solo escuchas verificadas del motor, escalada
 /// INT → TERM → KILL, sin `pkill -f` genérico.
-struct HardenedServerTerminator: ServerTerminating {
+///
+/// `nonisolated` (§7): la escalada bloquea hasta ~4 s con `lsof`/`ps`
+/// síncronos; ejecutarla en el actor principal congelaba la UI en cada
+/// detención. Toda la lógica de verificación/consentimiento es invariante.
+nonisolated struct HardenedServerTerminator: ServerTerminating {
 	init() {}
 
 	private static let lsof = "/usr/sbin/lsof"

@@ -93,8 +93,9 @@ private struct Header: View {
 private struct MetricsSummaryRow: View {
 	var body: some View {
 		HStack(spacing: 12) {
-			let activeCount = SplashService.shared.connectedApps.filter { $0.status == .active || $0.status == .idle }.count
-			let totalSockets = SplashService.shared.connectedApps.reduce(0) { $0 + $1.connectionCount }
+			// §3.4: contadores calculados una vez por ciclo de sondeo en el servicio.
+			let activeCount = SplashService.shared.activeClientCount
+			let totalSockets = SplashService.shared.totalSockets
 
 			StatBadgeCard(
 				title: LocalizedStringResource("Connected Apps:"),

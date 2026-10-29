@@ -1,7 +1,8 @@
 import Foundation
 
 /// Utilidad para consultar las interfaces de red del sistema macOS.
-enum NetworkInterfaceHelper {
+/// `nonisolated` (§7): syscall puro, invocable desde trabajo en segundo plano.
+nonisolated enum NetworkInterfaceHelper {
 
 	/// Obtiene la dirección IPv4 primaria de la red local del Mac (por ejemplo, `192.168.1.49`).
 	///

@@ -12,7 +12,8 @@ import Foundation
 /// Las reglas replican las restricciones que el propio motor impone a los alias de
 /// modelo (`DEVELOPMENT.md` §API model aliases): sin espacios, sin caracteres de
 /// control, sin `\`, `%`, `?`, `#`, y sin segmentos vacíos, `.` o `..`.
-enum ModelIDValidator {
+/// `nonisolated` (§7): lógica pura, invocable desde el escaneo fuera del actor principal.
+nonisolated enum ModelIDValidator {
 	static let maxOwnerLength = 64
 	static let maxRepositoryLength = 96
 	static let maxVariantLength = 64

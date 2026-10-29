@@ -251,7 +251,7 @@ struct ServerControlView: View {
 					.buttonStyle(.bordered)
 					.controlSize(.small)
 
-					if let vision = SplashService.shared.status?.vision {
+					if let vision = SplashService.shared.statusVision {
 						HStack(spacing: 4) {
 							Image(systemName: vision ? "eye.fill" : "doc.text.fill")
 								.font(.system(size: 9))

@@ -82,19 +82,7 @@ fixed; the test target compiles under Swift 6 and the full XCTest suite passes
 ## 3. Observation & rendering performance
 
 ### 3.1 Make the `SplashStatus` tree `Equatable` — the systemic fix · **High** `[specialist]` F-ST-1, `[swiftui-way]` P2-4
-`Splash/Models/SplashStatus.swift` (345 lines): `SplashStatus` and all nested
-structs are `Codable` but **not `Equatable`** (grep-verified: zero `Equatable`
-in the file). `SplashService.status` is a fresh JSON decode assigned
-unconditionally every 1.5 s poll (`SplashService.swift:549-636`), plus
-`isRunning` / `activeModel` / `speedHistory` writes each tick `[specialist]`
-F-SVC-1 — the `@Observable` setter therefore *always* invalidates, defeating
-Observation and making the well-factored leaf views moot. All stored props are
-value/optionals → synthesized `Equatable` is one line per struct, and the
-generated accessor then skips redundant invalidation when the payload is
-unchanged. **Fix:** `Equatable` across the tree + guard redundant
-`isRunning`/`activeModel` writes with `if newValue != …`; `status` also becomes
-usable as a `task(id:)` token. Accept `speedHistory` churn (real sparkline data)
-or compare the last element.
+**Resolved by W4 (2026-10-29):** `Equatable` across the `SplashStatus` tree landed in `2a47963`; the redundant writes are now guarded — `checkServerStatus()` and `scanAndConnectPort()` assign `status`, `isRunning` and `activeModel` only when the decoded value differs, and the derived values views read are recomputed once per tick in `updateStatusDerivedCaches()` (see §3.4). `speedHistory` churn accepted (real sparkline data).
 
 ### 3.2 One invalidation boundary per tab — extract sections into structs · **High** `[specialist]` F-MW-1/F-SC-5/F-TM-2/F-MM-2/F-CA-1/F-MT-2/F-MB-4/F-DI-3, `[swiftui-way]` P1-8/P1-12/P2-8
 All seven tab views factor their "sections" as private computed properties /
@@ -111,30 +99,10 @@ narrow value inputs. Highest-impact extractions: `QuickConnectGuideSection`
 header (churned by `isRunning`/`activeModel`).
 
 ### 3.3 Migrate `ModelDiagnosticService` to `@Observable` and hoist the instance · **High** `[specialist]` F-MDS-2/F-MT-1, `[swiftui-way]` P1-6/P1-7, `[whats-new-27]` P3-4
-`Splash/Views/ModelTestingView.swift:5` — `@StateObject private var
-diagnosticService = ModelDiagnosticService()`, the app's **only legacy
-`ObservableObject`** (~15 `@Published`): any published change re-runs the whole
-body (header + picker + 3 subviews + 4 benchmark cards) on every progress
-tick. Additionally, because the view lives inside the parent tab `switch`,
-**leaving the tab destroys the StateObject and all smoke-test/benchmark
-results are lost** (`[specialist]` F-MT-1). **Fix:** migrate the service to
-`@Observable` (mechanical — value-type results already), `@StateObject` →
-`@State`, hoist the instance to a stable parent (window view / scene-level),
-and extract `ModelTestingView`'s subviews into structs (they are currently
-computed props, including a `metricCard(...)` function returning `some View`).
-`@State`-over-`@Observable` is available since macOS 26.0 — **no gate needed**.
+**Partially resolved by W4 (2026-10-29):** `ModelDiagnosticService` is now `@Observable` (zero `@Published` left in the codebase) and the instance is hoisted to a stable parent and injected via `@Environment(ModelDiagnosticService.self)`, so leaving the tab no longer destroys smoke-test/benchmark results. Remaining (W5): extract `ModelTestingView`'s subviews (currently computed props, including the `metricCard(...)` helper) into standalone structs.
 
 ### 3.4 Cache derived values on the service instead of reading the compound `status` · **Medium** `[specialist]` F-TM-3/F-SC-6/F-MW-2/F-CA-2
-- `TokenMetricsView` reads ~8 sub-paths of `status` (`status?.metrics?.ttftMs`,
-  `status?.memoryPlan?.device`, `status?.thermalState`, …) — each creates a
-  dependency on the *whole* `SplashStatus`. `statusBannerView` reads
-  `status?.vision` just for one Bool (`ServerControlView`). **Fix:** extend the
-  service's existing pre-cached pattern (`memoryUsageRatio`,
-  `formattedDecodeSpeed`…) to the derived values views read.
-- Sidebar badge `connectedApps.filter { $0.status == .active }.count`
-  (`MainWindowView.swift` sidebar) and `metricsSummaryRow`'s inline
-  `reduce` (`ConnectedAppsView.swift`) make sidebar/summary depend on the
-  per-poll array. **Fix:** stored `activeClientCount` / `totalSockets`.
+**Resolved by W4 (2026-10-29):** the service now caches every derived value views read — `ttftP50Ms`, `itlP50Ms`, `memoryDevice`, `thermalState`, `statusMemoryPressure`, `weights`, `aneFfn`, `requestsCompleted/Cancelled/Failed`, `schedulerQueued`, `statusVision` — recomputed once per tick in `updateStatusDerivedCaches()` (nilled on stop/reset), and `ConnectedAppsView`'s summary reads the stored `activeClientCount` / `totalSockets` maintained by `scanConnectedClients()`. All `status?.…` read sites in `TokenMetricsView` / `ServerControlView` / `ConnectedAppsView` were switched to the cached values. The `MainWindowView` sidebar badge intentionally keeps its `.active`-only filter (different semantics from `activeClientCount`, which includes idle).
 
 ### 3.5 Work in view bodies · **P0/Medium** `[swiftui-way]` P0-2/P1-1/P1-2, `[specialist]` F-SVC-2/F-AIV-1/F-SC-8/F-CA-5
 - **`SplashService.localNetworkIP`** (`Splash/Services/SplashService.swift:145-147`,
@@ -164,21 +132,7 @@ computed props, including a `metricCard(...)` function returning `some View`).
   load once into `@State` when the sheet opens.
 
 ### 3.6 Poll loop & per-tick I/O · **Medium** `[swiftui-way]` P2-1/P2-2
-- `checkServerStatus()` (1.5 s poll) does **synchronous lock-file I/O**
-  (`Data(contentsOf:)` + attributes + remove) on the MainActor every tick —
-  the code's own comment (`SplashService.swift:630`) documents a prior
-  7.5 ms/tick problem of the same class. The 10th-tick
-  `refreshInstalledModels` disk walk (215 files) is the other
-  `Task.detached` candidate.
-- Timer + per-tick `Task { @MainActor in await checkServerStatus() }`
-  (`SplashService.swift:492-505`) with 0.5 s minimum interval vs 1.0 s fetch
-  timeout → **overlapping runs can stack** (duplicate lock I/O, duplicate
-  edge notifications; no in-flight guard). **Fix:** cancellable `Task`-based
-  loop or an in-flight flag.
-- `detectPortConflict` (`SplashService.swift:1568-1589`) runs `lsof` via
-  `Process` + `waitUntilExit()` **synchronously on the MainActor** on every
-  start (contrast: the connected-clients `lsof` at `:2528` already uses
-  `Task.detached` correctly). **Fix:** async-ify via `Task.detached`.
+**Resolved by W4 (2026-10-29):** `checkServerStatus()` now has an in-flight guard (`isCheckingStatus`) so overlapping polls can't stack, and the lock-file read/decode/stale-cleanup runs off the main actor (`resolveActiveLock` in a `Task.detached` returning a `Sendable` `LockSnapshot`; only the resulting `activePort`/`activeModel`/`activePid` writes touch the service). The 10th-tick `refreshInstalledModels` disk walk moved to `nonisolated static scanInstalledModels` (value-captured directory/state, `ModelSizeCache` mutated by value and returned). `detectPortConflict()` runs its `lsof`/`ps` spawns in a `Task.detached`, and `startServer` only calls `launchServerProcess()` after that async check.
 
 ### 3.7 `ConnectedAppCard` frozen rows — value-comparison vs `==` · **High** `[swiftui-way]` P1-4, `[specialist]` F-CONN-1
 `Splash/Models/ConnectedApp.swift:83-85` — custom `==` compares **only**
@@ -239,15 +193,15 @@ equality (`[specialist]` F-CA-6) — the narrow-input fix covers this.
   max(15, totalElapsed * 0.35 * 1000)`, `playgroundTTFTMs = max(10, elapsed *
   0.25 * 1000)` — UI labels these "Cold TTFT (1st Token)". Relabel as estimates
   or remove.
-- **`SplashEngineIdentity.engineMarkers` contains bare "splash"** — matches
-  this app's own binary path; currently safe (LISTEN-on-port + bundle-id
-  guards) but tighten to path-separated markers. `[swiftui-way]` P3.
+- **`SplashEngineIdentity.engineMarkers` contains bare "splash"** —
+  **Resolved by W4 (2026-10-29):** the bare `splash` marker is gone — `engineMarkers` is now `["server.py", "serve-native", "/splash"]` (path-separated / engine-specific only), so this app's own binary (`SplashMonitor.app/…/Splash`) can no longer match; `ProcessIntrospectionTests` covers all three installed layouts. `[swiftui-way]` P3.
 
 ---
 
 ## 5. Deprecated / soft-deprecated APIs
 
 ### 5.1 Single-parameter `.onChange(of:)` — 5 sites (not 8) · **Medium** `[swiftui-way]` P1-13, `[specialist]` F-APP-1/F-MW-6/F-MM-6/F-DI-2/F-MB-1
+**Partially resolved by W4 (2026-10-29):** `SplashMonitorApp.swift:113` is converted to the two-param form (`onChange(of: menuBarOnlyMode)`); the other 4 sites remain (W5).
 Verified by grep: **5** single-param sites (AGENTS.md claims 8 — stale):
 `SplashMonitorApp.swift:113`, `MainWindowView.swift:681`, `MenuBarView.swift:260`,
 `ModelManagerView.swift:522`, `DependencyInstallView.swift:208`. Deprecated
@@ -325,30 +279,13 @@ remains. `[whats-new-27]` is authoritative for this section.
 ## 7. Concurrency & MainActor
 
 - **`HardenedServerTerminator.stopEngine` runs its escalation on the main
-  thread · Medium** `[swiftui-way]` P1-3 — `Splash/Services/ServerTermination.swift:91-113`
-  (verified): `async` but, under default MainActor isolation, the INT→TERM→KILL
-  escalation (up to 40+ blocking `lsof`/`ps` spawns + ~4 s, with the `await`
-  sleeps only suspending *between* them) blocks the UI for the duration of
-  every stop. **Fix:** mark `CommandRunner`/verifiers `nonisolated` (pure
-  Foundation) or run via `Task.detached`; state writes return to MainActor.
-  Keep the consent/hardening logic (`ClientTerminationPolicy`, PID
-  re-verification) intact — do not simplify it.
-- **`SystemMemoryPressureSentinel` · Low** `[swiftui-way]` P2-13 — `init()`
-  creates+resumes a DispatchSource (init side effect); the event handler on
-  the utility queue reads MainActor-isolated `self.source` (data race under
-  Swift 6) then hops via `DispatchQueue.main.async` (pre-actor idiom — use
-  `Task { @MainActor in }`); `resume()` before `self.source = newSource` drops
-  early events.
+  thread · Medium** `[swiftui-way]` P1-3 —
+  **Resolved by W4 (2026-10-29):** `CommandRunner`, `HardenedServerTerminator`, `CommandResult`, `KillTargetResolver`, `SplashEngineIdentity`, `ListerOutput`/`EstablishedConnection` and `ServeLockStore` are now `nonisolated`, so the INT→TERM→KILL escalation (blocking `lsof`/`ps` spawns + sleeps) executes off the main actor; only the resulting state writes touch the MainActor. The consent/hardening logic (`ClientTerminationPolicy`, PID re-verification) is untouched.
+- **`SystemMemoryPressureSentinel` · Low** `[swiftui-way]` P2-13 —
+  **Resolved by W4 (2026-10-29):** `init()` has no side effects (monitoring starts via the idempotent `startMonitoring()`, called from `SplashService`); the utility-queue handler reads the source through a `Sendable` holder that is assigned *before* `resume()`, so no early events are dropped and no MainActor-isolated member is touched off-actor; the main-thread hop is now `Task { @MainActor in }`.
 - **Static `@AppStorage` in `Preferences` may never invalidate the scene ·
-  Medium** `[specialist]` F-APP-2/F-MB-3 — `@AppStorage` is a
-  `DynamicProperty`; its update cycle runs only for properties owned by a
-  View/Scene, so the static wrappers are never `update()`d. Reads are fresh
-  (they hit `UserDefaults`), but nothing re-runs the `App` scene body when
-  settings write `showMenuBarIcon` / `menuBarOnlyMode`, which
-  `MenuBarExtra(isInserted:)` and the `onChange` at
-  `SplashMonitorApp.swift:113` depend on. **Fix:** move menu-bar-relevant prefs
-  into a small `@Observable` settings model owned by the scene (at minimum,
-  verify the scene re-evaluates empirically before assuming).
+  Medium** `[specialist]` F-APP-2/F-MB-3 —
+  **Resolved by W4 (2026-10-29):** `SplashMonitorApp` now owns scene-level `@AppStorage("showMenuBarIcon")` / `@AppStorage("menuBarOnlyMode")` properties (same `UserDefaults` keys as the `Preferences` statics), so writing those keys re-evaluates the scene: `MenuBarExtra(isInserted: $showMenuBarIcon)` and the activation-policy `onChange(of: menuBarOnlyMode)` now fire. `AppDelegate` keeps reading `Preferences` (same store, always fresh).
 - **Unmanaged `DispatchQueue.main.asyncAfter` (survives view disappearance, no
   cancellation) · Low** `[swiftui-way]` P3 — 6+ sites:
   `MainWindowView.swift:509`, `ServerControlView.swift:307, 1161`,
@@ -359,20 +296,13 @@ remains. `[whats-new-27]` is authoritative for this section.
   `View` extension (also resolves the locale-resolved-at-creation note,
   `[specialist]` F-SC-9/F-CA-7).
 - **Side-effecting inits · Low** `[swiftui-way]` P2-13/P2-14, `[swiftui-way]` P3 —
-  `NotificationService.init` calls `requestAuthorization()` (permission prompt
-  on singleton construction); `AutoLaunchService`, `SystemMemoryPressureSentinel`
-  likewise. init should assign values only.
+  **Resolved by W4 (2026-10-29):** `NotificationService.init`, `AutoLaunchService.init` and `SystemMemoryPressureSentinel.init` now assign values only; the permission prompt (only when `Preferences.systemNotificationsEnabled`) and the launch-at-login status refresh moved to `applicationDidFinishLaunching`.
 - **`print(...)` instead of `os.Logger` · Low** `[swiftui-way]` P3 —
-  `SplashService.swift:2772-2776`, `NotificationService` (2×),
-  `AutoLaunchService`, `ModelDiagnosticService`.
+  **Resolved by W4 (2026-10-29):** every `print(...)` site (`SplashService` ×4, `NotificationService` ×2, `AutoLaunchService`) replaced with `Logger` calls (subsystem `do.jmgrep.splashmonitor`, per-class category); grep-verified zero `print(` left in `Splash/`.
 - **`Task { await … }` fire-and-forget without re-entrancy guards · Info** `[swiftui-way]` P3 —
-  refresh buttons (MenuBarView, ModelManagerView `fetchOnlineModels` double-click
-  can stack). User-initiated one-shots are acceptable per the pattern guide;
-  add in-flight guards only where stacking is real.
+  **Resolved by W4 (2026-10-29):** `fetchOnlineModels()` got an in-flight guard (`isLoadingOnlineModels` is now checked *before* being set); `checkServerStatus()` likewise (see §3.6). The remaining user-initiated one-shots were left as-is per the pattern guide.
 - **`AgentButton` stores `action: () -> Void` · Low** `[specialist]` F-SC-7 —
-  a closure property is non-POD, so SwiftUI cannot compare it and all 8 buttons
-  re-run on every parent re-evaluation. An `Equatable` command enum would let
-  them skip (pairs with §3.2's extraction).
+  **Resolved by W3 (2026-10-28):** `AgentButton` now takes the `Equatable` `CodingAgent` enum + plain value inputs (no closure property); the action lives in the `Button` of `AgentsLauncherView`, so unchanged buttons skip re-evaluation.
 
 ---
 

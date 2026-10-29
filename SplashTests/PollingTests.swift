@@ -256,7 +256,9 @@ final class PollingTests {
 		let service = makeService(transport: transport,
 								  terminator: RecordingServerTerminator(),
 								  directory: dir.url)
-		service.refreshInstalledModels()
+		// El reescaneo corre fuera del actor principal (§7): se espera directamente
+		// al núcleo awaitable para que la aserción no corra con el Task del bucle.
+		await service.refreshInstalledModelsAsync()
 		#expect(service.installedModels.count == 1)
 		#expect(service.installedModels.first?.repoId == "incoai/Qwen3.8-27B-Splash")
 

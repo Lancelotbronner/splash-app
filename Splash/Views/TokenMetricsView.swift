@@ -74,7 +74,8 @@ struct TokenMetricsView: View {
 				HStack(spacing: 12) {
 					MiniStatRow(
 						title: "Latency TTFT (p50)",
-						value: String(format: "%.0f ms", SplashService.shared.status?.metrics?.ttftMs?.p50 ?? 0.0),
+						// §3.4: valor derivado calculado por ciclo en el servicio.
+						value: String(format: "%.0f ms", SplashService.shared.ttftP50Ms ?? 0.0),
 						detail: "Time to first token",
 						icon: "timer",
 						tint: .purple
@@ -82,7 +83,7 @@ struct TokenMetricsView: View {
 
 					MiniStatRow(
 						title: "Latency ITL (p50)",
-						value: String(format: "%.1f ms", SplashService.shared.status?.metrics?.itlMs?.p50 ?? 0.0),
+						value: String(format: "%.1f ms", SplashService.shared.itlP50Ms ?? 0.0),
 						detail: "Inter-token latency",
 						icon: "waveform.path.ecg",
 						tint: .indigo
@@ -127,28 +128,28 @@ struct TokenMetricsView: View {
 				}
 				.frame(height: 7)
 
-				if let dev = SplashService.shared.status?.memoryPlan?.device {
+				if let dev = SplashService.shared.memoryDevice {
 					HStack {
 						Text("\(dev.deviceName ?? "Apple Silicon") · \(dev.gpuCoreCount ?? 0) Cores GPU")
 							.font(.system(size: 10))
 							.foregroundColor(.secondary)
 						Spacer()
-						if let thermal = SplashService.shared.status?.thermalState {
+						if let thermal = SplashService.shared.thermalState {
 							Text("Thermal: \(thermal.capitalized)")
 								.font(.system(size: 10, weight: .medium))
 								.foregroundColor(thermal == "nominal" ? .green : (thermal == "fair" ? .yellow : .orange))
 							Text(verbatim: "·")
 								.foregroundColor(.secondary)
 						}
-						Text("Pressure: \(SplashService.shared.status?.memoryPressure?.capitalized ?? "Normal")")
+						Text("Pressure: \(SplashService.shared.statusMemoryPressure?.capitalized ?? "Normal")")
 							.font(.system(size: 10, weight: .medium))
-							.foregroundColor(SplashService.shared.status?.memoryPressure == "normal" ? .green : .orange)
+							.foregroundColor(SplashService.shared.statusMemoryPressure == "normal" ? .green : .orange)
 					}
 				}
 
 				// Estado de Pesos Metal y Presión del Sistema macOS
 				HStack(spacing: 8) {
-					if let weights = SplashService.shared.status?.weights {
+					if let weights = SplashService.shared.weights {
 						HStack(spacing: 4) {
 							Circle()
 								.fill(weights.released == true ? Color.orange : Color.green)
@@ -216,7 +217,7 @@ struct TokenMetricsView: View {
 					.cornerRadius(4)
 				}
 
-				if let ane = SplashService.shared.status?.aneFfn, let state = ane.state {
+				if let ane = SplashService.shared.aneFfn, let state = ane.state {
 					HStack {
 						Label {
 							Text("Apple Neural Engine (ANE)")
@@ -297,12 +298,14 @@ struct TokenMetricsView: View {
 			}
 
 			// Requests Overview
-			let reqs = SplashService.shared.status?.requests
+			// §3.4: contadores derivados (una navegación de opcionales por ciclo
+			// en el servicio, no en cada invalidación de la vista).
+			let reqs = SplashService.shared
 			HStack(spacing: 14) {
-				RequestPill(title: "Completed", count: reqs?.completed ?? 0, color: .green)
-				RequestPill(title: "Queued", count: SplashService.shared.status?.scheduler?.queued ?? 0, color: .blue)
-				RequestPill(title: "Cancelled", count: reqs?.cancelled ?? 0, color: .gray)
-				RequestPill(title: "Failed", count: reqs?.failed ?? 0, color: .red)
+				RequestPill(title: "Completed", count: reqs.requestsCompleted ?? 0, color: .green)
+				RequestPill(title: "Queued", count: reqs.schedulerQueued ?? 0, color: .blue)
+				RequestPill(title: "Cancelled", count: reqs.requestsCancelled ?? 0, color: .gray)
+				RequestPill(title: "Failed", count: reqs.requestsFailed ?? 0, color: .red)
 			}
 			.font(.system(size: 10))
 
@@ -402,7 +405,7 @@ struct TokenMetricsView: View {
 						.font(.system(size: 11))
 						.foregroundColor(.orange)
 					Spacer()
-					Text("Queued: \(SplashService.shared.status?.scheduler?.queued ?? 1)")
+					Text("Queued: \(SplashService.shared.schedulerQueued ?? 1)")
 						.font(.system(size: 11, weight: .medium))
 						.foregroundColor(.orange)
 				}
@@ -412,7 +415,7 @@ struct TokenMetricsView: View {
 						.font(.system(size: 11))
 						.foregroundColor(.secondary)
 					Spacer()
-					if let completed = SplashService.shared.status?.requests?.completed, completed > 0 {
+					if let completed = SplashService.shared.requestsCompleted, completed > 0 {
 						Text("\(completed) completed")
 							.font(.system(size: 10, weight: .medium))
 							.foregroundColor(.secondary)

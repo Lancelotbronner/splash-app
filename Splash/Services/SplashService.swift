@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import SwiftUI
 import AppKit
+import OSLog
 
 // MARK: - Port Conflict Model
 
@@ -53,6 +54,31 @@ class SplashService {
 	var activeModel: String = "Ninguno"
 	var status: SplashStatus? = nil
 	var lastError: LocalizedStringResource? = nil
+
+	// MARK: - §3.4: Valores derivados de `status` en caché
+	//
+	// Las vistas leían ~10 sub-rutas del payload (`status?.metrics?.ttftMs?.p50`,
+	// `status?.memoryPlan?.device`, `status?.vision`, …); cada sub-lectura creaba una
+	// dependencia sobre el `SplashStatus` entero. Ahora leen estos valores simples,
+	// refrescados en bloque por `updateStatusDerivedCaches()` cuando el sondeo
+	// escribe `status`.
+	private(set) var ttftP50Ms: Double? = nil
+	private(set) var itlP50Ms: Double? = nil
+	private(set) var memoryDevice: DeviceInfo? = nil
+	private(set) var thermalState: String? = nil
+	private(set) var statusMemoryPressure: String? = nil
+	private(set) var weights: WeightsStatus? = nil
+	private(set) var aneFfn: AneFfnMetrics? = nil
+	private(set) var requestsCompleted: Int? = nil
+	private(set) var requestsCancelled: Int? = nil
+	private(set) var requestsFailed: Int? = nil
+	private(set) var schedulerQueued: Int? = nil
+	private(set) var statusVision: Bool? = nil
+
+	// §3.4: Contadores de clientes almacenados en lugar de `filter`/`reduce`
+	// sobre `connectedApps` en cada evaluación de la barra lateral y el resumen.
+	private(set) var activeClientCount: Int = 0
+	private(set) var totalSockets: Int = 0
 
 	/// Rastreo de transiciones de estado para notificaciones del sistema macOS
 	private var previousRunningState: Bool? = nil
@@ -203,6 +229,13 @@ class SplashService {
 	/// Contador para no reescanear el directorio de modelos en cada ciclo (P-12).
 	private var ticksSinceModelRefresh = 0
 	private var sizeCache = ModelSizeCache()
+	/// §3.6: guarda contra ejecuciones superpuestas del sondeo — el intervalo
+	/// mínimo (0,5 s) es menor que el timeout del fetch (1,0 s), y sin la guarda
+	/// dos `checkServerStatus` podían solaparse (I/O de bloqueos y notificaciones
+	/// de transición duplicadas).
+	private var isCheckingStatus = false
+	/// §7: sustituye los `print` por `os.Logger`.
+	private let logger = Logger(subsystem: "do.jmgrep.splashmonitor", category: "SplashService")
 	private var installProcess: Process?
 	private var isInstallCancelled: Bool = false
 	private var dependencyProcess: Process?
@@ -296,6 +329,9 @@ class SplashService {
 		refreshInstalledModels()
 		cleanLegacyArtifacts()
 		SystemMemoryPressureSentinel.shared.delegate = self
+		// §7: el centinela ya no arranca su DispatchSource desde el init (efecto
+		// secundario); se arma explícitamente aquí, junto a su delegado. Idempotente.
+		SystemMemoryPressureSentinel.shared.startMonitoring()
 		// `bootstrapNetwork: false` evita tráfico real (Hugging Face, GitHub) en las
 		// pruebas y en cualquier integración que necesite un arranque hermético.
 		if bootstrapNetwork {
@@ -556,42 +592,41 @@ class SplashService {
 	}
 
 	func checkServerStatus() async {
-		// 1. Resolver el bloqueo del motor (serve-<puerto>.lock y compatibilidad con serve.lock)
-		var lockPid: Int? = nil
-		var lockPort: Int = self.activePort
-		var lockModel: String? = nil
+		// §3.6: guarda en vuelo — el timeout del fetch (1,0 s) supera el intervalo
+		// mínimo (0,5 s) y dos ciclos podían solaparse duplicando I/O de bloqueos y
+		// notificaciones de transición.
+		guard !isCheckingStatus else { return }
+		isCheckingStatus = true
+		defer { isCheckingStatus = false }
 
-		for url in lockCandidateURLs() {
-			guard let data = try? Data(contentsOf: url),
-				  let lock = ServeLockStore.decode(data), lock.pid > 0 else { continue }
-			let alive = kill(Int32(lock.pid), 0) == 0
-			if alive {
-				lockPid = lock.pid
-				lockPort = lock.port
-				lockModel = lock.model
-				break
-			}
-			// PID muerto: se limpia solo si ya pasó el margen de arranque (P-08).
-			let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-			let age = -(attributes?[.modificationDate] as? Date ?? .distantPast).timeIntervalSinceNow
-			if ServeLockStore.isStale(lock, pidAlive: false, age: age) {
-				try? FileManager.default.removeItem(at: url)
-			}
-		}
+		// 1. Resolver el bloqueo del motor (serve-<puerto>.lock y compatibilidad con
+		//    serve.lock) fuera del actor principal (§3.6): antes era I/O de fichero
+		//    síncrona (Data + atributos + remove) en cada tick del sondeo.
 
-		if lockPid != nil {
-			self.activePort = lockPort
-			if let model = lockModel {
+		let lock = await resolveActiveLock(candidateURLs: lockCandidateURLs(), fallbackPort: activePort)
+
+		if lock.pid != nil {
+			self.activePort = lock.port
+			// §3.1: solo escribir si cambia, para que el setter observable haga
+			// cortocircuito y no invalide las vistas en cada tick.
+			if let model = lock.model, model != self.activeModel {
 				self.activeModel = model
 			}
 		}
-		self.activePid = lockPid
+		self.activePid = lock.pid
 
 		// 2. Consultar /status a través del transporte inyectable
 		if let decoded = await transport.fetchStatus(port: activePort, timeout: 1.0) {
-			self.status = decoded
-			self.isRunning = decoded.ready ?? true
-			if let instanceModel = decoded.instance?.model {
+			// §3.1: escrituras condicionales — el fetch corre cada 1,5 s y asignar
+			// valores idénticos disparaba la invalidación observable de cada vista.
+			if self.status != decoded {
+				self.status = decoded
+			}
+			let running = decoded.ready ?? true
+			if self.isRunning != running {
+				self.isRunning = running
+			}
+			if let instanceModel = decoded.instance?.model, instanceModel != self.activeModel {
 				self.activeModel = instanceModel
 			}
 			if let pid = decoded.instance?.pid {
@@ -613,13 +648,20 @@ class SplashService {
 			}
 		} else {
 			// Fallback: scan flexible de puertos si no hay bloqueo vivo
-			if lockPid == nil {
+			if lock.pid == nil {
 				await scanAndConnectPort()
 			} else {
-				self.isRunning = false
-				self.status = nil
+				if self.isRunning {
+					self.isRunning = false
+				}
+				if self.status != nil {
+					self.status = nil
+				}
 			}
 		}
+
+		// §3.4: refrescar las cachés derivadas de `status` tras el fetch.
+		updateStatusDerivedCaches()
 
 		// Comprobar transiciones de estado para notificaciones macOS
 		if let wasRunning = previousRunningState {
@@ -651,6 +693,68 @@ class SplashService {
 		}
 	}
 
+	/// Valor del bloqueo activo resuelto fuera del actor principal (§3.6).
+	nonisolated private struct LockSnapshot: Sendable {
+		let pid: Int?
+		let port: Int
+		let model: String?
+	}
+
+	/// Lee, decodifica y poda los ficheros de bloqueo en segundo plano (§3.6):
+	/// antes eran I/O síncrona (`Data` + atributos + `removeItem`) en cada tick.
+	private func resolveActiveLock(candidateURLs: [URL], fallbackPort: Int) async -> LockSnapshot {
+		await Task.detached(priority: .utility) {
+			for url in candidateURLs {
+				guard let data = try? Data(contentsOf: url),
+					  let lock = ServeLockStore.decode(data), lock.pid > 0 else { continue }
+				let alive = kill(Int32(lock.pid), 0) == 0
+				if alive {
+					return LockSnapshot(pid: lock.pid, port: lock.port, model: lock.model)
+				}
+				// PID muerto: se limpia solo si ya pasó el margen de arranque (P-08).
+				let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+				let age = -(attributes?[.modificationDate] as? Date ?? .distantPast).timeIntervalSinceNow
+				if ServeLockStore.isStale(lock, pidAlive: false, age: age) {
+					try? FileManager.default.removeItem(at: url)
+				}
+			}
+			return LockSnapshot(pid: nil, port: fallbackPort, model: nil)
+		}.value
+	}
+
+	/// §3.4: campos derivados de `status` calculados una vez por ciclo en el
+	/// servicio, en lugar de navegar el árbol de opcionales en el cuerpo de
+	/// cada vista con cada invalidación.
+	private func updateStatusDerivedCaches() {
+		guard let s = status else {
+			ttftP50Ms = nil
+			itlP50Ms = nil
+			memoryDevice = nil
+			thermalState = nil
+			statusMemoryPressure = nil
+			weights = nil
+			aneFfn = nil
+			requestsCompleted = nil
+			requestsCancelled = nil
+			requestsFailed = nil
+			schedulerQueued = nil
+			statusVision = nil
+			return
+		}
+		ttftP50Ms = s.metrics?.ttftMs?.p50
+		itlP50Ms = s.metrics?.itlMs?.p50
+		memoryDevice = s.memoryPlan?.device
+		thermalState = s.thermalState
+		statusMemoryPressure = s.memoryPressure
+		weights = s.weights
+		aneFfn = s.aneFfn
+		requestsCompleted = s.requests?.completed
+		requestsCancelled = s.requests?.cancelled
+		requestsFailed = s.requests?.failed
+		schedulerQueued = s.scheduler?.queued
+		statusVision = s.vision
+	}
+
 	/// Ficheros de bloqueo a considerar, priorizando el del puerto activo.
 	func lockCandidateURLs() -> [URL] {
 		let fm = FileManager.default
@@ -678,9 +782,15 @@ class SplashService {
 			self.activePort = port
 			Preferences.lastUsedPort = port
 			self.syncShellEnvironment(port: port)
-			self.status = decoded
-			self.isRunning = decoded.ready ?? true
-			if let instanceModel = decoded.instance?.model {
+			// §3.1: escrituras condicionales, mismo criterio que en checkServerStatus.
+			if self.status != decoded {
+				self.status = decoded
+			}
+			let running = decoded.ready ?? true
+			if self.isRunning != running {
+				self.isRunning = running
+			}
+			if let instanceModel = decoded.instance?.model, instanceModel != self.activeModel {
 				self.activeModel = instanceModel
 			}
 			if let pid = decoded.instance?.pid {
@@ -693,23 +803,57 @@ class SplashService {
 	// MARK: - Local Installed Models
 
 	func refreshInstalledModels() {
+		// §7: el recorrido completo del árbol (215 ficheros, ~7,5 ms de E/S) ya no
+		// bloquea al actor principal: se captura por valor y se publica al terminar.
+		Task { await self.refreshInstalledModelsAsync() }
+	}
+
+	/// Núcleo awaitable del reescaneo del catálogo; el bucle de sondeo lo lanza
+	/// sin bloquear (`refreshInstalledModels`) y las pruebas lo esperan directamente.
+	func refreshInstalledModelsAsync() async {
+		let directory = modelsDirectory
+		let currentModel = activeModel
+		let currentlyRunning = isRunning
+		let cache = sizeCache
+		let selection = selectedModelForLaunch
+		let (results, updatedCache) = await Self.scanInstalledModels(
+			directory: directory,
+			activeModel: currentModel,
+			isRunning: currentlyRunning,
+			cache: cache
+		)
+		self.sizeCache = updatedCache
+		self.installedModels = results
+		if currentlyRunning && !currentModel.isEmpty && currentModel != "Ninguno" {
+			self.selectedModelForLaunch = currentModel
+		} else if (selection.isEmpty || !results.contains(where: { $0.repoId == selection })),
+				  let first = results.first {
+			self.selectedModelForLaunch = first.repoId
+		}
+	}
+
+	/// Recorrido del directorio de modelos fuera del actor principal (§7).
+	nonisolated static func scanInstalledModels(directory: URL,
+												activeModel: String,
+												isRunning: Bool,
+												cache: ModelSizeCache) async -> ([InstalledSplashModel], ModelSizeCache) {
 		var results: [InstalledSplashModel] = []
+		var sizeCache = cache
 		let fm = FileManager.default
 
-		guard fm.fileExists(atPath: modelsDirectory.path) else {
-			self.installedModels = []
-			return
+		guard fm.fileExists(atPath: directory.path) else {
+			return ([], sizeCache)
 		}
 
 		do {
-			let owners = try fm.contentsOfDirectory(at: modelsDirectory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+			let owners = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
 			for ownerURL in owners where ownerURL.hasDirectoryPath {
 				let owner = ownerURL.lastPathComponent
 				let modelURLs = try fm.contentsOfDirectory(at: ownerURL, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
 				for modelURL in modelURLs {
 					let modelName = modelURL.lastPathComponent
 					let repoId = "\(owner)/\(modelName)"
-					let isActive = (repoId == self.activeModel && self.isRunning)
+					let isActive = (repoId == activeModel && isRunning)
 
 					// Tamaño real resolviendo symlinks, con caché por modelo (P-12).
 					// La clave incluye la fecha de modificación del enlace: al reinstalar
@@ -731,7 +875,7 @@ class SplashService {
 
 			// Escanear también el directorio .resolved de Splash
 			// Splash guarda en .resolved los modelos preparados/instalados (incluyendo los que tienen opciones como --language-only o GGUFs)
-			let resolvedDirectory = modelsDirectory.appendingPathComponent(".resolved")
+			let resolvedDirectory = directory.appendingPathComponent(".resolved")
 			if fm.fileExists(atPath: resolvedDirectory.path),
 			   let resolvedDirs = try? fm.contentsOfDirectory(at: resolvedDirectory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
 				for resolvedURL in resolvedDirs where resolvedURL.hasDirectoryPath {
@@ -754,7 +898,7 @@ class SplashService {
 					if parts.count == 2 {
 						let owner = parts[0]
 						let modelName = parts[1]
-						let ownerDir = modelsDirectory.appendingPathComponent(owner)
+						let ownerDir = directory.appendingPathComponent(owner)
 						let targetSymlink = ownerDir.appendingPathComponent(modelName)
 						if !fm.fileExists(atPath: targetSymlink.path) {
 							try? fm.createDirectory(at: ownerDir, withIntermediateDirectories: true)
@@ -762,7 +906,7 @@ class SplashService {
 						}
 					}
 
-					let isActive = (modelId == self.activeModel && self.isRunning)
+					let isActive = (modelId == activeModel && isRunning)
 					let stamp = (try? resolvedURL.resourceValues(forKeys: [.contentModificationDateKey]))?
 						.contentModificationDate
 					let size = sizeCache.size(repoId: modelId, stamp: stamp) {
@@ -778,16 +922,12 @@ class SplashService {
 				}
 			}
 		} catch {
-			print("Error scanning installed models: \(error)")
+			// §7: os.Logger en lugar de print (el trabajo ya corre fuera del actor).
+			let scanLogger = Logger(subsystem: "do.jmgrep.splashmonitor", category: "SplashService")
+			scanLogger.error("Error scanning installed models: \(error.localizedDescription)")
 		}
 
-		self.installedModels = results
-		if isRunning && !activeModel.isEmpty && activeModel != "Ninguno" {
-			self.selectedModelForLaunch = activeModel
-		} else if (self.selectedModelForLaunch.isEmpty || !results.contains(where: { $0.repoId == self.selectedModelForLaunch })),
-				  let first = results.first {
-			self.selectedModelForLaunch = first.repoId
-		}
+		return (results, sizeCache)
 	}
 
 	/// Suma el tamaño real de un árbol resolviendo enlaces simbólicos.
@@ -998,6 +1138,9 @@ class SplashService {
 	// MARK: - Online Models Catalog (Hugging Face)
 
 	func fetchOnlineModels() async {
+		// §7: guarda en vuelo — antes dos pulsaciones solapadas lanzaban dos
+		// oleadas de peticiones en paralelo (la bandera solo se seteaba).
+		guard !isLoadingOnlineModels else { return }
 		self.isLoadingOnlineModels = true
 		var allItems: [String: HuggingFaceModelItem] = [:]
 
@@ -1460,6 +1603,8 @@ class SplashService {
 		// cualquier motor que arranque después (desde la app, la terminal o un agente).
 		ensureWatchdog()
 		cleanStaleLocks()
+		// §3.4: `status` quedó nulo; limpiar también las cachés derivadas.
+		updateStatusDerivedCaches()
 	}
 
 	func stopServer() {
@@ -1507,6 +1652,10 @@ class SplashService {
 		watchdog = nil
 		sizeCache.invalidateAll()
 		ticksSinceModelRefresh = 0
+		// §3.4: cachés derivadas de `status` y contadores de clientes.
+		updateStatusDerivedCaches()
+		activeClientCount = 0
+		totalSockets = 0
 	}
 
 	/// Detiene el motor del puerto indicado. Delega en el terminador endurecido:
@@ -1581,41 +1730,34 @@ class SplashService {
 		return 8000
 	}
 
-	func detectPortConflict(port: Int) -> PortConflictInfo? {
+	/// §7: `lsof`/`ps` corren fuera del actor principal (antes eran `Process`
+	/// síncronos con `waitUntilExit` en la ruta de arranque de la UI).
+	func detectPortConflict(port: Int) async -> PortConflictInfo? {
 		guard isPortListening(port: port) else { return nil }
+		let currentSplashPid = activePid
+		let lockPid = readLockPid()
 
-		let proc = Process()
-		proc.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-		proc.arguments = ["-iTCP:\(port)", "-sTCP:LISTEN", "-t"]
-		let pipe = Pipe()
-		proc.standardOutput = pipe
-		try? proc.run()
-		proc.waitUntilExit()
+		let found: (pid: Int32, comm: String)? = await Task.detached(priority: .userInitiated) {
+			let lsof = CommandRunner.run("/usr/sbin/lsof", ["-iTCP:\(port)", "-sTCP:LISTEN", "-t"])
+			let output = lsof.output.trimmingCharacters(in: .whitespacesAndNewlines)
+			guard let firstLine = output.components(separatedBy: .newlines).first,
+				  let pid = Int32(firstLine), pid > 0 else {
+				return nil
+			}
+			let ps = CommandRunner.run("/bin/ps", ["-p", "\(pid)", "-o", "comm="])
+			return (pid: pid,
+					comm: ps.output.trimmingCharacters(in: .whitespacesAndNewlines))
+		}.value
 
-		let data = pipe.fileHandleForReading.readDataToEndOfFile()
-		guard let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-			  let firstLine = output.components(separatedBy: .newlines).first,
-			  let pid = Int32(firstLine), pid > 0 else {
+		guard let conflict = found else { return nil }
+		let pid = conflict.pid
+		if let currentSplashPid, Int32(currentSplashPid) == pid {
 			return nil
 		}
-
-		if let currentSplashPid = activePid, Int32(currentSplashPid) == pid {
+		if let lockPid, Int32(lockPid) == pid {
 			return nil
 		}
-		if let lockPid = readLockPid(), Int32(lockPid) == pid {
-			return nil
-		}
-
-		let psProc = Process()
-		psProc.executableURL = URL(fileURLWithPath: "/bin/ps")
-		psProc.arguments = ["-p", "\(pid)", "-o", "comm="]
-		let psPipe = Pipe()
-		psProc.standardOutput = psPipe
-		try? psProc.run()
-		psProc.waitUntilExit()
-
-		let psData = psPipe.fileHandleForReading.readDataToEndOfFile()
-		let rawComm = (String(data: psData, encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+		let rawComm = conflict.comm
 		if rawComm.localizedCaseInsensitiveContains("splash") {
 			return nil
 		}
@@ -1683,16 +1825,31 @@ class SplashService {
 		Preferences.lastUsedPort = port
 		self.selectedModelForLaunch = model
 
-		// 1. Pre-flight check for port conflict with third-party software
-		if !skipPortConflictCheck, let conflict = detectPortConflict(port: port) {
-			self.portConflict = conflict
-			self.isStartingServer = false
-			self.startingModelId = nil
-			return
+		// 1. Pre-flight check for port conflict with third-party software.
+		// §7: lsof/ps fuera del actor principal; el arranque continúa por la
+		// misma ruta asíncrona (un conflicto aborta antes de crear el proceso).
+		if !skipPortConflictCheck {
+			let checkPort = port
+			Task { [weak self] in
+				guard let self else { return }
+				if let conflict = await self.detectPortConflict(port: checkPort) {
+					self.portConflict = conflict
+					self.isStartingServer = false
+					self.startingModelId = nil
+					return
+				}
+				self.launchServerProcess(model: validatedModel, port: checkPort)
+			}
+		} else {
+			self.launchServerProcess(model: validatedModel, port: port)
 		}
+	}
 
+	/// Proceso de arranque tras superar el pre-flight de conflicto de puerto.
+	private func launchServerProcess(model: String, port: Int) {
+		let validatedModel = model
 		self.isStartingServer = true
-		self.startingModelId = validatedModel
+		self.startingModelId = model
 
 		Task {
 			// Limpieza de bloqueos muertos antes de arrancar (P-08).
@@ -1918,7 +2075,7 @@ class SplashService {
 			// Flags CLI adicionales proporcionados por el usuario (ej. --no-webui --max-cache-disk 50GB)
 			let (customTokens, customError) = ServerCLIValidator.validateAndTokenize(Preferences.customServerFlags)
 			if let err = customError {
-				print("⚠️ [SplashService] Flags CLI adicionales ignorados por seguridad: \(err)")
+				logger.warning("Flags CLI adicionales ignorados por seguridad: \(err, privacy: .public)")
 			}
 			let customFlagsString = customTokens.joined(separator: " ")
 			let customFlagsEcho = customTokens.isEmpty ? "" : "\necho \"🛠️ Flags CLI:  \(customFlagsString)\""
@@ -2507,6 +2664,13 @@ class SplashService {
 				self.connectedApps = []
 				self.knownClientsSession.removeAll()
 			}
+			// §3.4: ceros también los contadores derivados.
+			if activeClientCount != 0 {
+				activeClientCount = 0
+			}
+			if totalSockets != 0 {
+				totalSockets = 0
+			}
 			return
 		}
 
@@ -2667,10 +2831,24 @@ class SplashService {
 			}
 		}
 
-		self.connectedApps = updatedList.sorted {
+		let sorted = updatedList.sorted {
 			if $0.status == .active && $1.status != .active { return true }
 			if $0.status != .active && $1.status == .active { return false }
 			return $0.lastSeen > $1.lastSeen
+		}
+
+		// §3.4: los contadores se calculan una vez por ciclo en lugar de derivarse
+		// (filter/reduce) en el cuerpo de la vista con cada invalidación.
+		let clients = sorted.filter { $0.status == .active || $0.status == .idle }.count
+		let sockets = sorted.reduce(0) { $0 + $1.connectionCount }
+		if activeClientCount != clients {
+			activeClientCount = clients
+		}
+		if totalSockets != sockets {
+			totalSockets = sockets
+		}
+		if self.connectedApps != sorted {
+			self.connectedApps = sorted
 		}
 	}
 
@@ -2762,12 +2940,12 @@ extension SplashService: SystemMemoryPressureSentinelDelegate {
 			let decoding = status?.scheduler?.decoding ?? 0
 			let isBusy = (queued + prefilling + decoding) > 0
 			if !isBusy {
-				print("⚠️ [SplashService] Presión de memoria del sistema CRÍTICA detectada y servidor inactivo. Liberando memoria...")
+				logger.info("Presión de memoria del sistema CRÍTICA detectada y servidor inactivo. Liberando memoria...")
 				self.memoryReliefNotice = String(localized: "The Splash engine was put to sleep to protect macOS system memory.")
 				NotificationService.shared.notifyMemoryPressureCritical()
 				self.stopServer()
 			} else {
-				print("⚠️ [SplashService] Presión de memoria CRÍTICA detectada, pero hay operaciones en curso (prefilling: \(prefilling), decoding: \(decoding)).")
+				logger.info("Presión de memoria CRÍTICA detectada, pero hay operaciones en curso (prefilling: \(prefilling), decoding: \(decoding))")
 			}
 		}
 	}

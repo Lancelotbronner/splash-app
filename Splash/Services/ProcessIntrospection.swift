@@ -3,7 +3,8 @@ import Foundation
 // MARK: - Introspección de procesos: parsers puros y política de señales
 
 /// Una conexión TCP activa observada con `lsof`, ya interpretada.
-struct EstablishedConnection: Equatable {
+/// `nonisolated` (§7): la construye el parser puro `ListerOutput` en segundo plano.
+nonisolated struct EstablishedConnection: Equatable {
 	let pid: Int32
 	let command: String
 	let remoteAddress: String
@@ -16,7 +17,8 @@ struct EstablishedConnection: Equatable {
 }
 
 /// Interpreta la salida de `lsof` sin depender del entorno.
-enum ListerOutput {
+/// `nonisolated` (§7): parser puro, invocable desde trabajo en segundo plano.
+nonisolated enum ListerOutput {
 	/// Columnas de `lsof -n -P`: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME.
 	static let minimumColumns = 9
 
@@ -50,10 +52,14 @@ enum ListerOutput {
 }
 
 /// Decide si un proceso pertenece al motor Splash y, por tanto, si es lícito señalizarlo.
-enum SplashEngineIdentity {
+/// `nonisolated` (§7): comprobación pura, invocable desde trabajo en segundo plano.
+nonisolated enum SplashEngineIdentity {
 	/// Marcadores del motor según su instalación de Homebrew (`libexec/server/server.py`,
 	/// `libexec/engine/splash serve-native`, `bin/splash`).
-	static let engineMarkers = ["server.py", "serve-native", "/splash", "splash"]
+	/// §4: el marcador "splash" sin separador desapareció — coincidía con la ruta de
+	/// este mismo app (`SplashMonitor.app/Contents/MacOS/Splash`); solo quedan
+	/// marcadores con separador de ruta o nombres específicos del motor.
+	static let engineMarkers = ["server.py", "serve-native", "/splash"]
 
 	static func isEngineCommand(_ command: String) -> Bool {
 		let value = command.lowercased()
@@ -70,7 +76,8 @@ enum SplashEngineIdentity {
 /// `SIGKILL` a todos ellos. Medido: con un servidor y un cliente en procesos
 /// distintos, `lsof -ti :18097` devuelve los dos PIDs, mientras que
 /// `lsof -tiTCP:18097 -sTCP:LISTEN` devuelve solo el servidor.
-enum KillTargetResolver {
+/// `nonisolated` (§7): resolución pura, invocable desde trabajo en segundo plano.
+nonisolated enum KillTargetResolver {
 	/// - Parameters:
 	///   - lsofOutput: salida de `lsof -tiTCP:<puerto> -sTCP:LISTEN`.
 	///   - commandFor: resolutor del comando de cada PID (`ps -p <pid> -o command=`).

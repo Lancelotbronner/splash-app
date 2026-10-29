@@ -9,7 +9,8 @@ import Foundation
 /// tenía 0 bytes (la decodificación siempre fallaba y `readLockPid()` devolvía `nil`),
 /// mientras `serve-8005.lock` contenía el PID real y `serve-8008.lock` guardaba un PID
 /// ya muerto que nadie limpiaba.
-enum ServeLockStore {
+/// `nonisolated` (§7): decodificación pura, invocable desde el sondeo en segundo plano.
+nonisolated enum ServeLockStore {
 	/// Nombres candidatos, en orden de preferencia.
 	static func candidateFileNames(port: Int) -> [String] {
 		["serve-\(port).lock", "serve.lock"]

@@ -30,23 +30,29 @@ final class SystemMemoryPressureSentinel {
 
 	weak var delegate: SystemMemoryPressureSentinelDelegate?
 
-	private var source: DispatchSourceMemoryPressure?
+	/// Contenedor sin aislamiento para que el manejador del source (que corre en la
+	/// cola `.utility`) pueda leerlo sin tocar estado MainActor (§7).
+	private final class SourceBox: @unchecked Sendable {
+		var source: DispatchSourceMemoryPressure?
+	}
+	private let sourceBox = SourceBox()
 	private let queue = DispatchQueue(label: "com.splashmonitor.memorypressure", qos: .utility)
 
-	init() {
-		startMonitoring()
-	}
+	/// §7: sin efectos secundarios — `SplashService` invoca `startMonitoring()`
+	/// de forma explícida (idempotente) al registrarse como delegado.
+	init() {}
 
 	isolated deinit {
 		stopMonitoring()
 	}
 
 	func startMonitoring() {
-		guard source == nil else { return }
+		guard sourceBox.source == nil else { return }
 
 		let newSource = DispatchSource.makeMemoryPressureSource(eventMask: [.normal, .warning, .critical], queue: queue)
+		sourceBox.source = newSource
 		newSource.setEventHandler { [weak self] in
-			guard let self = self, let src = self.source else { return }
+			guard let self = self, let src = self.sourceBox.source else { return }
 			let data = src.data
 
 			let level: SystemMemoryPressureLevel
@@ -58,7 +64,7 @@ final class SystemMemoryPressureSentinel {
 				level = .normal
 			}
 
-			DispatchQueue.main.async {
+			Task { @MainActor in
 				self.currentPressure = level
 				if level == .warning {
 					self.lastWarningDate = Date()
@@ -69,18 +75,19 @@ final class SystemMemoryPressureSentinel {
 			}
 		}
 
+		// §7: el source se publica antes de `resume()`: antes, un evento que
+		// llegase en ese hueo leía `source == nil` y se perdía.
 		newSource.resume()
-		self.source = newSource
 	}
 
 	func stopMonitoring() {
-		source?.cancel()
-		source = nil
+		sourceBox.source?.cancel()
+		sourceBox.source = nil
 	}
 
 	/// Método de prueba para simular eventos de presión sin esperar a que el Mac se quede sin RAM.
 	func simulatePressureChange(to level: SystemMemoryPressureLevel) {
-		DispatchQueue.main.async {
+		Task { @MainActor in
 			self.currentPressure = level
 			if level == .warning {
 				self.lastWarningDate = Date()

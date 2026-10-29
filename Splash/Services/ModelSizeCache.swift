@@ -12,7 +12,9 @@ import Foundation
 ///
 /// La caché se invalida cuando cambia la fecha de modificación del enlace del modelo,
 /// y explícitamente al instalar o eliminar un modelo.
-struct ModelSizeCache {
+/// `nonisolated` (§7): tipo valor sin estado compartido; el escaneo del directorio
+/// de modelos la muta localmente fuera del actor principal y la devuelve.
+nonisolated struct ModelSizeCache {
 	private struct Entry {
 		let size: Int64
 		let stamp: Date?

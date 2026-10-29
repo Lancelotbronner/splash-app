@@ -1,11 +1,14 @@
 import SwiftUI
 import UserNotifications
+import OSLog
 
 /// Servicio centralizado de notificaciones locales de macOS para Splash Monitor.
 /// Maneja alertas de estado del servidor, avisos de modelos y presión de memoria crítica.
 @MainActor @Observable
 final class NotificationService {
 	@Bindable static private(set) var shared = NotificationService()
+
+	private let logger = Logger(subsystem: "do.jmgrep.splashmonitor", category: "NotificationService")
 
 	private var center: UNUserNotificationCenter? {
 		guard let bundleId = Bundle.main.bundleIdentifier, !bundleId.isEmpty else { return nil }
@@ -26,19 +29,17 @@ final class NotificationService {
 	}
 
 	init() {
-		// Habilitado por defecto si no ha sido configurado previamente
+		// §7: sin efectos secundarios — `AppDelegate.applicationDidFinishLaunching`
+		// invoca `requestAuthorization()` explícitamente si la preferencia está on.
 		isNotificationsEnabled = Preferences.systemNotificationsEnabled
-
-		if isNotificationsEnabled {
-			requestAuthorization()
-		}
 	}
 
 	/// Solicita autorización para mostrar notificaciones al usuario si aún no está otorgada.
 	func requestAuthorization() {
+		let logger = self.logger
 		center?.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
 			if let error = error {
-				print("⚠️ [NotificationService] Error solicitando permisos: \(error.localizedDescription)")
+				logger.error("Error solicitando permisos: \(error.localizedDescription, privacy: .public)")
 			}
 		}
 	}
@@ -100,9 +101,10 @@ final class NotificationService {
 			content: content,
 			trigger: nil // Inmediato
 		)
+		let logger = self.logger
 		center?.add(request) { error in
 			if let error = error {
-				print("⚠️ [NotificationService] Fallo enviando notificación: \(error.localizedDescription)")
+				logger.error("Fallo enviando notificación: \(error.localizedDescription, privacy: .public)")
 			}
 		}
 	}

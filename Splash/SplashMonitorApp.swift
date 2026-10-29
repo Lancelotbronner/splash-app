@@ -19,6 +19,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 		// Apply initial activation policy based on saved preference
 		applyActivationPolicy()
+
+		// §7: los servicios no tienen efectos en `init`; se arrancan explícitamente aquí.
+		AutoLaunchService.shared.refreshStatus()
+		if Preferences.systemNotificationsEnabled {
+			NotificationService.shared.requestAuthorization()
+		}
 	}
 
 	/// Applies the correct NSApplication activation policy based on current settings.
@@ -106,11 +112,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct SplashMonitorApp: App {
 	@NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+	// §7: las preferencias del escena se observan como propiedades guardadas
+	// (`@AppStorage`), para que la inserción del icono de barra se invalide al
+	// cambiarlas; `AppDelegate` sigue leyendo `Preferences` (mismo `UserDefaults`).
+	@AppStorage("showMenuBarIcon") private var showMenuBarIcon: Bool = true
+	@AppStorage("menuBarOnlyMode") private var menuBarOnlyMode: Bool = false
+
 	var body: some Scene {
 		WindowGroup("Splash Monitor", id: "main") {
 			MainWindowView()
 				.frame(minWidth: 850, minHeight: 600)
-				.onChange(of: Preferences.menuBarOnlyMode) {
+				.onChange(of: menuBarOnlyMode) { _, _ in
 					appDelegate.applyActivationPolicy()
 				}
 		}
@@ -153,7 +165,7 @@ struct SplashMonitorApp: App {
 			}
 		}
 
-		MenuBarExtra(isInserted: Preferences.$showMenuBarIcon) {
+		MenuBarExtra(isInserted: $showMenuBarIcon) {
 			MenuBarView()
 		} label: {
 			HStack(spacing: 4) {

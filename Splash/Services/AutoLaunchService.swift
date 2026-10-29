@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import OSLog
 
 /// Servicio para gestionar el arranque automático de Splash Monitor al iniciar sesión en macOS.
 /// Utiliza `SMAppService.mainApp` nativo disponible en macOS 13+.
@@ -7,12 +8,14 @@ import ServiceManagement
 final class AutoLaunchService {
 	@Bindable static private(set) var shared = AutoLaunchService()
 
+	private let logger = Logger(subsystem: "do.jmgrep.splashmonitor", category: "AutoLaunchService")
+
 	private var isEnabledCache = false
 	private(set) var lastError: String?
 
-	init() {
-		refreshStatus()
-	}
+	/// §7: sin efectos secundarios — `AppDelegate.applicationDidFinishLaunching`
+	/// invoca `refreshStatus()` explícitamente al arrancar.
+	init() {}
 
 	var isEnabled: Bool {
 		get { isEnabledCache }
@@ -38,7 +41,7 @@ final class AutoLaunchService {
 			return true
 		} catch {
 			let errorMsg = error.localizedDescription
-			print("⚠️ [AutoLaunchService] Error configurando Launch at Login: \(errorMsg)")
+			logger.error("Error configurando Launch at Login: \(errorMsg, privacy: .public)")
 			self.lastError = errorMsg
 			refreshStatus()
 			return false

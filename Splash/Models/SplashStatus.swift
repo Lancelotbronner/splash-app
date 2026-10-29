@@ -268,7 +268,9 @@ struct KvSpillStatus: Codable, Equatable {
 
 // MARK: - Lock file model
 
-struct ServeLock: Codable, Equatable {
+/// Datos puros del bloqueo del motor; `nonisolated` (§7) para poder decodificarse
+/// desde el sondeo de bloqueos que ahora corre fuera del actor principal.
+nonisolated struct ServeLock: Codable, Equatable {
 	let pid: Int
 	let model: String
 	let port: Int
@@ -314,7 +316,9 @@ struct HuggingFaceModelItem: Codable, Equatable, Identifiable {
 	}
 }
 
-struct InstalledSplashModel: Identifiable, Equatable, Hashable {
+/// Fila del catálogo local; `nonisolated` (§7) porque la construcción ocurre en
+/// el escaneo del directorio de modelos, que ahora corre fuera del actor principal.
+nonisolated struct InstalledSplashModel: Identifiable, Equatable, Hashable {
 	var id: String { repoId }
 	let repoId: String
 	let localPath: URL
