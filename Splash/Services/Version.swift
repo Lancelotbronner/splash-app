@@ -78,8 +78,28 @@ struct SemanticVersion: Comparable, CustomStringConvertible {
 		case (nil, nil):            return false
 		case (nil, .some):          return false   // publicación > prepublicación
 		case (.some, nil):          return true
-		case let (.some(a), .some(b)): return a < b
+		case let (.some(a), .some(b)): return prereleaseLessThan(a, b)
 		}
+	}
+
+	/// Precedencia de prepublicación según semver §11: identificadores
+	/// separados por "." comparados de izquierda a derecha; los puramente
+	/// numéricos se comparan como enteros (así `-beta.10` es posterior a
+	/// `-beta.2`, que no lo era en orden lexicográfico); un identificador
+	/// numérico precede a uno alfanumérico; y si todos los identificadores
+	/// comunes coinciden, el más corto precede.
+	private static func prereleaseLessThan(_ a: String, _ b: String) -> Bool {
+		let ida = a.split(separator: ".", omittingEmptySubsequences: false)
+		let idb = b.split(separator: ".", omittingEmptySubsequences: false)
+		for (x, y) in zip(ida, idb) {
+			if x == y { continue }
+			let nx = Int(x), ny = Int(y)
+			if let nx, let ny { return nx < ny }     // numérico vs numérico
+			if nx != nil { return true }             // numérico < alfanumérico
+			if ny != nil { return false }
+			return x < y                             // orden ASCII
+		}
+		return ida.count < idb.count                 // prefijo idéntico: el más corto precede
 	}
 
 	static func == (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {

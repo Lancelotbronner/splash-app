@@ -40,6 +40,16 @@ final class VersionTests {
 		#expect(!SemanticVersion.isNewer("1.0.2-beta", than: "1.0.10-beta"))
 	}
 
+	/// §10: los identificadores numéricos del sufijo de prepublicación se
+	/// comparan como enteros; con orden lexicográfico `-beta.10` precedía
+	/// (erróneamente) a `-beta.2`.
+	@Test func testPrereleaseIdentifiersCompareNumerically() {
+		#expect(SemanticVersion.isNewer("1.0.10-beta.10", than: "1.0.10-beta.2"))
+		#expect(!SemanticVersion.isNewer("1.0.10-beta.2", than: "1.0.10-beta.10"))
+		#expect(SemanticVersion.isNewer("1.0.10-beta.2", than: "1.0.10-beta"))
+		#expect(!SemanticVersion.isNewer("1.0.10-beta", than: "1.0.10-beta.2"))
+	}
+
 	@Test(arguments: Self.Cases.all)
 	private func testSemanticVersionComparison(_ c: Cases.ComparisonCase) {
 		#expect(SemanticVersion.isNewer(c.latest, than: c.current) == c.expectedNewer,

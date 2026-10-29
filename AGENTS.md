@@ -35,9 +35,9 @@ MainWindowView tabs (SidebarItem): .dashboard, .connectedApps, .models,
        ServerControlView / ModelTestingView / (inline settings) / AboutView
 ```
 
-- **`SplashService`** (`Services/SplashService.swift`, **2,779 lines — the god object**)
+- **`SplashService`** (`Services/SplashService.swift`, **2,992 lines — the god object**)
   is the heart: `@Observable` class, singleton via `SplashService.shared`
-  (declared `@Bindable private(set) static var` at l.25 — views obtain bindings
+  (declared `@Bindable private(set) static var` at l.26 — views obtain bindings
   as `SplashService.$shared.property`), polls
   `/status` via a `StatusTransport` protocol (production:
   `URLSessionStatusTransport`; tests inject `StubStatusTransport`), manages server
@@ -56,79 +56,82 @@ MainWindowView tabs (SidebarItem): .dashboard, .connectedApps, .models,
   (`SplashVersion.current = "1.0.10-beta"`, bundle id `do.jmgrep.splashmonitor`);
   the release scripts extract it from that literal with `sed`.
 - **Localization**: one string catalog `Splash/Resources/Localizable.xcstrings`
-  (584 keys: 439 carry an `es` translation, 9 explicit `en`, **zero `fr`** —
+  (670 keys: 533 carry an `es` translation, 9 explicit `en`, **zero `fr`** —
   French falls back to English); `STRING_CATALOG_GENERATE_SYMBOLS` is ON, so
-  views use `LocalizedStringResource` symbols. Note: code and test comments are
-  a mix of English and Spanish.
+  views use `LocalizedStringResource` symbols. Interpolation keys are
+  printf-style templates (`%lld`/`%d`/`%@`); a literal `%` in the source is
+  written unescaped (the compiler doubles it to `%%` in the key). Note: code
+  and test comments are a mix of English and Spanish.
 
 ## File Index
 
-### Splash/ (26 Swift files)
+### Splash/ (33 Swift files)
 
 | File | Lines | Role |
 |---|---|---|
-| `SplashMonitorApp.swift` | ~200 | `@main` App: WindowGroup + MenuBarExtra scene; `AppDelegate` (activation policy, Cmd+Q interception, quit handling) |
+| `SplashMonitorApp.swift` | ~194 | `@main` App: WindowGroup + MenuBarExtra scene; `AppDelegate` (activation policy, Cmd+Q interception, quit handling) |
 | **Models** | | |
 | `Models/SplashStatus.swift` | 345 | Codable mirror of the engine `/status` payload (metrics, memory plan/governor, ANE, instance info, cache, requests) |
 | `Models/ConnectedApp.swift` | 100 | `ConnectedApp` model + `AppCategory` / `AppConnectionStatus` enums |
 | **Services** | | |
-| `Services/SplashService.swift` | 2779 | **Core service**: polling, server start/stop, model ops, agent launches, memory flush; `@Observable`, injectable transport/terminator; `PortConflictInfo` |
-| `Services/ModelDiagnosticService.swift` | 568 | `ObservableObject` for model install/download diagnostics + telemetry |
-| `Services/ModelIDValidator.swift` | 118 | Validates Hugging Face model IDs (owner/repo, GGUF, NVFP4/FP8) |
-| `Services/ServerTermination.swift` | 138 | `ServerTerminating` protocol, `CommandRunner`, `HardenedServerTerminator`, `ClientTerminationPolicy`, `CommandResult` |
-| `Services/ProcessIntrospection.swift` | 96 | `EstablishedConnection`, engine-identity detection, kill-target resolution from process tables |
-| `Services/SystemMemoryPressureSentinel.swift` | 93 | Kernel memory-pressure monitoring + level enum |
-| `Services/ServerCLIValidator.swift` | 90 | Validates splash CLI advanced flags before launching |
+| `Services/SplashService.swift` | 2992 | **Core service**: polling, server start/stop, model ops, agent launches, memory flush; `@Observable`, injectable transport/terminator; `PortConflictInfo` |
+| `Services/ModelDiagnosticService.swift` | 570 | `@Observable @MainActor` for model install/download diagnostics + telemetry |
+| `Services/ModelIDValidator.swift` | 121 | Validates Hugging Face model IDs (owner/repo, GGUF, NVFP4/FP8) |
+| `Services/ServerTermination.swift` | 145 | `ServerTerminating` protocol, `CommandRunner`, `HardenedServerTerminator`, `ClientTerminationPolicy`, `CommandResult` |
+| `Services/ProcessIntrospection.swift` | 103 | `EstablishedConnection`, engine-identity detection, kill-target resolution from process tables |
+| `Services/SystemMemoryPressureSentinel.swift` | 102 | Kernel memory-pressure monitoring + level enum |
+| `Services/ServerCLIValidator.swift` | 95 | Validates splash CLI advanced flags before launching |
 | `Services/ShellEnvironment.swift` | 84 | Resolves the user's shell env for launched agents, consent state |
-| `Services/NotificationService.swift` | 110 | User notifications (pressure alerts, download events) |
-| `Services/Version.swift` | 100 | `SplashVersion` (single version/bundle-id/build-number source) + `SemanticVersion` comparison |
+| `Services/NotificationService.swift` | 111 | User notifications (pressure alerts, download events) |
+| `Services/Version.swift` | 122 | `SplashVersion` (single version/bundle-id/build-number source) + `SemanticVersion` comparison |
 | `Services/SplashPaths.swift` | 61 | Resolves the `splash` binary and data-dir paths |
-| `Services/ModelSizeCache.swift` | 53 | Disk-footprint cache for models |
-| `Services/Preferences.swift` | 51 | Static `@AppStorage` preference keys (port, refresh interval, menu bar mode, etc.) |
-| `Services/AutoLaunchService.swift` | 42 | Launch-at-login toggle |
-| `Services/ServeLocks.swift` | 40 | `ServeLockStore`: lock files preventing double-serve |
-| `Services/NetworkInterfaceHelper.swift` | 38 | LAN bind interface discovery |
+| `Services/ModelSizeCache.swift` | 55 | Disk-footprint cache for models |
+| `Services/Preferences.swift` | 47 | Static `@AppStorage` preference keys (port, refresh interval, menu bar mode, etc.) |
+| `Services/AutoLaunchService.swift` | 50 | Launch-at-login toggle |
+| `Services/ServeLocks.swift` | 41 | `ServeLockStore`: lock files preventing double-serve |
+| `Services/NetworkInterfaceHelper.swift` | 39 | LAN bind interface discovery |
 | `Services/StatusTransport.swift` | 28 | `StatusTransport` protocol + `URLSessionStatusTransport` (seam for tests) |
-| `Services/LocalizationService.swift` | 24 | `AppLanguage` enum (en/es/fr) + language switching |
 | **Views** | | |
-| `Views/MainWindowView.swift` | 1038 | Root window: 7-tab sidebar navigation, `SidebarItem` enum, wires tab views |
-| `Views/ServerControlView.swift` | 1215 | Server start/stop UI, port/bind/flags, **agent launcher buttons** (`AgentButton`), endpoint copy |
-| `Views/ConnectedAppsView.swift` | 741 | Connected-clients list: `ConnectedAppCard`, `StatBadgeCard`, `IntegrationGuideCard` |
-| `Views/ModelManagerView.swift` | 625 | Local model catalog + HF explorer, download UI, GGUF/gated guidance |
-| `Views/TokenMetricsView.swift` | 558 | Dashboard: `MetricCard`, `MiniStatRow`, `RequestPill`, `SpeedMiniChart` sparklines |
-| `Views/ModelTestingView.swift` | 503 | Model benchmarking/testing UI |
-| `Views/MenuBarView.swift` | 319 | Menu bar extra window: 4 display modes, 1-click memory flush |
-| `Views/DependencyInstallView.swift` | 263 | Splash-engine install/diagnostic UI (`DiagnosticBadge`) |
-| `Views/AboutView.swift` | 188 | About/credits window (`TechBadge`) |
-| `Views/AppIconView.swift` | 46 | Renders the app icon in views |
-| `Views/DominicanEmblem.swift` | 58 | Decorative emblem graphic (fun, not functional) |
+| `Views/MainWindowView.swift` | 1115 | Root window: 7-tab sidebar navigation, `SidebarItem` enum, wires tab views |
+| `Views/ServerControlView.swift` | 1242 | Server start/stop UI, port/bind/flags, **agent launcher buttons** (`AgentButton`), endpoint copy |
+| `Views/ConnectedAppsView.swift` | 755 | Connected-clients list: `ConnectedAppCard`, `StatBadgeCard`, `IntegrationGuideCard` |
+| `Views/ModelManagerView.swift` | 437 | Local model catalog + HF explorer, download UI, GGUF/gated guidance |
+| `Views/TokenMetricsView.swift` | 728 | Dashboard: `MetricCard`, `MiniStatRow`, `RequestPill`, `SpeedMiniChart` sparklines |
+| `Views/ModelTestingView.swift` | 617 | Model benchmarking/testing UI |
+| `Views/MenuBarView.swift` | 345 | Menu bar extra window: 4 display modes, 1-click memory flush |
+| `Views/DependencyInstallView.swift` | 228 | Splash-engine install/diagnostic UI (`DiagnosticBadge`) |
+| `Views/AboutView.swift` | 187 | About/credits window (`TechBadge`) |
+| `Views/InstallConsole.swift` | 267 | Shared install/download log console (`formatDownloadProgress`), gated-model guidance |
+| `Views/ClipboardCopy.swift` | 45 | `CopiedFlash` copied-flash state via `.task(id:)` |
+| `Views/PortConflictAlertModifier.swift` | 67 | Shared 27-gated port-conflict alert: macOS 27 `alert(_:item:)` + 26.x fallback |
+| `Views/AppIconView.swift` | 47 | Renders the app icon in views |
 
 Resources: `Resources/Localizable.xcstrings` (string catalog),
 `Resources/App Icon.icon/` (icon assets).
 
-### SplashTests/ (19 files, **all XCTest**, heavy Spanish comments)
+### SplashTests/ (19 files, **Swift Testing**, 199 tests, heavy Spanish comments)
 
 | File | Lines | What it tests |
 |---|---|---|
-| `TestSupport.swift` | 184 | `TempDirectory` (isolated temp dirs), `StubStatusTransport`, `RecordingServerTerminator` doubles, `Fixtures` |
-| `ServerOptionsTests.swift` | 418 | CLI flag generation for server start options |
-| `ScreenshotGeneratorTests.swift` | 269 | Renders views (ImageRenderer) with mock `/status` JSON payloads |
-| `PollingTests.swift` | 267 | Polling lifecycle with injected transport (dead-poll prevention, "P-02/H-01" probes) |
-| `ServerCLIValidatorTests.swift` | 134 | Flag validation rules |
-| `ShellEnvironmentTests.swift` | 117 | Shell env resolution |
-| `ModelIDValidatorTests.swift` | 96 | Model ID validation |
-| `StatusModelTests.swift` | 81 | Codable contract vs real 1.0.2 engine payload ("Sonda V-4") |
-| `ProcessIntrospectionTests.swift` | 81 | Connection/process introspection, kill-target resolution |
-| `VersionTests.swift` | 80 | `SemanticVersion` parsing/ordering (fixes "P-07/H-08" lexicographic bug) |
-| `ModelDiagnosticTests.swift` | 78 | Diagnostics service logic |
-| `ClientTerminationPolicyTests.swift` | 80 | Policy for killing client vs engine processes |
-| `SystemMemoryPressureTests.swift` | 72 | Pressure level mapping |
-| `AgentLaunchTests.swift` | 71 | Agent launch command construction |
-| `ModelSizeCacheTests.swift` | 69 | Size cache persistence |
-| `SplashPathsTests.swift` | 56 | Path resolution |
-| `ServeLockTests.swift` | 48 | Lock-file semantics |
-| `NotificationAndAutoLaunchTests.swift` | 45 | Notification + auto-launch toggles |
-| `HarnessTests.swift` | 13 | DeepSeek harness behavior |
+| `TestSupport.swift` | 215 | `TempDirectory` (isolated temp dirs), `StubStatusTransport`, `RecordingServerTerminator` doubles, `Fixtures` |
+| `ServerOptionsTests.swift` | 311 | CLI flag generation for server start options |
+| `ScreenshotGeneratorTests.swift` | 283 | Renders views via **NSHostingView** (not ImageRenderer) with mock `/status` payloads; **skipped unless `SPLASH_GENERATE_SCREENSHOTS=1` env is set** |
+| `PollingTests.swift` | 273 | Polling lifecycle with injected transport (dead-poll prevention, "P-02/H-01" probes) |
+| `ServerCLIValidatorTests.swift` | 144 | Flag validation rules |
+| `ShellEnvironmentTests.swift` | 156 | Shell env resolution |
+| `ModelIDValidatorTests.swift` | 127 | Model ID validation |
+| `StatusModelTests.swift` | 80 | Codable contract vs real 1.0.2 engine payload ("Sonda V-4") |
+| `ProcessIntrospectionTests.swift` | 106 | Connection/process introspection, kill-target resolution |
+| `VersionTests.swift` | 103 | `SemanticVersion` parsing/ordering (fixes "P-07/H-08" lexicographic bug) |
+| `ModelDiagnosticTests.swift` | 79 | Diagnostics service logic |
+| `ClientTerminationPolicyTests.swift` | 96 | Policy for killing client vs engine processes |
+| `SystemMemoryPressureTests.swift` | 100 | Pressure level mapping |
+| `AgentLaunchTests.swift` | 66 | Agent launch command construction |
+| `ModelSizeCacheTests.swift` | 72 | Size cache persistence |
+| `SplashPathsTests.swift` | 57 | Path resolution |
+| `ServeLockTests.swift` | 50 | Lock-file semantics |
+| `NotificationAndAutoLaunchTests.swift` | 62 | Notification + auto-launch toggles |
+| `HarnessTests.swift` | 16 | DeepSeek harness behavior |
 
 ## Conventions & Deployment Target
 
@@ -136,35 +139,31 @@ Resources: `Resources/Localizable.xcstrings` (string catalog),
   `MACOSX_DEPLOYMENT_TARGET = 26.4`, `SUPPORTED_PLATFORMS = macosx`.
 - **App target: Swift 6.0**, with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
   and `SWIFT_APPROACHABLE_CONCURRENCY = YES` (files are MainActor by default).
-- **⚠️ Test target mismatch**: `SplashTests` is set to **Swift 5.0**,
-  deployment **27.2** (higher than the app's 26.4), and
-  `SUPPORTED_PLATFORMS` still lists iOS/xros — looks like leftover template
-  settings from a new-format project migration.
-- **⚠️ Test target does NOT compile (verified 2026-10-27)**:
-  `Splash.xcodeproj/project.xcproj` (new Xcode project format — there is
-  **no pbxproj and no Package.swift**) wires all 19 test files via folder
-  membership, but `xcodebuild … build-for-testing` fails: the app
-  target/product name is **"Splash"** (module `Splash`) while every test file
-  does `@testable import SplashMonitor` (the old SwiftPM target name) →
-  `error: Unable to resolve module dependency: 'SplashMonitor'`; **zero tests
-  currently run**. Minimal fix: add `PRODUCT_MODULE_NAME = "SplashMonitor"`
-  to the Splash target (keeps `Splash.app` and the TEST_HOST path valid).
+- **Test target matches the app**: `SplashTests` is **Swift 6.0**, deployment
+  **26.4**, `SUPPORTED_PLATFORMS = macosx` — aligned with the app target
+  (the old Swift 5.0 / 27.2 / iOS-xros template leftovers were fixed in W3/W4).
+  All 19 test files use **Swift Testing** and do `@testable import Splash`
+  (module = target name). **199 tests, all green** (verified 2026-10-29).
+  `ScreenshotGeneratorTests` is gated behind the
+  `SPLASH_GENERATE_SCREENSHOTS=1` env var (it writes PNGs and mutates
+  `SplashService.shared` — keep it out of the normal test lane).
 - App target compiles cleanly under **Xcode 27.2 / macOS SDK 27.2** (verified
   2026-10-28): the SDK-27 SwiftUI source changes (@State macro, unified
   @ContentBuilder) trigger no incompatibilities in this codebase.
 - Project format: `Splash.xcodeproj/project.xcproj` (JSON, Xcode 27-era
   "last-upgrade 27.2"). Two schemes: `Splash` (shared) and `Splash (french)`
   (personal, in `xcuserdata` — ignore).
-- Model layer: `@Observable` (Observation framework) for `SplashService`; one
-  legacy `ObservableObject` (`ModelDiagnosticService`).
+- Model layer: everything `@Observable` (Observation framework), including
+  `SplashService` and `ModelDiagnosticService`.
 - State: `@AppStorage` for all preferences; views mostly stateless wrappers over
   `SplashService.shared`.
 - Localization via string catalog with generated symbols; user-facing strings
   through `LocalizedStringResource`.
 - **Stale scripts**: `scripts/build_app.sh`, `create_dmg.sh`, `install.sh`
   assume the *old* SwiftPM layout (`Sources/SplashMonitor/…`, `swift build`)
-  that no longer matches the repo (`Splash/…`, Xcode project). Treat as
-  historical; `docs/building.md` is the authoritative build doc.
+  that no longer matches the repo (`Splash/…`, Xcode project). Each carries a
+  HISTORICAL header (W7). Treat as historical; `docs/building.md` is the
+  authoritative build doc.
 - `.agents/rules/` does not exist (removed in commit "Remove stale agent rules").
 
 ## Build & Test Commands
@@ -197,8 +196,8 @@ build or unit-test it.
 
 **General**
 - Start navigation from this file's File Index; the two heaviest files to
-  understand are `Services/SplashService.swift` (2,779 lines) and
-  `Views/MainWindowView.swift` (1,038 lines).
+  understand are `Services/SplashService.swift` (2,992 lines) and
+  `Views/MainWindowView.swift` (1,115 lines).
 - The app's production behavior contract is partly captured in
   **SplashTests fixtures** (real `/status` payload) — treat them as specs.
 - **User-facing documentation**: a wiki exists at
@@ -212,34 +211,32 @@ build or unit-test it.
   (e.g. "P-07 / H-08", "Sonda V-4") referencing past bug audits.
 
 **modernize-tests worker**
-- All 19 test files are XCTest; zero Swift Testing usage; test target compiles
-  in **Swift 5 mode** — a natural (but deliberate) migration candidate.
-- Verified: the test target does not compile at all (module `Splash` vs
-  `@testable import SplashMonitor`) — `xcodebuild test` fails and zero tests
-  run; that is the P0 blocker for any Swift Testing migration.
-- Two more landmines once the import is fixed:
-  `VersionTests.testVersionExistsOnceAndScriptsAgreeWithIt` reads the absent
-  old-SwiftPM path `Sources/SplashMonitor/…`, and
-  `ScreenshotGeneratorTests` is a 269-line screenshot *generator* (writes PNGs
-  into `screenshots/` via `#filePath`, mutates `SplashService.shared` /
-  `UserDefaults.standard`) that runs in the normal test lane.
+- **Swift Testing migration: DONE (W3/W4).** All 19 test files are Swift
+  Testing (199 tests, green 2026-10-29); the test target is Swift 6.0 /
+  26.4 / macosx-only and the files do `@testable import Splash`.
+- The former P0 blockers are fixed: the `SplashMonitor`-module import
+  mismatch, the old-SwiftPM path in
+  `VersionTests.testVersionExistsOnceAndScriptsAgreeWithIt` (now reads
+  `Splash/Services/Version.swift`), and the deployment-target / platform
+  leftovers. `ScreenshotGeneratorTests` is gated behind
+  `SPLASH_GENERATE_SCREENSHOTS=1` (it writes PNGs and mutates
+  `SplashService.shared` — keep it out of the normal lane).
+- Keep the audit-ID comments ("P-07/H-08", "Sonda V-4") and the real
+  1.0.2-engine `/status` payload fixture — they are the behavior spec.
 - Tests are well factored around the `StatusTransport` / `ServerTerminating`
   seams in `TestSupport.swift`; use those when suggesting rewrites.
-- Watch the deployment-target discrepancy (tests 27.2 vs app 26.4) and the
-  iOS/xros platform leftovers in the test target settings.
 
 **SwiftUI workers (the-swiftui-way, swiftui-specialist, swiftui-whats-new-27)**
-- **8 uses of the deprecated single-parameter `onChange(of:)`** across views
-  (e.g. `SplashMonitorApp.swift`, `MainWindowView.swift`) — deprecated since
-  iOS 17; candidates for the two-parameter form.
+- **No deprecated single-parameter `onChange(of:)` remains** — all 6 usages
+  are the two-parameter form (fixed in W5).
 - Large view files with multiple sub-views per file (e.g.
   `TokenMetricsView.swift` has 4+ view structs); check `ForEach` identity,
   `@State` placement, and observation granularity.
 - `SplashService.shared` is an `@Observable` singleton read directly in many
   views — check for over-broad invalidation on the 1.5 s polling cadence
   (`Preferences.refreshInterval`).
-- `ModelDiagnosticService` is the only `ObservableObject` — legacy compared to
-  the `@Observable` pattern used elsewhere.
+- `ModelDiagnosticService` is now `@Observable` too (W5) — the whole model
+  layer is Observation-framework-based.
 - Menu bar uses `MenuBarExtra` with `.window` style; window uses
   `.windowStyle(.titleBar)` + unified toolbar; 7-tab sidebar in
   `MainWindowView`.

@@ -413,19 +413,23 @@ passes, screenshot generator SKIPPED in the normal lane (see W2 report).
   - add the two `isSpanish:` test blockers and the `ScreenshotGeneratorTests`
     lane problem to the "test target does not compile" note (it lists only
     the module name).
+  **Resolved by W7 (2026-10-29):** all listed corrections are in AGENTS.md (0 deprecated single-param `onChange` — 6 two-param sites; en + es only, 0 fr; NSHostingView; `@Bindable private(set) static var shared` at l.26; the "test target does not compile" note is replaced by the current Swift-Testing state, which supersedes the `isSpanish:`/lane additions).
 - **Stale release scripts · Low** `[swiftui-way]` addendum 7 —
   `scripts/build_app.sh`, `create_dmg.sh`, `install.sh` assume the removed
   SwiftPM layout (`Sources/SplashMonitor/…`, `swift build`);
   `docs/building.md` is authoritative. Treat as historical or delete.
+  **Resolved by W7 (2026-10-29):** each script carries a HISTORICAL header; kept for reference; `docs/building.md` remains the authoritative build doc.
 - **Version drift · Low** `[tests]` / `[swiftui-way]` — project
   `MARKETING_VERSION = "1.0"` vs `SplashVersion.current = "1.0.10-beta"`.
   The scripts sed-extract the latter; keep the `static let current = "…"`
   literal intact and reconcile the project setting (or mark it decorative).
+  **Resolved by W7 (2026-10-29):** the project `MARKETING_VERSION` was verified already `"1.0.10-beta"` (project.xcproj is gitignored — local-only state); `SplashVersion.current` literal untouched.
 - **Dead code · Low** `[swiftui-way]` P3, `[specialist]` F-DE-1/F-AB-1 —
   `DominicanEmblem` (referenced nowhere — verify before deleting),
   `AboutView`'s empty `init()`, redundant `@Bindable` on the `shared` static
   if no view actually uses `$shared.` bindings for it (grep before removing).
-  **Partially resolved by W5 (2026-10-29):** `AboutView`'s empty `init()` is removed; grep-verified `$shared.` bindings are used (5 sites: `ServerControlView`, `PortConflictAlertModifier` ×2, `MainWindowView` ×2), so the `@Bindable` on `shared` is **required — keep**. Remaining (W7): delete the unreferenced `DominicanEmblem`.
+  **Partially resolved by W5 (2026-10-29):** `AboutView`'s empty `init()` is removed; grep-verified `$shared.` bindings are used (5 sites: `ServerControlView`, `PortConflictAlertModifier` ×2, `MainWindowView` ×2), so the `@Bindable` on `shared` is **required — keep**.
+  **Resolved by W7 (2026-10-29):** `DominicanEmblem.swift` is already gone — deleted in the review-start commit `2a47963`, grep-verified zero references.
 - **Accessibility · Low** `[swiftui-way]` P3 — icon-only buttons without text
   labels (`MenuBarView.swift:120-160`, `ConnectedAppCard:505-535`,
   TokenMetricsView free-memory/dismiss, AboutView): use
@@ -439,6 +443,7 @@ passes, screenshot generator SKIPPED in the normal lane (see W2 report).
 - **`SemanticVersion` prerelease comparison is lexicographic on the suffix** —
   `"1.0.10-beta.10"` sorts before `"-beta.2"`; harmless for current
   single-digit betas. `[swiftui-way]` P3.
+  **Resolved by W7 (2026-10-29):** prerelease identifiers now follow semver §11 — numeric identifiers compare as integers; regression test `testPrereleaseIdentifiersCompareNumerically`.
 - **`AboutView` hardcodes "© 2026"** — drifts. `[specialist]` F-AB-1.
   **Resolved by W5 (2026-10-29):** the year is now computed from `Calendar.current` and interpolated into the (localizable) copyright string.
 - **Good patterns — keep** (all reviews converge): narrow value-input leaf

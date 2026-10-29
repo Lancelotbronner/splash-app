@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+# HISTORICAL (2026-10-29, W7): asume el layout SwiftPM eliminado
+# (Sources/SplashMonitor/…, swift build). Conservado solo como referencia;
+# la documentación de build autoritaria es docs/building.md (Xcode).
+
 # Splash Monitor — construcción del bundle .app
 # La versión, el identificador de paquete y el número de compilación se leen de
 # Sources/SplashMonitor/Services/Version.swift: única fuente de verdad (P-15).

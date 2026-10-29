@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+# HISTORICAL (2026-10-29, W7): asume el layout SwiftPM eliminado
+# (Sources/SplashMonitor/…, swift build). Conservado solo como referencia;
+# la documentación de build autoritaria es docs/building.md (Xcode).
+
 # Splash Monitor — instalador de una línea para macOS
 # Desarrollado por JMGREP Developers (Joan Gregorio Pérez)
 #
