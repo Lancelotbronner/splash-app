@@ -51,7 +51,7 @@ class SplashService {
 	var activePid: Int? = nil
 	var activePort: Int = 8000
 	var portConflict: PortConflictInfo? = nil
-	var activeModel: String = "Ninguno"
+	var activeModel: String = ""
 	var status: SplashStatus? = nil
 	var lastError: LocalizedStringResource? = nil
 
@@ -442,14 +442,14 @@ class SplashService {
 		isInstallingDependency = true
 		// §3.8: ids monótonos emitidos por el servicio (no `\.offset` en la vista).
 		resetDependencyInstallLogs([
-			"Iniciando instalación de la dependencia Splash...",
-			"Comando: brew install incoai/tap/splash"
+			String(localized: "Starting Splash dependency installation..."),
+			String(localized: "Command: brew install incoai/tap/splash")
 		])
 		dependencyInstallSuccess = nil
 
 		guard let brewPath = brewExecutablePath else {
-			appendDependencyInstallLog("Error: No se encontró Homebrew instalado en /opt/homebrew/bin/brew o /usr/local/bin/brew.")
-			appendDependencyInstallLog("Por favor instala Homebrew primero desde https://brew.sh")
+			appendDependencyInstallLog(String(localized: "Error: Homebrew was not found at /opt/homebrew/bin/brew or /usr/local/bin/brew."))
+			appendDependencyInstallLog(String(localized: "Please install Homebrew first from https://brew.sh"))
 			isInstallingDependency = false
 			dependencyInstallSuccess = false
 			return
@@ -495,12 +495,12 @@ class SplashService {
 					self.isInstallingDependency = false
 					if status == 0 {
 						self.dependencyInstallSuccess = true
-						self.appendDependencyInstallLog(" Splash se instaló correctamente.")
+						self.appendDependencyInstallLog(String(localized: " Splash was installed successfully."))
 						self.checkDependencies()
 						self.refreshInstalledModels()
 					} else {
 						self.dependencyInstallSuccess = false
-						self.appendDependencyInstallLog(" brew install finalizó con código de error \(status).")
+						self.appendDependencyInstallLog(String(localized: " brew install finished with error code \(status)."))
 					}
 				}
 			} catch {
@@ -508,7 +508,7 @@ class SplashService {
 					self.dependencyProcess = nil
 					self.isInstallingDependency = false
 					self.dependencyInstallSuccess = false
-					self.appendDependencyInstallLog(" Error al ejecutar el instalador: \(error.localizedDescription)")
+					self.appendDependencyInstallLog(String(localized: " Error running the installer: \(error.localizedDescription)"))
 				}
 			}
 		}
@@ -518,7 +518,7 @@ class SplashService {
 		dependencyProcess?.terminate()
 		dependencyProcess = nil
 		isInstallingDependency = false
-		appendDependencyInstallLog(" Proceso de instalación cancelado.")
+		appendDependencyInstallLog(String(localized: " Installation process cancelled."))
 	}
 
 	func installSplashInTerminal() {
@@ -858,7 +858,7 @@ class SplashService {
 		)
 		self.sizeCache = updatedCache
 		self.installedModels = results
-		if currentlyRunning && !currentModel.isEmpty && currentModel != "Ninguno" {
+		if currentlyRunning && !currentModel.isEmpty {
 			self.selectedModelForLaunch = currentModel
 		} else if (selection.isEmpty || !results.contains(where: { $0.repoId == selection })),
 				  let first = results.first {
@@ -988,7 +988,7 @@ class SplashService {
 		// El identificador llega de la interfaz y se usa como ruta: sin validar,
 		// un valor como `../../..` borraba fuera del directorio de modelos.
 		guard ModelIDValidator.isValid(repoId) else {
-			self.lastError = "Identificador de modelo no válido: \(repoId)"
+			self.lastError = "Invalid model identifier: \(repoId)"
 			return
 		}
 
@@ -1316,7 +1316,7 @@ class SplashService {
 	func installModel(repoId: String, languageOnly: Bool? = nil) {
 		guard !isInstalling else { return }
 		guard ModelIDValidator.isValid(repoId) else {
-			self.lastError = ModelIDValidator.rejectionReason(repoId) ?? "Identificador de modelo no válido."
+			self.lastError = ModelIDValidator.rejectionReason(repoId) ?? "Invalid model identifier."
 			return
 		}
 
@@ -1337,7 +1337,7 @@ class SplashService {
 		downloadedBytes = 0
 		totalExpectedBytes = 0
 		downloadProgressFraction = nil
-		downloadPhase = "Iniciando descarga y preparación..."
+		downloadPhase = String(localized: "Starting download and preparation...")
 
 		let textOnlyKeywords = ["coder", "magicoder", "starcoder", "codellama"]
 		let autoLangOnly = textOnlyKeywords.contains { effectiveRepoId.lowercased().contains($0) }
@@ -1346,15 +1346,15 @@ class SplashService {
 		// §3.8: ids monótonos emitidos por el servicio (no `\.offset` en la vista).
 		if effectiveRepoId != repoId {
 			resetInstallLogs([
-				"Iniciando descarga y preparación para \(effectiveRepoId)...",
-				"ℹ️ Qwen3.8-Flash-Next requiere formato GGUF en Splash 1.4.0.",
-				"🔄 Mapeando automáticamente a la versión oficial cuantizada: \(effectiveRepoId)"
+				String(localized: "Starting download and preparation for \(effectiveRepoId)..."),
+				String(localized: "ℹ️ Qwen3.8-Flash-Next requires GGUF format in Splash 1.4.0."),
+				String(localized: "🔄 Automatically mapping to the official quantized version: \(effectiveRepoId)")
 			])
 		} else {
-			resetInstallLogs(["Iniciando descarga y preparación para \(repoId)..."])
+			resetInstallLogs([String(localized: "Starting download and preparation for \(repoId)...")])
 		}
 		if initialLangOnly {
-			appendInstallLog("ℹ️ Modo solo lenguaje (--language-only) activado.")
+			appendInstallLog(String(localized: "ℹ️ Language-only mode (--language-only) enabled."))
 		}
 		installSuccess = nil
 
@@ -1365,12 +1365,12 @@ class SplashService {
 		Task.detached(priority: .userInitiated) {
 			guard !scriptPath.isEmpty, FileManager.default.fileExists(atPath: scriptPath) else {
 				await MainActor.run {
-					self.appendInstallLog("Error: No se encontró script de instalación en \(scriptPath).")
-					self.appendInstallLog("Asegúrate de que Splash esté instalado vía: brew install incoai/tap/splash")
+					self.appendInstallLog(String(localized: "Error: Installation script not found at \(scriptPath)."))
+					self.appendInstallLog(String(localized: "Make sure Splash is installed via: brew install incoai/tap/splash"))
 					self.isInstalling = false
 					self.installSuccess = false
 					self.downloadSpeedMBs = 0.0
-					self.downloadPhase = "Fallo en la instalación"
+					self.downloadPhase = String(localized: "Installation failed")
 				}
 				return
 			}
@@ -1436,7 +1436,7 @@ class SplashService {
 
 							if clean.contains("Fetching ") && clean.contains("GB") {
 								self.appendInstallLog("ℹ️ \(clean)")
-								self.appendInstallLog("⏳ Conectando y transfiriendo archivos grandes en paralelo...")
+								self.appendInstallLog(String(localized: "⏳ Connecting and streaming large model shards in parallel..."))
 
 								if let match = clean.range(of: "[0-9.]+\\s*GB", options: .regularExpression) {
 									let gbSubstring = clean[match].replacingOccurrences(of: "GB", with: "").trimmingCharacters(in: .whitespaces)
@@ -1446,15 +1446,15 @@ class SplashService {
 								}
 
 								if clean.contains("DFlash2") {
-									self.downloadPhase = "Descargando acelerador DFlash2..."
+									self.downloadPhase = String(localized: "Downloading DFlash2 speculative accelerator...")
 								} else {
-									self.downloadPhase = "Descargando pesos del modelo..."
+									self.downloadPhase = String(localized: "Downloading model weights...")
 								}
 								continue
 							}
 
 							if clean.contains("Installing ") && clean.contains("as ") {
-								self.downloadPhase = "Ensamblando y verificando en Splash..."
+								self.downloadPhase = String(localized: "Assembling and verifying in Splash...")
 								self.downloadProgressFraction = 0.99
 							}
 
@@ -1564,8 +1564,8 @@ class SplashService {
 				if joinedLogs.contains("vision projector") || joinedLogs.contains("mmproj") || joinedLogs.contains("--language-only") {
 					await MainActor.run {
 						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-						self.appendInstallLog("ℹ️ Detectado modelo sin componentes de visión (mmproj).")
-						self.appendInstallLog("🔄 Reintentando preparación automáticamente con --language-only...")
+						self.appendInstallLog(String(localized: "ℹ️ Model detected without vision components (mmproj)."))
+						self.appendInstallLog(String(localized: "🔄 Automatically retrying preparation with --language-only..."))
 						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 					}
 					let secondPass = runPrepareProcess(withLanguageOnly: true)
@@ -1584,32 +1584,32 @@ class SplashService {
 				self.downloadSpeedMBs = 0.0
 				if finalSuccess {
 					self.downloadProgressFraction = 1.0
-					self.downloadPhase = "Instalación completada con éxito"
-					self.appendInstallLog("✅ Instalación y verificación de \(effectiveRepoId) completada con éxito.")
+					self.downloadPhase = String(localized: "Installation completed successfully")
+					self.appendInstallLog(String(localized: "✅ Installation and verification of \(effectiveRepoId) completed successfully."))
 					self.refreshInstalledModels()
 				} else {
-					self.downloadPhase = "Fallo en la instalación"
-					self.appendInstallLog("❌ Error al instalar \(effectiveRepoId).")
+					self.downloadPhase = String(localized: "Installation failed")
+					self.appendInstallLog(String(localized: "❌ Error installing \(effectiveRepoId)."))
 					// §3.8: las comprobaciones leen `text` de cada línea.
 					if self.installLogs.contains(where: { $0.text.contains("loads from a GGUF only") }) {
 						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-						self.appendInstallLog("💡 La arquitectura Qwen3.8-Flash-Next en Splash requiere formato GGUF.")
-						self.appendInstallLog("👉 El repositorio base 'Qwen/Qwen3.8-Flash-Next' contiene pesos safetensors incompatibles con Splash.")
-						self.appendInstallLog("👉 Instala la cuantización oficial compatible con Splash:")
+						self.appendInstallLog(String(localized: "💡 The Qwen3.8-Flash-Next architecture in Splash requires GGUF format."))
+						self.appendInstallLog(String(localized: "👉 The base repository 'Qwen/Qwen3.8-Flash-Next' contains safetensors weights incompatible with Splash."))
+						self.appendInstallLog(String(localized: "👉 Install the official quantization compatible with Splash:"))
 						self.appendInstallLog("   ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF:Q2_0")
 						self.appendInstallLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 					} else if self.installLogs.contains(where: { $0.text.contains("gated repo") || $0.text.contains("Access to model") || $0.text.contains("403") }) {
-						self.appendInstallLog("🔒 Este modelo tiene acceso restringido ('Gated') en Hugging Face.")
-						self.appendInstallLog("💡 Muchos modelos protegidos tienen aprobación instantánea ('auto').")
-						self.appendInstallLog("👉 Pasos para habilitar la descarga:")
-						self.appendInstallLog("   1. Inicia sesión en Hugging Face con tu cuenta.")
-						self.appendInstallLog("   2. Visita: https://huggingface.co/\(effectiveRepoId)")
-						self.appendInstallLog("   3. Pulsa 'Agree and access repository' (o Aceptar términos).")
-						self.appendInstallLog("   4. Regresa a Splash Monitor y haz clic nuevamente en Descargar.")
+						self.appendInstallLog(String(localized: "🔒 This model has restricted access ('Gated') on Hugging Face."))
+						self.appendInstallLog(String(localized: "💡 Many gated models have instant approval ('auto')."))
+						self.appendInstallLog(String(localized: "👉 Steps to enable the download:"))
+						self.appendInstallLog(String(localized: "   1. Sign in to Hugging Face with your account."))
+						self.appendInstallLog(String(localized: "   2. Visit: https://huggingface.co/\(effectiveRepoId)"))
+						self.appendInstallLog(String(localized: "   3. Click 'Agree and access repository' (or accept the terms)."))
+						self.appendInstallLog(String(localized: "   4. Go back to Splash Monitor and click Download again."))
 					} else if self.installLogs.contains(where: { $0.text.contains("HTTP Error 500") || $0.text.contains("Error 502") || $0.text.contains("Error 503") || $0.text.contains("Error 504") || $0.text.contains("check your connection") }) {
-						self.appendInstallLog("⚠️ Interrupción temporal en los servidores de Hugging Face o en la red (Error 500 / Timeout).")
-						self.appendInstallLog("💾 ¡Los archivos ya transferidos están a salvo en la caché local (~17 GB guardados)!")
-						self.appendInstallLog("👉 Solo pulsa 'Descargar' de nuevo; el proceso reanudará al instante solo lo que falta.")
+						self.appendInstallLog(String(localized: "⚠️ Temporary disruption on the Hugging Face servers or the network (Error 500 / Timeout)."))
+						self.appendInstallLog(String(localized: "💾 The files already transferred are safe in the local cache (~17 GB saved)!"))
+						self.appendInstallLog(String(localized: "👉 Just click 'Download' again; the process will instantly resume only what is missing."))
 					}
 				}
 			}
@@ -1624,8 +1624,8 @@ class SplashService {
 		installSuccess = false
 		downloadSpeedMBs = 0.0
 		downloadProgressFraction = nil
-		downloadPhase = "Descarga cancelada por el usuario"
-		appendInstallLog("⚠️ Descarga cancelada por el usuario.")
+		downloadPhase = String(localized: "Download cancelled by the user")
+		appendInstallLog(String(localized: "⚠️ Download cancelled by the user."))
 	}
 
 	// MARK: - Server Control
@@ -1848,13 +1848,13 @@ class SplashService {
 		// Sin validación, un valor con comillas cerraba el entrecomillado y ejecutaba
 		// comandos arbitrarios (verificado en la auditoría con un fichero testigo).
 		guard let validatedModel = ModelIDValidator.normalized(model) else {
-			self.lastError = ModelIDValidator.rejectionReason(model) ?? "Identificador de modelo no válido."
+			self.lastError = ModelIDValidator.rejectionReason(model) ?? "Invalid model identifier."
 			self.isStartingServer = false
 			self.startingModelId = nil
 			return
 		}
 		guard (1...65535).contains(port) else {
-			self.lastError = "Puerto fuera de rango: \(port)"
+			self.lastError = "Port out of range: \(port)"
 			self.isStartingServer = false
 			self.startingModelId = nil
 			return
@@ -2114,7 +2114,7 @@ class SplashService {
 			// Flags CLI adicionales proporcionados por el usuario (ej. --no-webui --max-cache-disk 50GB)
 			let (customTokens, customError) = ServerCLIValidator.validateAndTokenize(Preferences.customServerFlags)
 			if let err = customError {
-				logger.warning("Flags CLI adicionales ignorados por seguridad: \(err, privacy: .public)")
+				logger.warning("Flags CLI adicionales ignorados por seguridad: \(String(localized: err), privacy: .public)")
 			}
 			let customFlagsString = customTokens.joined(separator: " ")
 			let customFlagsEcho = customTokens.isEmpty ? "" : "\necho \"🛠️ Flags CLI:  \(customFlagsString)\""
@@ -2241,7 +2241,7 @@ class SplashService {
 		let envFile = home.appendingPathComponent(ShellEnvironment.fileName)
 		try? ShellEnvironment.fileContents(port: port).write(to: envFile, atomically: true, encoding: .utf8)
 
-		let targetModel = !self.activeModel.isEmpty && self.activeModel != "Ninguno" ? self.activeModel : self.selectedModelForLaunch
+		let targetModel = !self.activeModel.isEmpty ? self.activeModel : self.selectedModelForLaunch
 		syncCodexEnvironment(model: targetModel, port: port)
 
 		switch ShellConsent.decide(hasConsent: Preferences.shellConfigConsent, userDeclined: Preferences.shellConfigDeclined) {
@@ -2308,7 +2308,7 @@ class SplashService {
 	/// Sincroniza el modelo cargado y el puerto activo en ~/.codex/config.toml
 	/// para que ChatGPT Desktop (Codex & OWL) trabaje automáticamente con el modelo activo.
 	func syncCodexEnvironment(model: String, port: Int) {
-		guard !model.isEmpty && model != "Ninguno" else { return }
+		guard !model.isEmpty else { return }
 		let home = shellEnvironmentDirectory ?? FileManager.default.homeDirectoryForCurrentUser
 		let codexConfigURL = home.appendingPathComponent(".codex/config.toml")
 		guard FileManager.default.fileExists(atPath: codexConfigURL.path),
@@ -2427,7 +2427,7 @@ class SplashService {
 		}
 		// El nombre del agente se restringe a la lista soportada por el motor.
 		guard Self.supportedAgents.contains(agent) else {
-			self.lastError = "Agente no soportado: \(agent)"
+			self.lastError = "Unsupported agent: \(agent)"
 			return
 		}
 
@@ -2445,7 +2445,7 @@ class SplashService {
 				NSWorkspace.shared.openApplication(at: targetURL, configuration: config) { _, error in
 					if let error = error {
 						Task { @MainActor in
-							self.lastError = "Error al abrir Claude Cowork: \(error.localizedDescription)"
+							self.lastError = "Error opening Claude Cowork: \(error.localizedDescription)"
 						}
 					}
 				}
@@ -2457,7 +2457,7 @@ class SplashService {
 
 		// Manejo específico para ChatGPT Desktop / Codex (App GUI macOS)
 		if agent == "chatgpt" {
-			let targetModel = !self.activeModel.isEmpty && self.activeModel != "Ninguno" ? self.activeModel : self.selectedModelForLaunch
+			let targetModel = !self.activeModel.isEmpty ? self.activeModel : self.selectedModelForLaunch
 			syncCodexEnvironment(model: targetModel, port: self.activePort)
 
 			let home = FileManager.default.homeDirectoryForCurrentUser.path
@@ -2472,7 +2472,7 @@ class SplashService {
 				NSWorkspace.shared.openApplication(at: targetURL, configuration: config) { _, error in
 					if let error = error {
 						Task { @MainActor in
-							self.lastError = "Error al abrir ChatGPT: \(error.localizedDescription)"
+							self.lastError = "Error opening ChatGPT: \(error.localizedDescription)"
 						}
 					}
 				}
@@ -2506,7 +2506,7 @@ class SplashService {
 				NSWorkspace.shared.openApplication(at: targetURL, configuration: config) { _, error in
 					if let error = error {
 						Task { @MainActor in
-							self.lastError = "Error al abrir DeepSeek Harness: \(error.localizedDescription)"
+							self.lastError = "Error opening DeepSeek Harness: \(error.localizedDescription)"
 						}
 					}
 				}
@@ -2935,7 +2935,7 @@ class SplashService {
 	/// o deteniendo el servidor si no está respondiendo.
 	func releaseMemoryNow() {
 		guard isRunning else { return }
-		memoryReliefNotice = "Memoria liberada manualmente por el usuario."
+		memoryReliefNotice = String(localized: "Memory released manually by the user.")
 
 		let port = activePort
 		Task {
@@ -2951,7 +2951,7 @@ class SplashService {
 				let (_, response) = try await URLSession.shared.data(for: request)
 				if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
 					await MainActor.run {
-						self.memoryReliefNotice = "Pesos del modelo liberados de la memoria unificada (Caché preservada en Splash 1.3.2)."
+						self.memoryReliefNotice = String(localized: "Model weights released from unified memory (cache preserved in Splash 1.3.2).")
 					}
 					return
 				}

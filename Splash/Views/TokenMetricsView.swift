@@ -101,7 +101,7 @@ struct TokenMetricsView: View {
 					.foregroundColor(.accentColor)
 				Text("JMGREP Developers")
 					.font(.system(size: 10, weight: .bold))
-				Text("By Joan Gregorio Pérez - Ingeniero en software")
+				Text("By Joan Gregorio Pérez - Software engineer")
 					.font(.system(size: 10, weight: .medium))
 					.foregroundColor(.secondary)
 			}
@@ -267,7 +267,7 @@ private struct EfficiencyMetricsCard: View {
 			HStack(spacing: 12) {
 				MiniStatRow(
 					title: "Reused KV Cache",
-					value: tokensReused,
+					value: LocalizedStringResource(String.LocalizationValue(tokensReused)),
 					detail: "\(cacheHitRate) hit rate",
 					icon: "arrow.triangle.2.circlepath",
 					tint: .cyan
@@ -275,7 +275,7 @@ private struct EfficiencyMetricsCard: View {
 
 				MiniStatRow(
 					title: "DFlash 2 Speculation",
-					value: draftAcceptanceRate,
+					value: LocalizedStringResource(String.LocalizationValue(draftAcceptanceRate)),
 					detail: "Draft acceptance",
 					icon: "sparkles",
 					tint: .orange
@@ -286,7 +286,8 @@ private struct EfficiencyMetricsCard: View {
 				MiniStatRow(
 					title: "Latency TTFT (p50)",
 					// §3.4: valor derivado calculado por ciclo en el servicio.
-					value: String(format: "%.0f ms", ttftP50Ms ?? 0.0),
+					// §9: interpolación con formato (clave "%@ ms") en lugar de String(format:).
+					value: LocalizedStringResource("\(ttftP50Ms ?? 0.0, format: .number.precision(.fractionLength(0))) ms"),
 					detail: "Time to first token",
 					icon: "timer",
 					tint: .purple
@@ -294,7 +295,7 @@ private struct EfficiencyMetricsCard: View {
 
 				MiniStatRow(
 					title: "Latency ITL (p50)",
-					value: String(format: "%.1f ms", itlP50Ms ?? 0.0),
+					value: LocalizedStringResource("\(itlP50Ms ?? 0.0, format: .number.precision(.fractionLength(1))) ms"),
 					detail: "Inter-token latency",
 					icon: "waveform.path.ecg",
 					tint: .indigo
@@ -364,15 +365,15 @@ private struct MemorySectionCard: View {
 						.foregroundColor(.secondary)
 					Spacer()
 					if let thermal = thermalState {
-						Text("Thermal: \(thermal.capitalized)")
+						Text("Thermal: \(String(localized: thermalLabel(thermal)))")
 							.font(.system(size: 10, weight: .medium))
-							.foregroundColor(thermal == "nominal" ? .green : (thermal == "fair" ? .yellow : .orange))
+							.foregroundColor(thermalColor(thermal))
 						Text(verbatim: "·")
 							.foregroundColor(.secondary)
 					}
-					Text("Pressure: \(statusMemoryPressure?.capitalized ?? "Normal")")
+					Text("Pressure: \(String(localized: pressureLabel(statusMemoryPressure)))")
 						.font(.system(size: 10, weight: .medium))
-						.foregroundColor(statusMemoryPressure == "normal" ? .green : .orange)
+						.foregroundColor(pressureColor(statusMemoryPressure))
 				}
 			}
 
@@ -456,12 +457,17 @@ private struct MemorySectionCard: View {
 							.foregroundColor(.indigo)
 					}
 					Spacer()
+					// §9: los estados del motor ("active"/"idle"/"off") se mapean a
+					// etiquetas LSR; el "%" literal se escribe sin escapar, como en
+					// "100% OpenAI & Anthropic…" (ConnectedAppsView): la clave
+					// compilada lo escapa a "%%" y el render muestra un solo "%".
+					let stateLabel = String(localized: aneLabel(aneState))
 					if let share = aneShare {
-						Text("\(aneState.capitalized) · \(Int(share * 100))% share")
+						Text("\(stateLabel) · \(Int(share * 100))% share")
 							.font(.system(size: 10, weight: .medium, design: .monospaced))
 							.foregroundColor(.secondary)
 					} else {
-						Text(aneState.capitalized)
+						Text(stateLabel)
 							.font(.system(size: 10, weight: .medium, design: .monospaced))
 							.foregroundColor(.secondary)
 					}
@@ -588,7 +594,8 @@ struct MetricCard: View {
 
 struct MiniStatRow: View {
 	let title: LocalizedStringResource
-	let value: String
+	/// §9: LSR para que el valor (formato "ms", etc.) sea localizable.
+	let value: LocalizedStringResource
 	let detail: LocalizedStringResource
 	let icon: String
 	let tint: Color
@@ -665,5 +672,57 @@ struct SpeedMiniChart: View {
 				style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
 			)
 		}
+	}
+}
+
+// MARK: - Etiquetas de estado del hardware (§9)
+//
+// El motor emite identificadores estables en minúsculas ("nominal", "warning",
+// "active"…). Antes se renderizaban con `.capitalized` (incorrecto en locales
+// que no capitalizan, y sin traducir). Ahora se mapean a claves LSR; si el motor
+// agrega un estado nuevo, se muestra el valor tal cual (fallback).
+
+fileprivate func thermalLabel(_ raw: String) -> LocalizedStringResource {
+	switch raw {
+	case "nominal": return "Nominal"
+	case "fair": return "Fair"
+	case "serious": return "Serious"
+	case "critical": return "Critical"
+	default: return LocalizedStringResource(String.LocalizationValue(raw))
+	}
+}
+
+fileprivate func thermalColor(_ raw: String) -> Color {
+	switch raw {
+	case "nominal": return .green
+	case "fair": return .yellow
+	case "serious": return .orange
+	default: return .red
+	}
+}
+
+fileprivate func pressureLabel(_ raw: String?) -> LocalizedStringResource {
+	switch raw {
+	case .some("normal"): return "Normal"
+	case .some("warning"): return "Warning"
+	case .some("critical"): return "Critical"
+	default: return LocalizedStringResource(String.LocalizationValue(raw ?? "normal"))
+	}
+}
+
+fileprivate func pressureColor(_ raw: String?) -> Color {
+	switch raw {
+	case "normal": return .green
+	case "warning": return .orange
+	default: return .red
+	}
+}
+
+fileprivate func aneLabel(_ raw: String) -> LocalizedStringResource {
+	switch raw {
+	case "active": return "Active"
+	case "idle": return "Idle"
+	case "off": return "Off"
+	default: return LocalizedStringResource(String.LocalizationValue(raw))
 	}
 }

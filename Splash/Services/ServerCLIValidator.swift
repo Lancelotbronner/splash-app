@@ -16,7 +16,7 @@ enum ServerCLIValidator {
 	/// Valida y descompone la cadena de argumentos en tokens seguros.
 	/// - Parameter raw: Cadena de texto introducida por el usuario (ej. `--no-webui --max-cache-disk 50GB`).
 	/// - Returns: Tupla con la lista de tokens seguros y un mensaje de error si no es válida.
-	static func validateAndTokenize(_ raw: String) -> (tokens: [String], error: String?) {
+	static func validateAndTokenize(_ raw: String) -> (tokens: [String], error: LocalizedStringResource?) {
 		let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 		if trimmed.isEmpty {
 			return ([], nil)
@@ -24,7 +24,7 @@ enum ServerCLIValidator {
 
 		// Comprobación de metacaracteres peligrosos
 		if trimmed.unicodeScalars.contains(where: { dangerousCharacters.contains($0) }) {
-			return ([], "Caracteres peligrosos de shell detectados en los flags CLI.")
+			return ([], "Shell metacharacters detected in the CLI flags.")
 		}
 
 		let parts = trimmed.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
@@ -32,7 +32,7 @@ enum ServerCLIValidator {
 
 		for part in parts {
 			guard part.unicodeScalars.allSatisfy({ safeCharacters.contains($0) }) else {
-				return ([], "El argumento '\(part)' contiene caracteres no válidos.")
+				return ([], "The argument '\(part)' contains invalid characters.")
 			}
 			validTokens.append(part)
 		}
@@ -83,8 +83,13 @@ enum ServerCLIValidator {
 		let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 		if trimmed == "auto" { return "auto" }
 		if trimmed == "-1" || trimmed == "off" || trimmed == "0" { return "-1" }
-		let clean = trimmed.replacingOccurrences(of: "k", with: "000")
-		if let val = Int(clean), val > 0 { return "\(val)" }
-		return nil
+		// §9: solo un sufijo "k" final (antes `"1k2"` se aceptaba como 10002).
+		if trimmed.hasSuffix("k") {
+			let digits = trimmed.dropLast()
+			guard !digits.isEmpty, digits.allSatisfy({ $0.isNumber }), let val = Int(digits), val > 0 else { return nil }
+			return "\(val * 1000)"
+		}
+		guard trimmed.allSatisfy({ $0.isNumber }), let val = Int(trimmed), val > 0 else { return nil }
+		return "\(val)"
 	}
 }

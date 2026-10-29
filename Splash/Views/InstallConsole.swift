@@ -194,17 +194,12 @@ struct InstallConsole: View {
 	}
 
 	private func formatDownloadProgress(downloaded: Int64, total: Int64) -> String {
-		let dlGB = Double(downloaded) / 1_073_741_824.0
-		let dlMB = Double(downloaded) / 1_048_576.0
-		let dlStr = dlGB >= 1.0
-			? String(format: "%.2f GB", dlGB)
-			: String(format: "%.0f MB", dlMB)
+		// §9: ByteCountFormatStyle (localizable) en lugar de String(format:).
 		if total > 0 {
-			let totGB = Double(total) / 1_073_741_824.0
 			let pct = min(100, Int((Double(downloaded) / Double(total)) * 100))
-			return "\(dlStr) / \(String(format: "%.2f GB", totGB)) (\(pct)%)"
+			return String(localized: "\(downloaded.formatted(.byteCount(style: .file))) of \(total.formatted(.byteCount(style: .file))) (\(pct)%)")
 		} else {
-			return "\(dlStr) recibidos"
+			return String(localized: "\(downloaded.formatted(.byteCount(style: .file))) downloaded")
 		}
 	}
 

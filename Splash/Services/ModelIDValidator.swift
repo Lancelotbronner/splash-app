@@ -96,15 +96,17 @@ nonisolated enum ModelIDValidator {
 			return "The model identifier is empty."
 		}
 		if isValid(value) { return nil }
+		// §9: el mensaje de caracteres prohibidos primero — antes, un valor con
+		// ambos problemas recibía el mensaje (menos útil) del separador.
+		if value.rangeOfCharacter(from: forbiddenCharacters) != nil {
+			return "Contains forbidden characters (spaces, quotes, ; | & $ ` \\ % ? # …)."
+		}
 		if !value.contains("/") {
 			return "Missing separator: use format owner/model or owner/model:variant."
 		}
 		let segments = value.split(separator: "/", omittingEmptySubsequences: false)
 		if segments.count != 2 {
 			return "Format must be owner/model[:variant] (exactly one '/' separator)."
-		}
-		if value.rangeOfCharacter(from: forbiddenCharacters) != nil {
-			return "Contains forbidden characters (spaces, quotes, ; | & $ ` \\ % ? # …)."
 		}
 		let repoSegment = String(segments[1])
 		let repoParts = repoSegment.split(separator: ":", omittingEmptySubsequences: false)

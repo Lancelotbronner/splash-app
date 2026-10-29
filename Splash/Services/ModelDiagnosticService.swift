@@ -14,12 +14,14 @@ final class ModelDiagnosticService {
 
 	// MARK: - Tipos de Diagnóstico
 
+	/// §9: los detalles/errores renderizados son `LocalizedStringResource`
+	/// (claves en inglés; la traducción vive en el catálogo).
 	enum CheckStatus: Equatable {
 		case idle
 		case running
-		case passed(details: String, latencyMs: Double)
-		case warning(details: String, latencyMs: Double)
-		case failed(error: String)
+		case passed(details: LocalizedStringResource, latencyMs: Double)
+		case warning(details: LocalizedStringResource, latencyMs: Double)
+		case failed(error: LocalizedStringResource)
 
 		var isPassed: Bool {
 			if case .passed = self { return true }
@@ -59,7 +61,7 @@ final class ModelDiagnosticService {
 
 	var isRunningBenchmark: Bool = false
 	var benchmarkProgress: Double = 0.0
-	var currentBenchmarkPhase: String = ""
+	var currentBenchmarkPhase: LocalizedStringResource = ""
 	var latestBenchmark: BenchmarkResult? = nil
 
 	// Playground State
@@ -69,7 +71,7 @@ final class ModelDiagnosticService {
 	var playgroundTokPerSec: Double = 0.0
 	var playgroundTokensGenerated: Int = 0
 	var playgroundRawResponse: String = ""
-	var playgroundLastError: String? = nil
+	var playgroundLastError: LocalizedStringResource? = nil
 
 	private let session: URLSession
 
@@ -115,12 +117,12 @@ final class ModelDiagnosticService {
 				let (_, response) = try await session.data(for: req)
 				let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000.0
 				if let http = response as? HTTPURLResponse, http.statusCode == 200 {
-					updateSmokeTest(id: "health", status: .passed(details: "200 OK (\(String(format: "%.1f", elapsed)) ms)", latencyMs: elapsed))
+					updateSmokeTest(id: "health", status: .passed(details: "200 OK (\(elapsed, format: .number.precision(.fractionLength(1))) ms)", latencyMs: elapsed))
 				} else {
-					updateSmokeTest(id: "health", status: .failed(error: "Código HTTP inesperado"))
+					updateSmokeTest(id: "health", status: .failed(error: "Unexpected HTTP code"))
 				}
 			} catch {
-				updateSmokeTest(id: "health", status: .failed(error: error.localizedDescription))
+				updateSmokeTest(id: "health", status: .failed(error: LocalizedStringResource(String.LocalizationValue(error.localizedDescription))))
 			}
 		}
 
@@ -135,15 +137,15 @@ final class ModelDiagnosticService {
 				let elapsed = (CFAbsoluteTimeGetCurrent() - tReady) * 1000.0
 				if let http = response as? HTTPURLResponse {
 					if http.statusCode == 200 {
-						updateSmokeTest(id: "ready", status: .passed(details: "Motor Metal Listo (200 OK)", latencyMs: elapsed))
+						updateSmokeTest(id: "ready", status: .passed(details: "Metal engine ready (200 OK)", latencyMs: elapsed))
 					} else if http.statusCode == 503 {
-						updateSmokeTest(id: "ready", status: .warning(details: "503: Motor inicializando o memoria saturada", latencyMs: elapsed))
+						updateSmokeTest(id: "ready", status: .warning(details: "503: engine starting up or memory saturated", latencyMs: elapsed))
 					} else {
 						updateSmokeTest(id: "ready", status: .failed(error: "HTTP \(http.statusCode)"))
 					}
 				}
 			} catch {
-				updateSmokeTest(id: "ready", status: .failed(error: error.localizedDescription))
+				updateSmokeTest(id: "ready", status: .failed(error: LocalizedStringResource(String.LocalizationValue(error.localizedDescription))))
 			}
 		}
 
@@ -160,13 +162,13 @@ final class ModelDiagnosticService {
 				   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
 					let maxCtx = json["maximum_context_tokens"] as? Int ?? 0
 					let vision = json["vision"] as? Bool ?? false
-					let modeDesc = vision ? "Visión Activa" : "Solo Texto (--language-only)"
-					updateSmokeTest(id: "status", status: .passed(details: "Ctx: \(maxCtx / 1024)K • \(modeDesc)", latencyMs: elapsed))
+					let modeDesc = vision ? LocalizedStringResource("Vision active") : LocalizedStringResource("Text-only (--language-only)")
+					updateSmokeTest(id: "status", status: .passed(details: "Ctx: \(maxCtx / 1024)K • \(String(localized: modeDesc))", latencyMs: elapsed))
 				} else {
-					updateSmokeTest(id: "status", status: .warning(details: "Respuesta no parseable", latencyMs: elapsed))
+					updateSmokeTest(id: "status", status: .warning(details: "Unparseable response", latencyMs: elapsed))
 				}
 			} catch {
-				updateSmokeTest(id: "status", status: .failed(error: error.localizedDescription))
+				updateSmokeTest(id: "status", status: .failed(error: LocalizedStringResource(String.LocalizationValue(error.localizedDescription))))
 			}
 		}
 
@@ -191,12 +193,12 @@ final class ModelDiagnosticService {
 				if let http = response as? HTTPURLResponse, http.statusCode == 200 {
 					let str = String(data: data, encoding: .utf8) ?? ""
 					let preview = str.trimmingCharacters(in: .whitespacesAndNewlines).prefix(35)
-					updateSmokeTest(id: "template", status: .passed(details: "Plantilla Jinja válida: \"\(preview)...\"", latencyMs: elapsed))
+					updateSmokeTest(id: "template", status: .passed(details: "Jinja template valid: \"\(preview)...\"", latencyMs: elapsed))
 				} else {
-					updateSmokeTest(id: "template", status: .warning(details: "Endpoint omitido o código \( (response as? HTTPURLResponse)?.statusCode ?? 0)", latencyMs: elapsed))
+					updateSmokeTest(id: "template", status: .warning(details: "Endpoint missing or code \( (response as? HTTPURLResponse)?.statusCode ?? 0)", latencyMs: elapsed))
 				}
 			} catch {
-				updateSmokeTest(id: "template", status: .warning(details: "No disponible en esta compilación", latencyMs: (CFAbsoluteTimeGetCurrent() - tTpl) * 1000.0))
+				updateSmokeTest(id: "template", status: .warning(details: "Not available in this build", latencyMs: (CFAbsoluteTimeGetCurrent() - tTpl) * 1000.0))
 			}
 		}
 
@@ -230,13 +232,13 @@ final class ModelDiagnosticService {
 					let reasoning = msg["reasoning_content"] as? String
 					let raw = (content != nil && !content!.isEmpty) ? content! : (reasoning ?? "")
 					let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-					updateSmokeTest(id: "openai", status: .passed(details: "Respuesta: \"\(cleaned.isEmpty ? "OK" : cleaned)\" (\(String(format: "%.0f", elapsed)) ms)", latencyMs: elapsed))
+					updateSmokeTest(id: "openai", status: .passed(details: "Response: \"\(cleaned.isEmpty ? "OK" : cleaned)\" (\(elapsed, format: .number.precision(.fractionLength(0))) ms)", latencyMs: elapsed))
 				} else {
-					let errMsg = (response as? HTTPURLResponse).map { "HTTP \($0.statusCode)" } ?? "Fallo en inferencia OpenAI"
+					let errMsg = (response as? HTTPURLResponse).map { LocalizedStringResource("HTTP \($0.statusCode)") } ?? LocalizedStringResource("OpenAI inference failed")
 					updateSmokeTest(id: "openai", status: .failed(error: errMsg))
 				}
 			} catch {
-				updateSmokeTest(id: "openai", status: .failed(error: error.localizedDescription))
+				updateSmokeTest(id: "openai", status: .failed(error: LocalizedStringResource(String.LocalizationValue(error.localizedDescription))))
 			}
 		}
 
@@ -268,10 +270,10 @@ final class ModelDiagnosticService {
 					let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
 					updateSmokeTest(id: "anthropic", status: .passed(details: "Claude Gateway Compatible: \"\(cleaned)\"", latencyMs: elapsed))
 				} else {
-					updateSmokeTest(id: "anthropic", status: .failed(error: "Fallo en endpoint /v1/messages"))
+					updateSmokeTest(id: "anthropic", status: .failed(error: "/v1/messages endpoint failed"))
 				}
 			} catch {
-				updateSmokeTest(id: "anthropic", status: .failed(error: error.localizedDescription))
+				updateSmokeTest(id: "anthropic", status: .failed(error: LocalizedStringResource(String.LocalizationValue(error.localizedDescription))))
 			}
 		}
 
@@ -318,18 +320,18 @@ final class ModelDiagnosticService {
 				   let first = choices.first,
 				   let msg = first["message"] as? [String: Any] {
 					if let toolCalls = msg["tool_calls"] as? [[String: Any]], !toolCalls.isEmpty {
-						let fnName = (toolCalls[0]["function"] as? [String: Any])?["name"] as? String ?? "función"
-						updateSmokeTest(id: "tools", status: .passed(details: "Tool Call Emitida: \(fnName)()", latencyMs: elapsed))
+						let fnName = (toolCalls[0]["function"] as? [String: Any])?["name"] as? String ?? "function"
+						updateSmokeTest(id: "tools", status: .passed(details: "Tool call emitted: \(fnName)()", latencyMs: elapsed))
 					} else if let content = msg["content"] as? String, !content.isEmpty {
-						updateSmokeTest(id: "tools", status: .warning(details: "Respondió texto en lugar de tool_call", latencyMs: elapsed))
+						updateSmokeTest(id: "tools", status: .warning(details: "Responded with text instead of tool_call", latencyMs: elapsed))
 					} else {
-						updateSmokeTest(id: "tools", status: .failed(error: "Respuesta vacía"))
+						updateSmokeTest(id: "tools", status: .failed(error: "Empty response"))
 					}
 				} else {
-					updateSmokeTest(id: "tools", status: .failed(error: "Error HTTP en tool calling"))
+					updateSmokeTest(id: "tools", status: .failed(error: "HTTP error in tool calling"))
 				}
 			} catch {
-				updateSmokeTest(id: "tools", status: .failed(error: error.localizedDescription))
+				updateSmokeTest(id: "tools", status: .failed(error: LocalizedStringResource(String.LocalizationValue(error.localizedDescription))))
 			}
 		}
 
@@ -342,7 +344,7 @@ final class ModelDiagnosticService {
 		guard !isRunningBenchmark else { return }
 		isRunningBenchmark = true
 		benchmarkProgress = 0.0
-		currentBenchmarkPhase = "Preparando suite de benchmark..."
+		currentBenchmarkPhase = "Preparing benchmark suite..."
 
 		let baseUrl = "http://127.0.0.1:\(port)/v1/chat/completions"
 		guard let url = URL(string: baseUrl) else {
@@ -357,19 +359,19 @@ final class ModelDiagnosticService {
 
 		// Fase 1: Ronda en Frío (Cold Prefill + Decode)
 		benchmarkProgress = 0.2
-		currentBenchmarkPhase = "Ejecutando Ronda 1 (Cold Prefill - Sin Caché)..."
+		currentBenchmarkPhase = "Running round 1 (cold prefill, no cache)..."
 
 		var coldResult = (tokPerSec: 0.0, ttftMs: 0.0, outTok: 0, inTok: 0)
 		do {
 			coldResult = try await executeTimedRequest(url: url, model: targetModel, prompt: promptCold, maxTokens: tokenLimit)
 		} catch {
-			currentBenchmarkPhase = "Error en Ronda 1: \(error.localizedDescription)"
+			currentBenchmarkPhase = "Error in round 1: \(error.localizedDescription)"
 			isRunningBenchmark = false
 			return
 		}
 
 		benchmarkProgress = 0.6
-		currentBenchmarkPhase = "Ejecutando Ronda 2 (Cached Replay - Verificación de KV Cache)..."
+		currentBenchmarkPhase = "Running round 2 (cached replay, KV cache check)..."
 
 		// Fase 2: Ronda en Caliente (Exact-Prefix Replay)
 		var warmResult = (tokPerSec: 0.0, ttftMs: 0.0, outTok: 0, inTok: 0)
@@ -377,13 +379,13 @@ final class ModelDiagnosticService {
 			// Se envía exactamente el mismo prefijo para evaluar el replay instantáneo
 			warmResult = try await executeTimedRequest(url: url, model: targetModel, prompt: promptCold, maxTokens: tokenLimit)
 		} catch {
-			currentBenchmarkPhase = "Error en Ronda 2: \(error.localizedDescription)"
+			currentBenchmarkPhase = "Error in round 2: \(error.localizedDescription)"
 			isRunningBenchmark = false
 			return
 		}
 
 		benchmarkProgress = 1.0
-		currentBenchmarkPhase = "Benchmark completado."
+		currentBenchmarkPhase = "Benchmark completed."
 
 		let speedup = coldResult.ttftMs > 0 && warmResult.ttftMs > 0
 		? coldResult.ttftMs / warmResult.ttftMs
@@ -425,7 +427,7 @@ final class ModelDiagnosticService {
 		guard let http = response as? HTTPURLResponse, http.statusCode == 200,
 			  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
 			  let usage = json["usage"] as? [String: Any] else {
-			throw NSError(domain: "SplashDiagnostic", code: 1, userInfo: [NSLocalizedDescriptionKey: "Error en respuesta HTTP"])
+			throw NSError(domain: "SplashDiagnostic", code: 1, userInfo: [NSLocalizedDescriptionKey: "Error in HTTP response"])
 		}
 
 		let outTokens = usage["completion_tokens"] as? Int ?? (usage["output_tokens"] as? Int ?? 1)
@@ -488,7 +490,7 @@ final class ModelDiagnosticService {
 
 				guard let http = response as? HTTPURLResponse, http.statusCode == 200,
 					  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-					playgroundLastError = "Error HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0): \(rawText)"
+					playgroundLastError = "HTTP error \((response as? HTTPURLResponse)?.statusCode ?? 0): \(rawText)"
 					isGeneratingPlayground = false
 					return
 				}
@@ -533,7 +535,7 @@ final class ModelDiagnosticService {
 
 				guard let http = response as? HTTPURLResponse, http.statusCode == 200,
 					  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-					playgroundLastError = "Error HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0): \(rawText)"
+					playgroundLastError = "HTTP error \((response as? HTTPURLResponse)?.statusCode ?? 0): \(rawText)"
 					isGeneratingPlayground = false
 					return
 				}
@@ -544,7 +546,7 @@ final class ModelDiagnosticService {
 					let content = msg["content"] as? String ?? ""
 					let reasoning = msg["reasoning_content"] as? String ?? ""
 					if !content.isEmpty && !reasoning.isEmpty {
-						playgroundOutput = "🧠 [Razonamiento]:\n\(reasoning)\n\n💬 [Respuesta]:\n\(content)"
+						playgroundOutput = "🧠 [Reasoning]:\n\(reasoning)\n\n💬 [Response]:\n\(content)"
 					} else if !content.isEmpty {
 						playgroundOutput = content
 					} else {
@@ -560,7 +562,7 @@ final class ModelDiagnosticService {
 				}
 			}
 		} catch {
-			playgroundLastError = error.localizedDescription
+			playgroundLastError = LocalizedStringResource(String.LocalizationValue(error.localizedDescription))
 		}
 
 		isGeneratingPlayground = false

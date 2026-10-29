@@ -2,10 +2,12 @@ import Foundation
 import Dispatch
 
 /// Niveles de presión de memoria del kernel de macOS.
+/// §9: los raw values son identificadores estables en inglés (antes eran
+/// cadenas de visualización en español: "Advertencia"/"Crítica").
 enum SystemMemoryPressureLevel: String, CaseIterable, Codable {
 	case normal = "Normal"
-	case warning = "Advertencia"
-	case critical = "Crítica"
+	case warning = "Warning"
+	case critical = "Critical"
 
 	var isConstrained: Bool {
 		return self == .warning || self == .critical

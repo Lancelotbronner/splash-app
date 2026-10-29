@@ -325,13 +325,9 @@ nonisolated struct InstalledSplashModel: Identifiable, Equatable, Hashable {
 	let diskSizeBytes: Int64
 	let isCurrentlyActive: Bool
 
+	/// §9: `ByteCountFormatStyle` (localizable) en lugar de `String(format:)`.
 	var formattedSize: String {
-		let gb = Double(diskSizeBytes) / 1_073_741_824.0
-		if gb >= 1.0 {
-			return String(format: "%.1f GB", gb)
-		}
-		let mb = Double(diskSizeBytes) / 1_048_576.0
-		return String(format: "%.0f MB", mb)
+		diskSizeBytes.formatted(.byteCount(style: .file))
 	}
 
 	var shortName: String {

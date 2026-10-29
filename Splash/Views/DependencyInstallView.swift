@@ -92,14 +92,14 @@ struct DependencyInstallView: View {
 
 				DiagnosticBadge(
 					title: LocalizedStringResource("Apple Silicon"),
-					status: isAppleSilicon ? LocalizedStringResource("ARM64 Metal") : LocalizedStringResource("Intel (No compatible)"),
+					status: isAppleSilicon ? LocalizedStringResource("ARM64 Metal") : LocalizedStringResource("Intel (Not compatible)"),
 					icon: isAppleSilicon ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
 					isSuccess: isAppleSilicon
 				)
 
 				DiagnosticBadge(
 					title: LocalizedStringResource("Splash CLI"),
-					status: SplashService.shared.isSplashInstalled ? (SplashService.shared.splashVersion.map { "\($0)" } ?? LocalizedStringResource("Instalado")) : LocalizedStringResource("Not installed"),
+					status: SplashService.shared.isSplashInstalled ? (SplashService.shared.splashVersion.map { "\($0)" } ?? LocalizedStringResource("Installed")) : LocalizedStringResource("Not installed"),
 					icon: SplashService.shared.isSplashInstalled ? "checkmark.circle.fill" : "clock.arrow.circlepath",
 					isSuccess: SplashService.shared.isSplashInstalled
 				)

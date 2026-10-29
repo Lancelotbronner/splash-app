@@ -122,8 +122,8 @@ struct MenuBarView: View {
 						.cornerRadius(3)
 
 					if !isSplashInstalled {
-						Text("brew")
-							.textCase(.uppercase)
+						// §9: literal ya en mayúsculas; el .textCase no afectaba al catálogo.
+						Text("BREW")
 							.font(.system(size: 7, weight: .bold, design: .monospaced))
 							.foregroundColor(.white)
 							.padding(.horizontal, 3)

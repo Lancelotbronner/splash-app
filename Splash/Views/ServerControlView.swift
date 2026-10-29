@@ -33,7 +33,8 @@ struct ServerControlView: View {
 	}
 
 	/// Error de validación de flags CLI adicionales (P-03).
-	private var customFlagsError: String? {
+	/// §9: LSR — el validador ahora devuelve errores localizables.
+	private var customFlagsError: LocalizedStringResource? {
 		let (_, err) = ServerCLIValidator.validateAndTokenize(Preferences.customServerFlags)
 		return err
 	}

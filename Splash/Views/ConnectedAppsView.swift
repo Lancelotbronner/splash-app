@@ -389,10 +389,10 @@ private struct QuickConnectGuideSection: View {
 				)
 
 				IntegrationGuideCard(
-					title: LocalizedStringResource("cURL / Terminal Directo"),
-					subtitle: LocalizedStringResource("Direct HTTP requests"),
+					title: "cURL / Terminal",
+					subtitle: "Direct HTTP requests",
 					icon: "network",
-					badge: LocalizedStringResource("REST HTTP"),
+					badge: "REST HTTP",
 					color: .indigo,
 					steps: [
 						LocalizedStringResource("curl http://\(host):\(port)/v1/chat/completions \\"),
@@ -739,7 +739,7 @@ struct IntegrationGuideCard: View {
 			} label: {
 				HStack(spacing: 4) {
 					Image(systemName: copied != nil ? "checkmark" : "doc.on.doc")
-					Text(copied != nil ? "Copied!" : "Copiar Configuración")
+					Text(copied != nil ? "Copied!" : "Copy Configuration")
 				}
 				.font(.system(size: 10, weight: .medium))
 				.frame(maxWidth: .infinity)

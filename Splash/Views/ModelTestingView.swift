@@ -15,7 +15,7 @@ struct ModelTestingView: View {
 	// Playground inputs (viven aquí para sobrevivir al cambio de pestaña)
 	@State private var playgroundProtocol: String = "openai" // "openai" | "anthropic"
 	@State private var playgroundSystemPrompt: String = ""
-	@State private var playgroundUserPrompt: String = "Escribe una función en Python para verificar si un número es primo y explica brevemente su complejidad."
+	@State private var playgroundUserPrompt: String = "Write a Python function to check whether a number is prime and briefly explain its complexity."
 	@State private var playgroundMaxTokens: Double = 256
 	@State private var playgroundTemperature: Double = 0.2
 	@State private var showingRawJSON: Bool = false
@@ -156,7 +156,8 @@ private struct TestingHeaderView: View {
 				Circle()
 					.fill(isRunning ? Color.green : Color.red)
 					.frame(width: 8, height: 8)
-				Text("\(activeModel) (:\(activePort))")
+				// §9: el badge no debe mostrar "Ninguno"/vacío sin contexto.
+				Text(activeModel.isEmpty ? LocalizedStringResource("No model") : LocalizedStringResource("\(activeModel) (:\(activePort))"))
 					.font(.system(size: 11, design: .monospaced))
 					.lineLimit(1)
 					.truncationMode(.middle)
@@ -233,9 +234,10 @@ private struct SmokeTestSection: View {
 		for item in results {
 			let statusText: String = {
 				switch item.status {
-				case .passed(let d, let ms): return "PASSED (\(d), \(String(format: "%.0f", ms))ms)"
-				case .warning(let d, let ms): return "WARNING (\(d), \(String(format: "%.0f", ms))ms)"
-				case .failed(let e): return "FAILED (\(e))"
+				// §9: el detalle es LSR; se resuelve para componer el informe.
+				case .passed(let d, let ms): return "PASSED (\(String(localized: d)), \(ms.formatted(.number.precision(.fractionLength(0))))ms)"
+				case .warning(let d, let ms): return "WARNING (\(String(localized: d)), \(ms.formatted(.number.precision(.fractionLength(0))))ms)"
+				case .failed(let e): return "FAILED (\(String(localized: e)))"
 				default: return "NOT RUN"
 				}
 			}()
@@ -296,7 +298,7 @@ private struct SmokeTestRow: View {
 					.controlSize(.small)
 			case .passed(_, let latency):
 				HStack(spacing: 4) {
-					Text("\(String(format: "%.0f", latency)) ms")
+					Text("\(latency, format: .number.precision(.fractionLength(0))) ms")
 						.font(.system(size: 9, design: .monospaced))
 						.foregroundColor(.secondary)
 					Image(systemName: "checkmark.circle.fill")
@@ -304,7 +306,7 @@ private struct SmokeTestRow: View {
 				}
 			case .warning(_, let latency):
 				HStack(spacing: 4) {
-					Text("\(String(format: "%.0f", latency)) ms")
+					Text("\(latency, format: .number.precision(.fractionLength(0))) ms")
 						.font(.system(size: 9, design: .monospaced))
 						.foregroundColor(.secondary)
 					Image(systemName: "exclamationmark.triangle.fill")
@@ -327,7 +329,8 @@ private struct BenchmarkSection: View {
 	@Binding var tokens: Int
 	let isRunning: Bool
 	let progress: Double
-	let phase: String
+	/// §9: LSR para las fases del benchmark.
+	let phase: LocalizedStringResource
 	let latest: ModelDiagnosticService.BenchmarkResult?
 	let isServerRunning: Bool
 	let onStart: () -> Void
@@ -385,39 +388,40 @@ private struct BenchmarkSection: View {
 					LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
 						// Card 1: Cold Decode Speed
 						BenchmarkMetricCard(
-							title: LocalizedStringResource("Cold Decode Speed"),
-							value: LocalizedStringResource("\(String(format: "%.1f", bench.coldDecodeTokPerSec)) tok/s"),
+							title: "Cold Decode Speed",
+							// §9: interpolación con formato en lugar de String(format:).
+							value: LocalizedStringResource("\(bench.coldDecodeTokPerSec, format: .number.precision(.fractionLength(1))) tok/s"),
 							icon: "snowflake",
 							color: .cyan,
-							subtitle: LocalizedStringResource("First pass without prior cache")
+							subtitle: "First pass without prior cache"
 						)
 
 						// Card 2: Warm Cached Speed
 						BenchmarkMetricCard(
-							title: LocalizedStringResource("Warm Decode Speed"),
-							value: LocalizedStringResource("\(String(format: "%.1f", bench.warmDecodeTokPerSec)) tok/s"),
+							title: "Warm Decode Speed",
+							value: LocalizedStringResource("\(bench.warmDecodeTokPerSec, format: .number.precision(.fractionLength(1))) tok/s"),
 							icon: "flame.fill",
 							color: .orange,
-							subtitle: LocalizedStringResource("Replay with indexed prefix")
+							subtitle: "Replay with indexed prefix"
 						)
 
 						// Card 3: Cold TTFT (§4: el motor no reporta TTFT; es una
 						// estimación a partir del tiempo total, así se etiqueta).
 						BenchmarkMetricCard(
-							title: LocalizedStringResource("Estimated Cold TTFT"),
-							value: LocalizedStringResource("\(String(format: "%.0f", bench.coldTTFTMs)) ms"),
+							title: "Estimated Cold TTFT",
+							value: LocalizedStringResource("\(bench.coldTTFTMs, format: .number.precision(.fractionLength(0))) ms"),
 							icon: "timer",
 							color: .purple,
-							subtitle: LocalizedStringResource("Estimated from total response time")
+							subtitle: "Estimated from total response time"
 						)
 
 						// Card 4: Cache Speedup Multiplier
 						BenchmarkMetricCard(
-							title: LocalizedStringResource("KV Cache Speedup"),
-							value: "\(String(format: "%.1fx", bench.cacheSpeedupMultiplier))",
+							title: "KV Cache Speedup",
+							value: LocalizedStringResource("\(bench.cacheSpeedupMultiplier, format: .number.precision(.fractionLength(1)))x"),
 							icon: "arrow.up.right.circle.fill",
 							color: .green,
-							subtitle: LocalizedStringResource("Splash prefix efficiency factor")
+							subtitle: "Splash prefix efficiency factor"
 						)
 					}
 
@@ -479,7 +483,8 @@ private struct PlaygroundSection: View {
 	let tokensGenerated: Int
 	let tokPerSec: Double
 	let ttftMs: Double
-	let error: String?
+	/// §9: LSR (el servicio ahora emite `playgroundLastError` como LSR).
+	let error: LocalizedStringResource?
 	let isServerRunning: Bool
 	let onSend: () -> Void
 
@@ -501,7 +506,7 @@ private struct PlaygroundSection: View {
 				Slider(value: $maxTokens, in: 32...1024, step: 32)
 					.frame(width: 120)
 
-				Text("Temp: \(String(format: "%.1f", temperature))")
+				Text("Temp: \(temperature, format: .number.precision(.fractionLength(1)))")
 					.font(.system(size: 11))
 				Slider(value: $temperature, in: 0.0...1.0, step: 0.1)
 					.frame(width: 100)
@@ -564,7 +569,7 @@ private struct PlaygroundSection: View {
 				HStack(spacing: 6) {
 					Image(systemName: "exclamationmark.octagon.fill")
 						.foregroundColor(.red)
-					Text(error ?? "")
+					Text(error ?? LocalizedStringResource(""))
 						.font(.system(size: 11))
 						.foregroundColor(.red)
 				}
@@ -584,10 +589,10 @@ private struct PlaygroundSection: View {
 							HStack(spacing: 8) {
 								Text("\(tokensGenerated) tokens")
 								Text(verbatim: "•")
-								Text("\(String(format: "%.1f", tokPerSec)) tok/s")
+								Text("\(tokPerSec, format: .number.precision(.fractionLength(1))) tok/s")
 								Text(verbatim: "•")
 								// §4: TTFT estimado, no medido por el motor.
-								Text("Est. TTFT: \(String(format: "%.0f", ttftMs)) ms")
+								Text("Est. TTFT: \(ttftMs, format: .number.precision(.fractionLength(0))) ms")
 							}
 							.font(.system(size: 10, weight: .medium, design: .monospaced))
 							.foregroundColor(.secondary)

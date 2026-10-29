@@ -355,10 +355,12 @@ passes, screenshot generator SKIPPED in the normal lane (see W2 report).
   EN-UI/ES-string mix. **Fix (feature decision — flagged, not mandated):**
   delete the dead pair (+ the `AppLanguage` enum), or implement the
   `Bundle`-override feature. Either way fix the docs (§10).
+  **Resolved (in-tree since commit `2a47963`):** the dead `appLanguageMode`/`LocalizationService`/`AppLanguage` pair was deleted in the review-start commit; the AGENTS.md doc fix landed in W7.
 - **Catalog has zero `fr` — AGENTS.md overstates coverage · Low** `[specialist]` + `[swiftui-way]` P2-15 —
   `Splash/Resources/Localizable.xcstrings`: 584 keys, 439 `es`, 9 explicit
   `en`, **0 `fr`** (verified programmatically by two workers). The "french"
   scheme is a personal `xcuserdata` artifact.
+  **Deferred to W7 (2026-10-29):** the only action is the AGENTS.md coverage doc fix, handled in the W7 hygiene group.
 - **Hardcoded Spanish in the English UI · High (user-visible)** `[specialist]` F-TM-6/F-DI-1/F-CA-3/F-MM-4/F-MDS-1/F-SCV-1/F-SVC-3, `[swiftui-way]` P3:
   - `TokenMetricsView.swift` — signature `"By Joan Gregorio Pérez - Ingeniero en software"`
   - `SplashService.swift:53` — `activeModel: String = "Ninguno"` (shown with no model loaded); `:2725` — `"Memoria liberada manualmente por el usuario."`
@@ -369,26 +371,31 @@ passes, screenshot generator SKIPPED in the normal lane (see W2 report).
   - `ModelManagerView.swift` — `"\(dlStr) recibidos"` in `formatDownloadProgress`
   **Fix:** LSR for every user-facing string (the app's own
   `ModelIDValidator`/`AgentButton`/`lastError` already show the pattern).
+  **Resolved by W6 (2026-10-29):** every site listed now uses LSR, plus same-class sites found in the pass (agent-launch `lastError` strings, "Port out of range", "Invalid model identifier: %@", weights-released notice, and the full install/download console logs); `InstallLogLine.text`/`downloadPhase` stay `String` (tests construct them) and are localized at the emission site via `String(localized:)`.
 - **Non-locale-aware formatting · Low** `[specialist]` F-MW-5/F-TM-4/F-MM-4/F-ST-2/F-MT-3, `[swiftui-way]` P3 —
   pervasive `String(format: "%.1f s"/"%.0f ms"/"%.2f GB")` and `%.0f MB/s`.
   **Fix:** `Text(…, format: .number.precision(.fractionLength(1)))` +
   localized units; `ByteCountFormatStyle` for sizes (note: `StatusModelTests`
   currently *pins* these locale-fixed outputs — update expectations when
   migrating).
+  **Resolved by W6 (2026-10-29):** the flagged view/model sites now use `Text(…, format: .number.precision(…))` interpolation and `ByteCountFormatStyle` (`SplashStatus.formattedSize`, `InstallConsole.formatDownloadProgress`); the pre-cached `SplashService.formatted*` properties are intentionally kept as `String(format:)` — this review lists them as a good pattern and `StatusModelTests` pins their exact outputs, so no test expectations were changed.
 - **Runtime case transforms · Low** `[specialist]` F-MW-4/F-TM-5/F-MB-2 —
   `.textCase(.uppercase)` on `Text("Running Model")` / `Text("brew")` forces
   the same casing on every translation and defeats catalog review (bake the
   case into the string); `thermal.capitalized` / `memoryPressure?.capitalized`
   on raw engine strings (`capitalized` uppercases *every* word, locale-dependent)
   → map engine strings to a small enum with an LSR label + color.
+  **Resolved by W6 (2026-10-29):** "RUNNING MODEL"/"BREW" are now literals with the case baked in (no `.textCase`); engine thermal/pressure/ANE strings map through small LSR-label + color helpers (`thermalLabel`/`pressureLabel`/`aneLabel` in `TokenMetricsView`) instead of `.capitalized`.
 - **Latent landmine** `[specialist]` F-PR-1 — `SystemMemoryPressureLevel` raw
   values are Spanish display strings (`"Advertencia"`, `"Crítica"`); no View
   renders them today (notification path uses its own localized strings), but
   if ever displayed, Spanish leaks into the EN UI.
+  **Resolved by W6 (2026-10-29):** `SystemMemoryPressureLevel` raw values are now stable English identifiers ("Normal"/"Warning"/"Critical"); views render LSR labels mapped from them.
 - **Also:** `ServerCLIValidator.validateThinkingBudget` replaces *any* "k" with
   "000" (`"1k2"` → `"10002"` accepted); `ModelIDValidator.rejectionReason` runs
   the no-slash check before the forbidden-char check (misleading message for
   values with both problems) `[swiftui-way]` P3.
+  **Resolved by W6 (2026-10-29):** `validateThinkingBudget` only expands a trailing "k" after digits ("1k2" is rejected); `ModelIDValidator.rejectionReason` now runs the forbidden-character check before the missing-separator check.
 
 ---
 

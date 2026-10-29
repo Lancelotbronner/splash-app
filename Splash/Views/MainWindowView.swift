@@ -361,10 +361,10 @@ struct MainWindowView: View {
 
 			// Nombre del modelo
 			VStack(alignment: .leading, spacing: 2) {
-				Text("Running Model")
+				// §9: literal ya en mayúsculas; el .textCase no afectaba al catálogo.
+				Text("RUNNING MODEL")
 					.font(.system(size: 10, weight: .medium))
 					.foregroundColor(.secondary)
-					.textCase(.uppercase)
 
 				if isRunning {
 					Text(modelClean)
