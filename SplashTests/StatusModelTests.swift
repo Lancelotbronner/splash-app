@@ -18,7 +18,7 @@ final class StatusModelTests {
 		#expect(status.thermalState == "nominal")
 		#expect(status.aneFfn?.state == "active")
 		#expect(status.aneFfn?.share == 0.6667)
-		#expect(status.aneFfn?.minPromptChunk == 128)
+		#expect(status.aneFfn?.minimumRows == 128)
 		#expect(status.weights?.released == false)
 		#expect(status.weights?.idleReleaseSeconds == 300.0)
 		#expect(status.instance?.pid == 4242)

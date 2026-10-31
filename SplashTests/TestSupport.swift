@@ -100,7 +100,7 @@ enum Fixtures {
 		  "ane_ffn": {
 			"state": "active",
 			"share": 0.6667,
-			"min_prompt_chunk": 128,
+			"minimum_rows": 128,
 			"evaluations": 142
 		  },
 		  "weights": {
