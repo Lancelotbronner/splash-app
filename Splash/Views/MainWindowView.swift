@@ -240,7 +240,7 @@ struct MainWindowView: View {
 			Spacer()
 
 			Button("Download") {
-				if let url = URL(string: SplashService.shared.latestReleaseURL ?? "https://github.com/hometrix/SplashMonitor/releases/latest") {
+				if let url = URL(string: SplashService.shared.latestReleaseURL ?? "https://github.com/Lancelotbronner/splash-app/releases/latest") {
 					NSWorkspace.shared.open(url)
 				}
 			}

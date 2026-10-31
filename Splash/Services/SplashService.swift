@@ -238,7 +238,7 @@ class SplashService {
 	var latestVersion: String? = nil
 	var latestReleaseURL: String? = nil
 	let currentVersion = SplashVersion.current
-	private let githubRepo = "hometrix/SplashMonitor"
+	private let githubRepo = "Lancelotbronner/splash-app"
 
 	// Splash CLI Engine Version & Updates (incoai/splash)
 	var installedSplashCliVersion: String = ""
