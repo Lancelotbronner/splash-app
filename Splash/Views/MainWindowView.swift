@@ -140,27 +140,35 @@ struct MainWindowView: View {
 					menuBarPromptBanner
 				}
 
-				// Main Content View
-				ScrollView {
-					VStack(alignment: .leading, spacing: 18) {
-						switch selectedSidebarItem {
-						case .dashboard:
-							dashboardDetailView
-						case .connectedApps:
-							ConnectedAppsView()
-						case .models:
-							ModelManagerView()
-						case .server:
-							ServerControlView()
-						case .modelTesting:
-							ModelTestingView()
-						case .settings:
-							settingsDetailView
-						case .about:
-							AboutView()
+				// Pestaña «Engine Status»: un Form agrupado con su propio
+				// desplazamiento y un NavigationStack para el drill-in, de modo
+				// que no se anida en el ScrollView compartido.
+				if selectedSidebarItem == .status {
+					StatusView()
+				} else {
+					ScrollView {
+						VStack(alignment: .leading, spacing: 18) {
+							switch selectedSidebarItem {
+							case .dashboard:
+								dashboardDetailView
+							case .connectedApps:
+								ConnectedAppsView()
+							case .models:
+								ModelManagerView()
+							case .server:
+								ServerControlView()
+							case .modelTesting:
+								ModelTestingView()
+							case .settings:
+								settingsDetailView
+							case .status:
+								EmptyView() // Inalcanzable: la pestaña la gestiona el `if` de arriba
+							case .about:
+								AboutView()
+							}
 						}
+						.padding(24)
 					}
-					.padding(24)
 				}
 			}
 			.frame(minWidth: 560, minHeight: 480)
@@ -1080,6 +1088,7 @@ private struct SettingsCLIInfoCard: View {
 
 enum SidebarItem: String, CaseIterable, Identifiable {
 	case dashboard
+	case status
 	case connectedApps
 	case models
 	case server
@@ -1092,6 +1101,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 	var title: LocalizedStringResource {
 		switch self {
 		case .dashboard: return LocalizedStringResource("Token Dashboard")
+		case .status: return LocalizedStringResource("Engine Status")
 		case .connectedApps: return LocalizedStringResource("Connected Apps")
 		case .models: return LocalizedStringResource("Model Manager")
 		case .server: return LocalizedStringResource("Server & Agents")
@@ -1104,6 +1114,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 	var icon: String {
 		switch self {
 		case .dashboard: return "speedometer"
+		case .status: return "waveform.path.ecg"
 		case .connectedApps: return "app.connected.to.app.below.fill"
 		case .models: return "shippingbox"
 		case .server: return "server.rack"
